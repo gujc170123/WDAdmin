@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    {% load i18n static %}
+    <meta charset="UTF-8">
+    <meta name=”viewport” content=”initial-scale=1, maximum-scale=3, minimum-scale=1, user-scalable=no”>
+
+    <title>答题检查</title>
+</head>
+<body style="background-color: #0a3f69;">
+<div style="text-align: center;font-size:16px;color:#ffffff;margin-top: 10%;width: 50%;margin-left: 25%;">
+    <form action="/operation/answer/check/rst/" method="post">
+{% csrf_token %}
+        <h2>答题情况检查</h2>
+        <span>帐号名称：</span><input style="width:200px;" type="text" name="account_name"/><br><br>
+        <span>项目名称：</span><input style="width:200px;" type="text" name="project_name"/><br><br>
+        <input type="submit" value="提交" style="width:200px;line-height:50px;">
+    </form>
+
+</div>
+
+</body>
+</html>

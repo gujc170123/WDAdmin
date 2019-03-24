@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    {% load i18n static %}
+    <meta charset="UTF-8">
+
+
+    <title>开发文档</title>
+</head>
+<body style="background-color: #0a3f69;">
+<div style="text-align: center;font-size:30px;color:#ffffff;margin-top: 20%;width: 50%;margin-left: 25%;height:200px;">
+{#   <h3 style="margin: 0;padding: 10px;cursor:pointer; font-size: 1.5rem;">提示</h3>#}
+    {% if err_code == 1 %}
+        <span style>测评项目不存在</span>
+    {% elif err_code == 2 %}
+        <span>该测评项目是非公开项目，请确认</span>
+    {% elif err_code == 3 %}
+        <span>没有链接, 请确认</span>
+    {% elif err_code == 4 %}
+        <span>链接没有找到, 请确认</span>
+    {% elif err_code == 5 %}
+        <span>用户没有找到账户, 请确认</span>
+    {% elif err_code == 6 %}
+        <span>用户登陆异常, 请确认</span>
+    {% elif err_code == 7 %}
+        <span>用户已经登陆, 请确认</span>
+    {% else %}
+        <span>点击下方按钮，跳转我的测评列表</span>
+    {% endif %}
+</div>
+<a style="margin-top: 45px;
+    color: #fff;
+    font-size: 25px;
+    text-align: center;
+    line-height: 52px;
+    background-color: #2fbeee;
+    border-radius: 40px;
+    margin-left: 145px;
+    margin-right: 145px;
+    display: block;
+    text-decoration: none;
+    outline: none;
+    height:60px;
+    outline-offset: 0;" href="/#/">跳转我的测评</a>
+<div>
+<ul id="index_nav" style="background-color: #ddd;width:10%;float:left;overflow: auto">
+
+
+</ul>
+</div>
+
+</body>
+</html>

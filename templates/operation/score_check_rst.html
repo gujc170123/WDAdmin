@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    {% load i18n static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <link rel="stylesheet" href="https://cdn.bootcss.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+
+    <title>格略运维平台</title>
+</head>
+<body style="background-color: #0a3f69;">
+
+<div style="text-align: center;font-size:16px;color:#ffffff;margin-top: 10%;width: 50%;margin-left: 25%;">
+    <div>
+        {% if reset != 1 %}
+            <h2>项目重新算分</h2>
+            <br>
+        <form action="/operation/score/check/rst/reset/" method="post">
+            <input type="hidden" value="{{ project_id}}" name="project_id" />
+
+        <button type="submit" class="btn btn-primary btn-lg">重新算分</button>
+            </form>
+            {% else %}
+            <h2>项目重新算分结果</h2>
+        {% endif %}
+        <br><br>
+        <p>未计算出分值的人员总是: {{ count }}</p>
+    </div>
+    <div>
+        <table class="table table-dark">
+          <thead class="thead-dark">
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">姓名</th>
+              <th scope="col">问卷</th>
+              <th scope="col">得分</th>
+                <th scope="col">答题数</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for people in infos %}
+            <tr>
+              <th scope="row">{{ forloop.counter }}</th>
+              <td>{{ people.people_info.display_name }}</td>
+              <td>{{ people.survey_info.survey_name }}</td>
+              <td>{{ people.model_score }}</td>
+                <td>{{ people.answer_count }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+    </div>
+</div>
+
+</div>
+<script src="https://cdn.bootcss.com/jquery/3.2.1/jquery.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+<script src="https://cdn.bootcss.com/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://cdn.bootcss.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+<script>
+    $("#checkBtn").on("click", function () {
+        var project_id = parseInt($(".custom-select").val());
+        if (project_id){
+            window.location.href = "/operation/answer/check/rst?pid="+project_id;
+        }
+    })
+</script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    {% load i18n static %}
+    <meta charset="UTF-8">
+    <meta name=”viewport” content=”initial-scale=1, maximum-scale=3, minimum-scale=1, user-scalable=no”>
+
+    <title>答题检查</title>
+    <style type="text/css">
+        th, tr, td{
+{#            padding: 2px;#}
+        }
+    </style>
+</head>
+<body style="background-color: #0a3f69;">
+<div style="text-align: center;font-size:16px;color:#ffffff;margin-top: 10%;width: 50%;margin-left: 25%;">
+    <h2>{{ account_name }} - 检查结果</h2>
+    <table border="3">
+        <tr>
+            <th>问卷名称</th>
+            <th>项目名称</th>
+            <th>当前状态</th>
+            <th>是否超时</th>
+            <th>开始时间</th>
+            <th>结束时间</th>
+            <th>是否已答题</th>
+            <th>操作</th>
+        </tr>
+        {% for survey_info in result %}
+        <tr>
+            <td>{{ survey_info.survey_name}}</td>
+            <td>{{ survey_info.project_name }}</td>
+            <td>{{ survey_info.status }}</td>
+            <td>{{ survey_info.is_overtime }}</td>
+            <td>{{ survey_info.begin_answer_time }}</td>
+            <td>{{ survey_info.finish_time }}</td>
+            <td>{{ survey_info.has_submit }}</td>
+            <td>
+                <form action="/operation/answer/check/ops/reset/" method="post">
+                    {% csrf_token %}
+                    <input type="hidden" value="{{ survey_info.id }}" name="relation_id" />
+                    <input type="hidden" value="{{ account_name }}" name="account_name" />
+                    <input type="submit" value="重置" id="submit"/>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+</div>
+<script>
+</script>
+</body>
+</html>
