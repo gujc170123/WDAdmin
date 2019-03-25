@@ -45,6 +45,15 @@ CELERYBEAT_SCHEDULE = {
         'schedule': crontab(minute="*/10"),
 
         'args': ()
+    },
+
+    'check_report': {
+
+        'task': 'front.tasks.check_report_beat',
+
+        'schedule': crontab(minute=0, hour='*/1'),
+
+        'args': ()
     }
 }
 
