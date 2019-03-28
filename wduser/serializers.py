@@ -209,6 +209,20 @@ class OrganizationDetailSerializer(OrganizationBasicSerializer):
         # return OrganizationUtils.get_child_orgs(obj.enterprise_id, obj.id, 1)[0]
         return OrganizationUtils.get_child_orgs(obj.assess_id, obj.id, 1)[0]
 
+#20190328 add by gujc
+class EnterpriseOrganizationDetailSerializer(OrganizationBasicSerializer):
+    """
+    serializer organization tree
+    """
+    child_orgs = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Organization
+        fields = OrganizationBasicSerializer.Meta.fields + ("child_orgs", )
+
+    def get_child_orgs(self, obj):
+        return OrganizationUtils.get_child_orgs(obj.enterprise_id, obj.id, 1)[0]
+#20190328 add by gujc
 
 class UserAdminRoleSerializer(serializers.ModelSerializer):
     u"""角色序列化"""
