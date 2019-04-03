@@ -29,8 +29,7 @@ from wduser.models import AuthUser, EnterpriseInfo, Organization, UserAdminRole,
 from wduser.serializers import UserBasicSerializer, EnterpriseBasicSerializer, OrganizationBasicSerializer, \
     OrganizationDetailSerializer, UserAdminRoleSerializer, RoleBusinessPermissionSerializer, RoleUserSerializer, \
     UserAdminRoleDetailSerializer, RoleUserBasicSerializer, RoleUserBasicListSerializer, \
-    RoleUserBusinessBasicSeriaSerializer, RoleUserBusinessListSeriaSerializer, RoleUserInfoSerializer, \
-    EnterpriseOrganizationDetailSerializer
+    RoleUserBusinessBasicSeriaSerializer, RoleUserBusinessListSeriaSerializer, RoleUserInfoSerializer
 from wduser.tasks import import_org_task, send_general_code, enterprise_statistics_test_user
 from wduser.user_utils import UserAccountUtils, OrgImportExport, OrganizationUtils
 
@@ -233,7 +232,13 @@ class EnterpriseListCreateView(WdListCreateAPIView):
             return qs
         role_user_qs = RoleUserBusiness.objects.filter_active(
             user_id=self.request.user.id, model_type=RoleUserBusiness.MODEL_TYPE_ENTERPRISE)
-        model_ids = role_user_qs.values_list("model_id", flat=True)
+
+        ass_ids = list(RoleUserBusiness.objects.filter_active(
+            user_id=self.request.user.id, model_type=RoleUserBusiness.MODEL_TYPE_PROJECT).values_list("model_id", flat=True))
+        ap_ids = list(AssessProject.objects.filter_active(id__in=ass_ids).values_list("enterprise_id", flat=True))
+
+        model_ids = list(role_user_qs.values_list("model_id", flat=True))
+        model_ids.extend(ap_ids)
         return qs.filter(id__in=model_ids)
 
     def get(self, request, *args, **kwargs):
@@ -350,58 +355,6 @@ class OrganizationListCreateView(WdListCreateAPIView):
         if self.CREATE_TAG:
             self.perform_tag(self.custom_view_cache["perform_id"])
 
-#201909328 add by gujc
-#enterprise organization tree 
-class EnterpriseOrganizationListCreateView(WdListCreateAPIView):
-    """
-    POST：create new organization
-    GET：retrieve organization tree
-    """
-    model = Organization
-    serializer_class = EnterpriseOrganizationDetailSerializer    
-    POST_CHECK_REQUEST_PARAMETER = ('enterprise_id', 'name')
-    POST_DATA_RESPONSE = True
-
-    def qs_filter(self, qs):
-        return qs.filter(enterprise_id=self.enterprise_id)
-
-    def get(self, request, *args, **kwargs):
-        if self.request.GET.get(self.SEARCH_KEY, None) is not None:
-            return super(EnterpriseOrganizationListCreateView, self).get(request, *args, **kwargs)
-        tree_orgs = OrganizationUtils.get_tree_enterprise_organization(self.enterprise_id)
-        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"organization": tree_orgs})
-
-    def post_check_parameter(self, kwargs):
-        err_code = super(OrganizationListCreateView, self).post_check_parameter(kwargs)
-        if err_code != ErrorCode.SUCCESS:
-            return err_code
-        def check_org_name(name, enterprise_id):
-            org_qs = Organization.objects.filter_active(name=name, enterprise_id=enterprise_id, parent_id=0)
-            if org_qs.count() > 0:
-                return ErrorCode.ORG_NAME_DOUBLE_ERROR
-            else:
-                return ErrorCode.SUCCESS
-        ret = check_org_name(self.name, self.enterprise_id)
-        if ret != ErrorCode.SUCCESS:
-            return ret
-        self.request.data["identification_code"] = OrganizationUtils.generate_org_code(self.enterprise_id, self.name)
-        return err_code
-
-    def perform_create(self, serializer):
-        #create new organization
-        self.create_obj = serializer.save()
-        AssessOrganization.objects.create(
-            assess_id=0,
-            organization_id=self.create_obj.id,
-            organization_code=self.create_obj.identification_code
-        )
-        if serializer.data and serializer.data.has_key("id"):
-            self.custom_view_cache["perform_id"] = serializer.data["id"]
-        else:
-            self.custom_view_cache["perform_id"] = None
-        if self.CREATE_TAG:
-            self.perform_tag(self.custom_view_cache["perform_id"])
-#201909328 add by gujc
 
 class OrganizationlRetrieveUpdateDestroyView(WdRetrieveUpdateAPIView, WdDestroyAPIView):
     u"""
@@ -495,6 +448,7 @@ class OrganizationImportExportView(AuthenticationExceptView, WdExeclExportView):
         file_path = OrgImportExport.import_data(file_data, file_name, assess_id)
         err_code = import_org_task(assess_id, file_path, email)
         return general_json_response(status.HTTP_200_OK, err_code)
+
 
 class UserAdminRoleListCreateView(WdListCreateAPIView):
     u"""角色管理
@@ -640,6 +594,9 @@ class RoleUserListCreateView(WdListCreateAPIView, WdDestroyAPIView):
         if AuthUser.objects.filter(is_active=True).filter(
                         Q(phone=self.phone) | Q(email=self.email)).count() > 1:
             return ErrorCode.PERMISSION_PHONE_EMAIL_NOT_SAME_USER
+        if AuthUser.objects.filter(is_active=True).filter(
+                        Q(phone=self.phone) | Q(email=self.email)).count() > 0:
+            return ErrorCode.USER_HAS_IN_ROLETYPE_ERROR   #, {"msg": "账号已存在"})
         return ErrorCode.SUCCESS
 
     def post(self, request, *args, **kwargs):

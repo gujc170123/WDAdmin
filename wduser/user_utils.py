@@ -163,31 +163,6 @@ class OrganizationUtils(object):
             org_data.append(org_info)
         return org_data, child_org_ids
 
-#20190328 add by gujc
-    @classmethod
-    def get_enterprise_child_orgs(cls, enterprise_id, parent_id, max_depth=None, depth_time=1):
-        from wduser.serializers import OrganizationBasicSerializer
-        if parent_id == 0:
-            level = 1
-        else:
-            level = depth_time
-        orgs = Organization.objects.filter_active(enterprise_id=enterprise_id, parent_id=parent_id,assess_id=0)
-        org_data = []
-        child_org_ids = []
-        for org in orgs:
-            org_info = OrganizationBasicSerializer(instance=org).data
-            org_info["level"] = level
-            child_org_ids.append(org.id)
-            if max_depth is None or depth_time < max_depth:
-                child_org_data, ids = OrganizationUtils.get_enterprise_child_orgs(enterprise_id, org.id, max_depth, depth_time + 1)
-                org_info["child_orgs"] = child_org_data
-                child_org_ids += ids
-            else:
-                org_info["child_orgs"] = []
-            org_data.append(org_info)
-        return org_data, child_org_ids
-#20190328 add by gujc
-
     @classmethod
     def get_parent_org_names(cls, org_codes):
         org_names = []
@@ -231,20 +206,6 @@ class OrganizationUtils(object):
             # })
             return porg_info
         return OrganizationUtils.get_child_orgs(assess_id, parent_id, max_depth)[0]
-
-    #20190328 add by gujc
-    @classmethod
-    def get_tree_enterprise_organization(cls, enterprise_id, parent_id=0, max_depth=None):
-        from wduser.serializers import OrganizationBasicSerializer
-        level = 1
-        if parent_id != 0:
-            porg = Organization.objects.get(id=parent_id)
-            porg_info = OrganizationBasicSerializer(instance=porg).data
-            porg_info["level"] = level            
-            porg_info["child_orgs"] = OrganizationUtils.get_enterprise_child_orgs(enterprise_id, parent_id, max_depth)[0]
-            return porg_info
-        return OrganizationUtils.get_enterprise_child_orgs(enterprise_id, parent_id, max_depth)[0]
-    #20190328 add by gujc
 
     @classmethod
     def generate_org_code(cls, assess_id, org_name):

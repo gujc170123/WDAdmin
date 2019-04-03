@@ -30,21 +30,21 @@ CORS_ORIGIN_WHITELIST = (
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'backend',
-        'USER': 'root',
-        'PASSWORD': '123456',
-        'HOST': '127.0.0.1',
+        'NAME': 'wdadmin',
+        'USER': 'ad_wd',
+        'PASSWORD': 'Admin@Weidu2018',
+        'HOST': 'rm-bp1i2yah9e5d27k26bo.mysql.rds.aliyuncs.com',
         'PORT': '3306',
     },
     'front': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'front',
-        'USER': 'root',
-        'PASSWORD': '123456',
-        'HOST': '127.0.0.1',
+        'NAME': 'wdfront',
+        'USER': 'ad_wd',
+        'PASSWORD': 'Admin@Weidu2018',
+        'HOST': 'rm-bp1i2yah9e5d27k26bo.mysql.rds.aliyuncs.com',
         'PORT': '3306',
     },
-
+    
 }
 #
 CLIENT_HOST = 'http://wd-user.exuetech.com'
@@ -69,3 +69,4 @@ CACHE = {
         }
     }
 }
+

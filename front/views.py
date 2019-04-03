@@ -41,6 +41,7 @@ from wduser.models import AuthUser, People, PeopleOrganization, Organization, En
     PeopleAccount
 from wduser.serializers import UserBasicSerializer, OrganizationBasicSerializer
 from wduser.user_utils import UserAccountUtils
+from utils.math_utils import normsdist
 
 logger = get_logger("front")
 
@@ -83,17 +84,6 @@ def link_login(link, account, pwd):
     assess_qs_ids = AssessProject.objects.filter_active(enterprise_id=enterprise_qs[0].id).values_list('id', flat=True)
     if assess_qs_ids.count() < 1:
         return ErrorCode.ENTERPRISE_ASSESS_NONE_ERROR, u'企业没有项目', None
-    # 如果 EA表上线
-    # ea_qs = EnterpriseAccount.objects.filter(account_name=account, enterprise_id=enterprise_qs[0].id)
-    # if ea_qs.count() == 1:
-    #     user_want_login_obj = AuthUser.objects.get(id=ea_qs[0].user_id)
-    #     return ErrorCode.SUCCESS, u"ok", user_want_login_obj
-    # else:
-    #     au_qs = AuthUser.objects.filter(Q(phone=account)|Q(email=account))
-    #     au_qs = au_qs.filter(is_active=True)
-    #     if au_qs.count() == 1:
-    #         return ErrorCode.SUCCESS, u"ok", au_qs[0]
-    # return ErrorCode.USER_ACCOUNT_NOT_FOUND, u'找不到该用户', None
     # 这个account,能匹配到的所有用户
     all_user_want_login_all = AuthUser.objects.filter(Q(phone=account) | Q(email=account) | Q(account_name=account))
     all_user_want_login = all_user_want_login_all.filter(is_active=True)
@@ -132,14 +122,9 @@ class PeopleLoginView(AuthenticationExceptView, WdCreateAPIView):
     def post(self, request, *args, **kwargs):
         link = request.data.get('enterprise_dedicated_link', None)
         account = request.data.get('account', None)
-        # account_type = request.data.get('account_type', None)
         pwd = request.data.get("pwd", None)
         if account is None or pwd is None:
             return general_json_response(status.HTTP_200_OK, ErrorCode.INVALID_INPUT)
-        # ret, user = self.find_user_with_account(account, account_type)
-        # if ret == ErrorCode.SUCCESS:
-        #     pass
-        # else:
         if True:
             if not link:
                 user, err_code = UserAccountUtils.account_check(account)
@@ -154,9 +139,6 @@ class PeopleLoginView(AuthenticationExceptView, WdCreateAPIView):
             return general_json_response(status.HTTP_200_OK, err_code)
         user_info = people_login(request, user, self.get_serializer_context())
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, user_info)
-        # return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"user_info": user_info, "login_account": account})
-#
-
 
 class PeopleActiveCodeLoginView(AuthenticationExceptView, WdCreateAPIView):
     u"""激活码登录"""
@@ -1401,6 +1383,8 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
         "BehavioralStyle": 'self.get_xwfg_value',
         # 职业定向
         "ZYDX": 'self.get_zydx_value',
+        # Personal EOI
+        "PEOI": "self.get_peoi_value",
     }
 
     def get_ygzwts_value(self, personal_result_id):
@@ -1772,18 +1756,18 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             "TestTime": "2018.09.05",
             "ChartEudaemonia":
                 [
-                    {"name": "乐观积极", "score": 6, "raw_score": 57.5, "percentage": '15.4%'},
-                    {"name": "自信坚韧", "score": 8, "raw_score": 57.5, "percentage": '15.4%'},
-                    {"name": "合理归因", "score": 7, "raw_score": 57.5, "percentage": '15.4%'},
-                    {"name": "情绪调节", "score": 9, "raw_score": 57.5, "percentage": '15.4%'},
-                    {"name": "意义寻求", "score": 5, "raw_score": 57.5, "percentage": '15.4%'},
-                    {"name": "自主定向", "score": 7, "raw_score": 57.5, "percentage": '15.4%'},
-                    {"name": "专注投入", "score": 4, "raw_score": 57.5, "percentage": '15.4%'},
-                    {"name": "自我拓展", "score": 3, "raw_score": 57.5, "percentage": '15.4%'},
-                    {"name": "灵活变通", "score": 2, "raw_score": 57.5, "percentage": '15.4%'},
-                    {"name": "包容差异", "score": 9, "raw_score": 57.5, "percentage": '15.4%'},
-                    {"name": "亲和利他", "score": 7, "raw_score": 57.5, "percentage": '15.4%'},
-                    {"name": "自我悦纳", "score": 6, "raw_score": 57.5, "percentage": '15.4%'},
+                    {"name": "乐观积极", "score": 6},
+                    {"name": "自信坚韧", "score": 8},
+                    {"name": "合理归因", "score": 7},
+                    {"name": "情绪调节", "score": 9},
+                    {"name": "意义寻求", "score": 5},
+                    {"name": "自主定向", "score": 7},
+                    {"name": "专注投入", "score": 4},
+                    {"name": "自我拓展", "score": 3},
+                    {"name": "灵活变通", "score": 2},
+                    {"name": "包容差异", "score": 9},
+                    {"name": "亲和利他", "score": 7},
+                    {"name": "自我悦纳", "score": 6},
 
                 ]
 
@@ -1839,18 +1823,18 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             "TestTime": "2018.09.05",
             "ChartEudaemonia":
                 [
-                    {"name": "乐观积极", "score": 6, "raw_score": 57.5, "percentage": '15.4%', "en_name": "Optimistic and positive"},
-                    {"name": "自信坚韧", "score": 8, "raw_score": 57.5, "percentage": '15.4%', "en_name": "Confident and tenacity"},
-                    {"name": "合理归因", "score": 7, "raw_score": 57.5, "percentage": '15.4%', "en_name": "Reasoning"},
-                    {"name": "情绪调节", "score": 9, "raw_score": 57.5, "percentage": '15.4%', "en_name": "Emotion regulation"},
-                    {"name": "意义寻求", "score": 5, "raw_score": 57.5, "percentage": '15.4%', "en_name": "Meaning pursuit"},
-                    {"name": "自主定向", "score": 7, "raw_score": 57.5, "percentage": '15.4%',"en_name": "Autonomy and direction"},
-                    {"name": "专注投入", "score": 4, "raw_score": 57.5, "percentage": '15.4%', "en_name": "Devotion"},
-                    {"name": "自我拓展", "score": 3, "raw_score": 57.5, "percentage": '15.4%', "en_name": "Self enhancing"},
-                    {"name": "灵活变通", "score": 2, "raw_score": 57.5, "percentage": '15.4%', "en_name": "Flexibility"},
-                    {"name": "包容差异", "score": 9, "raw_score": 57.5, "percentage": '15.4%', "en_name": "Diversity"},
-                    {"name": "亲和利他", "score": 7, "raw_score": 57.5, "percentage": '15.4%', "en_name": "Affinity and altruism"},
-                    {"name": "自我悦纳", "score": 6, "raw_score": 57.5, "percentage": '15.4%', "en_name": "Self acceptance"},
+                    {"name": "乐观积极", "score": 6, "en_name": "Optimistic and positive"},
+                    {"name": "自信坚韧", "score": 8, "en_name": "Confident and tenacity"},
+                    {"name": "合理归因", "score": 7, "en_name": "Reasoning"},
+                    {"name": "情绪调节", "score": 9, "en_name": "Emotion regulation"},
+                    {"name": "意义寻求", "score": 5, "en_name": "Meaning pursuit"},
+                    {"name": "自主定向", "score": 7,"en_name": "Autonomy and direction"},
+                    {"name": "专注投入", "score": 4, "en_name": "Devotion"},
+                    {"name": "自我拓展", "score": 3, "en_name": "Self enhancing"},
+                    {"name": "灵活变通", "score": 2, "en_name": "Flexibility"},
+                    {"name": "包容差异", "score": 9, "en_name": "Diversity"},
+                    {"name": "亲和利他", "score": 7, "en_name": "Affinity and altruism"},
+                    {"name": "自我悦纳", "score": 6, "en_name": "Self acceptance"},
 
                 ]
 
@@ -1909,99 +1893,99 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             "TestTime": "2018年10月26日",
             # 指标（整体）
             "chart1": [
-                # {'name': '安全健康', 'score': 100, 'dimension': '安全保障需求'},
-                # {'name': '环境舒适', 'score': 90, 'dimension': '安全保障需求'},
-                # {'name': '物质保障', 'score': 80, 'dimension': '安全保障需求'},
-                # {'name': '休闲娱乐', 'score': 70, 'dimension': '安全保障需求'},
-                # {'name': '职业稳定', 'score': 60, 'dimension': '安全保障需求'},
-                # {'name': '亲和倾向', 'score': 40, 'dimension': '情感归属需求'},
-                # {'name': '友谊友爱', 'score': 30, 'dimension': '情感归属需求'},
-                # {'name': '关系信任', 'score': 20, 'dimension': '情感归属需求'},
-                # {'name': '人际支持', 'score': 20, 'dimension': '情感归属需求'},
-                # {'name': '群体归属', 'score': 20, 'dimension': '情感归属需求'},
-                # {'name': '寻求认可', 'score': 20, 'dimension': '尊重认可需求'},
-                # {'name': '获得肯定', 'score': 20, 'dimension': '尊重认可需求'},
-                # {'name': '声望地位', 'score': 20, 'dimension': '尊重认可需求'},
-                # {'name': '自我尊重', 'score': 10, 'dimension': '尊重认可需求'},
-                # {'name': '自主决定', 'score': 10, 'dimension': '尊重认可需求'},
-                # {'name': '目标定向', 'score': 10, 'dimension': '成长成就需求'},
-                # {'name': '能力成长', 'score': 10, 'dimension': '成长成就需求'},
-                # {'name': '探索创新', 'score': 10, 'dimension': '成长成就需求'},
-                # {'name': '成就导向', 'score': 10, 'dimension': '成长成就需求'},
-                # {'name': '权力影响', 'score': 10, 'dimension': '成长成就需求'},
-                # {'name': '助人利他', 'score': 10, 'dimension': '使命利他需求'},
-                # {'name': '责任担当', 'score': 10, 'dimension': '使命利他需求'},
-                # {'name': '意义追求', 'score': 10, 'dimension': '使命利他需求'},
-                # {'name': '使命驱动', 'score': 10, 'dimension': '使命利他需求'},
-                # {'name': '社会促进', 'score': 10, 'dimension': '使命利他需求'},
+                # {'安全健康', 'score': 100, 'dimension': '安全保障需求'},
+                # {'环境舒适', 'score': 90, 'dimension': '安全保障需求'},
+                # {'物质保障', 'score': 80, 'dimension': '安全保障需求'},
+                # {'休闲娱乐', 'score': 70, 'dimension': '安全保障需求'},
+                # {'职业稳定', 'score': 60, 'dimension': '安全保障需求'},
+                # {'亲和倾向', 'score': 40, 'dimension': '情感归属需求'},
+                # {'友谊友爱', 'score': 30, 'dimension': '情感归属需求'},
+                # {'关系信任', 'score': 20, 'dimension': '情感归属需求'},
+                # {'人际支持', 'score': 20, 'dimension': '情感归属需求'},
+                # {'群体归属', 'score': 20, 'dimension': '情感归属需求'},
+                # {'寻求认可', 'score': 20, 'dimension': '尊重认可需求'},
+                # {'获得肯定', 'score': 20, 'dimension': '尊重认可需求'},
+                # {'声望地位', 'score': 20, 'dimension': '尊重认可需求'},
+                # {'自我尊重', 'score': 10, 'dimension': '尊重认可需求'},
+                # {'自主决定', 'score': 10, 'dimension': '尊重认可需求'},
+                # {'目标定向', 'score': 10, 'dimension': '成长成就需求'},
+                # {'能力成长', 'score': 10, 'dimension': '成长成就需求'},
+                # {'探索创新', 'score': 10, 'dimension': '成长成就需求'},
+                # {'成就导向', 'score': 10, 'dimension': '成长成就需求'},
+                # {'权力影响', 'score': 10, 'dimension': '成长成就需求'},
+                # {'助人利他', 'score': 10, 'dimension': '使命利他需求'},
+                # {'责任担当', 'score': 10, 'dimension': '使命利他需求'},
+                # {'意义追求', 'score': 10, 'dimension': '使命利他需求'},
+                # {'使命驱动', 'score': 10, 'dimension': '使命利他需求'},
+                # {'社会促进', 'score': 10, 'dimension': '使命利他需求'},
 
             ],
             # 指标（生活）
             "chart2": [
-                # {'name': '安全健康', 'score': 100, 'dimension': '安全保障需求'},
-                # {'name': '环境舒适', 'score': 100, 'dimension': '安全保障需求'},
-                # {'name': '物质保障', 'score': 100, 'dimension': '安全保障需求'},
-                # {'name': '休闲娱乐', 'score': 100, 'dimension': '安全保障需求'},
-                # {'name': '职业稳定', 'score': 100, 'dimension': '安全保障需求'},
-                # {'name': '亲和倾向', 'score': 40, 'dimension': '情感归属需求'},
-                # {'name': '友谊友爱', 'score': 30, 'dimension': '情感归属需求'},
-                # {'name': '关系信任', 'score': 20, 'dimension': '情感归属需求'},
-                # {'name': '人际支持', 'score': 20, 'dimension': '情感归属需求'},
-                # {'name': '群体归属', 'score': 20, 'dimension': '情感归属需求'},
-                # {'name': '寻求认可', 'score': 20, 'dimension': '尊重认可需求'},
-                # {'name': '获得肯定', 'score': 20, 'dimension': '尊重认可需求'},
-                # {'name': '声望地位', 'score': 20, 'dimension': '尊重认可需求'},
-                # {'name': '自我尊重', 'score': 10, 'dimension': '尊重认可需求'},
-                # {'name': '自主决定', 'score': 10, 'dimension': '尊重认可需求'},
-                # {'name': '目标定向', 'score': 10, 'dimension': '成长成就需求'},
-                # {'name': '能力成长', 'score': 10, 'dimension': '成长成就需求'},
-                # {'name': '探索创新', 'score': 10, 'dimension': '成长成就需求'},
-                # {'name': '成就导向', 'score': 10, 'dimension': '成长成就需求'},
-                # {'name': '权力影响', 'score': 10, 'dimension': '成长成就需求'},
-                # {'name': '助人利他', 'score': 10, 'dimension': '使命利他需求'},
-                # {'name': '责任担当', 'score': 10, 'dimension': '使命利他需求'},
-                # {'name': '意义追求', 'score': 10, 'dimension': '使命利他需求'},
-                # {'name': '使命驱动', 'score': 10, 'dimension': '使命利他需求'},
-                # {'name': '社会促进', 'score': 10, 'dimension': '使命利他需求'},
+                # {'安全健康', 'score': 100, 'dimension': '安全保障需求'},
+                # {'环境舒适', 'score': 100, 'dimension': '安全保障需求'},
+                # {'物质保障', 'score': 100, 'dimension': '安全保障需求'},
+                # {'休闲娱乐', 'score': 100, 'dimension': '安全保障需求'},
+                # {'职业稳定', 'score': 100, 'dimension': '安全保障需求'},
+                # {'亲和倾向', 'score': 40, 'dimension': '情感归属需求'},
+                # {'友谊友爱', 'score': 30, 'dimension': '情感归属需求'},
+                # {'关系信任', 'score': 20, 'dimension': '情感归属需求'},
+                # {'人际支持', 'score': 20, 'dimension': '情感归属需求'},
+                # {'群体归属', 'score': 20, 'dimension': '情感归属需求'},
+                # {'寻求认可', 'score': 20, 'dimension': '尊重认可需求'},
+                # {'获得肯定', 'score': 20, 'dimension': '尊重认可需求'},
+                # {'声望地位', 'score': 20, 'dimension': '尊重认可需求'},
+                # {'自我尊重', 'score': 10, 'dimension': '尊重认可需求'},
+                # {'自主决定', 'score': 10, 'dimension': '尊重认可需求'},
+                # {'目标定向', 'score': 10, 'dimension': '成长成就需求'},
+                # {'能力成长', 'score': 10, 'dimension': '成长成就需求'},
+                # {'探索创新', 'score': 10, 'dimension': '成长成就需求'},
+                # {'成就导向', 'score': 10, 'dimension': '成长成就需求'},
+                # {'权力影响', 'score': 10, 'dimension': '成长成就需求'},
+                # {'助人利他', 'score': 10, 'dimension': '使命利他需求'},
+                # {'责任担当', 'score': 10, 'dimension': '使命利他需求'},
+                # {'意义追求', 'score': 10, 'dimension': '使命利他需求'},
+                # {'使命驱动', 'score': 10, 'dimension': '使命利他需求'},
+                # {'社会促进', 'score': 10, 'dimension': '使命利他需求'},
 
             ],
             # 指标（工作）
             "chart3": [
-                # {'name': '亲和倾向', 'score': 100, 'dimension': '情感归属需求'},
-                # {'name': '友谊友爱', 'score': 100, 'dimension': '情感归属需求'},
-                # {'name': '关系信任', 'score': 100, 'dimension': '情感归属需求'},
-                # {'name': '人际支持', 'score': 100, 'dimension': '情感归属需求'},
-                # {'name': '群体归属', 'score': 100, 'dimension': '情感归属需求'},
-                # {'name': '安全健康', 'score': 50, 'dimension': '安全保障需求'},
-                # {'name': '环境舒适', 'score': 40, 'dimension': '安全保障需求'},
-                # {'name': '物质保障', 'score': 30, 'dimension': '安全保障需求'},
-                # {'name': '休闲娱乐', 'score': 30, 'dimension': '安全保障需求'},
-                # {'name': '职业稳定', 'score': 30, 'dimension': '安全保障需求'},
+                # {'亲和倾向', 'score': 100, 'dimension': '情感归属需求'},
+                # {'友谊友爱', 'score': 100, 'dimension': '情感归属需求'},
+                # {'关系信任', 'score': 100, 'dimension': '情感归属需求'},
+                # {'人际支持', 'score': 100, 'dimension': '情感归属需求'},
+                # {'群体归属', 'score': 100, 'dimension': '情感归属需求'},
+                # {'安全健康', 'score': 50, 'dimension': '安全保障需求'},
+                # {'环境舒适', 'score': 40, 'dimension': '安全保障需求'},
+                # {'物质保障', 'score': 30, 'dimension': '安全保障需求'},
+                # {'休闲娱乐', 'score': 30, 'dimension': '安全保障需求'},
+                # {'职业稳定', 'score': 30, 'dimension': '安全保障需求'},
                 #
-                # {'name': '寻求认可', 'score': 20, 'dimension': '尊重认可需求'},
-                # {'name': '获得肯定', 'score': 20, 'dimension': '尊重认可需求'},
-                # {'name': '声望地位', 'score': 20, 'dimension': '尊重认可需求'},
-                # {'name': '自我尊重', 'score': 10, 'dimension': '尊重认可需求'},
-                # {'name': '自主决定', 'score': 10, 'dimension': '尊重认可需求'},
-                # {'name': '目标定向', 'score': 10, 'dimension': '成长成就需求'},
-                # {'name': '能力成长', 'score': 10, 'dimension': '成长成就需求'},
-                # {'name': '探索创新', 'score': 10, 'dimension': '成长成就需求'},
-                # {'name': '成就导向', 'score': 10, 'dimension': '成长成就需求'},
-                # {'name': '权力影响', 'score': 10, 'dimension': '成长成就需求'},
-                # {'name': '助人利他', 'score': 10, 'dimension': '使命利他需求'},
-                # {'name': '责任担当', 'score': 10, 'dimension': '使命利他需求'},
-                # {'name': '意义追求', 'score': 10, 'dimension': '使命利他需求'},
-                # {'name': '使命驱动', 'score': 10, 'dimension': '使命利他需求'},
-                # {'name': '社会促进', 'score': 10, 'dimension': '使命利他需求'},
+                # {'寻求认可', 'score': 20, 'dimension': '尊重认可需求'},
+                # {'获得肯定', 'score': 20, 'dimension': '尊重认可需求'},
+                # {'声望地位', 'score': 20, 'dimension': '尊重认可需求'},
+                # {'自我尊重', 'score': 10, 'dimension': '尊重认可需求'},
+                # {'自主决定', 'score': 10, 'dimension': '尊重认可需求'},
+                # {'目标定向', 'score': 10, 'dimension': '成长成就需求'},
+                # {'能力成长', 'score': 10, 'dimension': '成长成就需求'},
+                # {'探索创新', 'score': 10, 'dimension': '成长成就需求'},
+                # {'成就导向', 'score': 10, 'dimension': '成长成就需求'},
+                # {'权力影响', 'score': 10, 'dimension': '成长成就需求'},
+                # {'助人利他', 'score': 10, 'dimension': '使命利他需求'},
+                # {'责任担当', 'score': 10, 'dimension': '使命利他需求'},
+                # {'意义追求', 'score': 10, 'dimension': '使命利他需求'},
+                # {'使命驱动', 'score': 10, 'dimension': '使命利他需求'},
+                # {'社会促进', 'score': 10, 'dimension': '使命利他需求'},
 
             ],
             # 维度名  分值
             "chart4": [
-                # {'name': '安全保障需求', 'score': 100, },
-                # {'name': '使命利他需求', 'score': 90, },
-                # {'name': '成长成就需求', 'score': 80, },
-                # {'name': '尊重认可需求', 'score': 70, },
-                # {'name': '情感归属需求', 'score': 60, },
+                # {'安全保障需求', 'score': 100, },
+                # {'使命利他需求', 'score': 90, },
+                # {'成长成就需求', 'score': 80, },
+                # {'尊重认可需求', 'score': 70, },
+                # {'情感归属需求', 'score': 60, },
             ]
         }}
         try:
@@ -2338,6 +2322,196 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             return default_data, ErrorCode.INVALID_INPUT
         return default_data, ErrorCode.SUCCESS
 
+    def get_peoi_value(self, personal_result_id):
+        u"""get personal EOI info for report"""
+
+        SCORE_MAP = [2.28, 6.69, 15.86, 30.85, 50.5, 69.15, 84.13, 93.31, 97.72, 100]
+        POSITIVE_COMMENTS = {'自主定向': '指南针/独立自主/超有主见/我就是我/霸总上身',
+                             '意义寻求': '明灯/勇往直前/我都是有道理的/凭一句为什么荣登杀手榜',
+                             '自我悦纳': '直面自己/以身作则/像我这样优秀的人',
+                             '自我拓展': '潜力股/博学家/好奇宝宝',
+                             '情绪调节': '神经大条/化悲愤为食欲、化干戈为玉帛',
+                             '专注投入': '心无旁鹜/爷（老娘）在工作，生人勿扰！',
+                             '亲和利他': '活雷锋/舍己为人',
+                             '包容差异': '老好人/博爱/是个人就是咱兄弟姐妹',
+                             '乐观积极': '精神胜利法/在坐的各位都是“勒色”',
+                             '自信坚韧': '中流砥柱/金刚狼',
+                             '合理归因': '战略家/帅才之能/把老婆说的对通用于职场',
+                             '灵活变通': '条条大路通罗马/结果一样就好，何必操心过程？'}
+        NEGATIVE_COMMENTS = {'自主定向': '方向痴/随波逐流/选择困难症/你是光，你是电，你是唯一的神话，所以你决定就好！',
+                             '意义寻求': '迷茫/求大佬带带我/敢问路在何方？路不在脚下啊',
+                             '自我悦纳': '信心不足/柔柔弱弱/专业潜水员/发言现场如刑场',
+                             '自我拓展': '我老了，学不动了/懒癌末期/故其疾如风,其徐如林,侵掠如火，我自不动如山！',
+                             '情绪调节': '敏感忧郁/此恨绵绵无绝期/崩溃是一种生活态度',
+                             '专注投入': '想一出是一出/我真的真的工作很忙啊！要不咱们还是聊会？',
+                             '亲和利他': '各人自扫门前雪，休管他人瓦上霜/Who are you ?',
+                             '包容差异': '物以类聚,人以群分/你长的不像我，我们没啥好说的！',
+                             '乐观积极': '林妹妹/世界末日要到了！',
+                             '自信坚韧': '鸵鸟/help ! I hurt my little finger！',
+                             '合理归因': '追牛角尖/一言不合就砸锅/霸气已开我就是道理！',
+                             '灵活变通': '老顽固/雷打不动/方法何其多，选则永不变！'}
+        NOPOSITIVECOMMENT = '优点？我没有！'
+        NONEGATIVECOMMENT = '无敌，我是全能哒！'
+
+        SUGGESTION = {'自主定向': '当你觉得生活迷茫无所适从的时候，可以选择给自己树立短期可达成的小目标，让自己一点一滴充实起来，比如每月读一本书。/学会为自己的生活和职场树立目标，你才不会觉得迷茫哦~',
+                      '意义寻求': '每一次树立目标之后，是否就是无限期的拖延？把每一个目标一笔一划写在纸上，贴在自己随处可见的地方，完成一项目标就划掉一项。/将目标完成的步骤可视化，可以提高工作效率呢~',
+                      '自我悦纳':  '是否别人夸奖自己每每觉得心虚？早上起来，整理好仪容，带着自信的微笑，认真告诉镜子里的自己，“你是最棒的！”/承认自己的优秀，是不错的体验呢~',
+                      '自我拓展':  '对于从未接触到的工作你是否会觉得害怕？每当害怕的时候想一想新任务能给你带来什么？新的朋友？有趣的过程？丰厚的回报？/跨出你的舒适区，是成长的第一步也是关键一步！',
+                      '情绪调节':  '站在人群中间的时候常常觉得手足无措吗？回想自己过去取得的成就，在内心暗自激励自己，“没有什么是我完不成的！”/学会在压力下调节情绪，你便是职场精英！',
+                      '专注投入':  '工作中常常被周围环境所打扰？将容易引起兴趣的手机等物品在工作前收好，第一天间隔15分钟休息，第二天20分钟休息，以此类推，提高工作专注度。/专注工作，其实也没有这么难~',
+                      '亲和利他':  '是否在不知不觉中忽视了他人想法？在完成一份工作计划的时候，先代入他人的角色，考虑别人的利益，他们会提出怎样的问题？做出怎样的抉择？/职场交际达人，都会的利他的技能~',
+                      '包容差异':  '职场中被吐槽过为人严肃？办公桌上放上一盆绿植，保持良好的心情，时常微笑待人，带着包容的心态接触不同性格的人，你就会发现每种性格的人都有着不同的趣味！/包容差异，其实也是在包容自己~',
+                      '乐观积极':  '你是否常常陷入消极悲观？试图让自己的生活充实丰富起来，去完成一些能让自己在短时间内能获得成就感的事情，为内心注入正能量。/世界很美好，你也很美好~',
+                      '自信坚韧':  '遇到挫折你需要很长的恢复期？勇敢面对挫折，静下心、思考下将感到挫败感的原因一条条总结下，你会发现没什么大不了的。制定切实可行的改变计划，不要犹豫，勇敢投入其中，下次一定会做的更好。/勇敢的朋友，相信挫折只是你脚下的小石子。',
+                      '合理归因':  '看待问题常受到思维的局限？尝试和朋友以及同事就一个话题无所拘束得聊天，将每个人的想法记录下来，发现自己思维的局限和不足。/头脑风暴之余，灵感悄然而至。',
+                      '灵活变通':  '你是否害怕改变现状，不愿去尝试未知事物？从一件小事尝试以前从未使用过的方法，迈出第一步，培养自己。你将会尝到甜头。/不试试怎么会知道路只有一条呢？'}
+
+        data = {"report_type": "幸福能力", "msg":
+                    {
+                    "name": "",
+                    "image": "",
+                    "total": "90",
+                    "title": "",
+                    "comment1": "",
+                    "comment2": [],
+                    "comment3": [],
+                    "ChartEudaemonia":
+                        [
+                            {"name": "乐观积极", "score": 6},
+                            {"name": "自信坚韧", "score": 8},
+                            {"name": "合理归因", "score": 7},
+                            {"name": "情绪调节", "score": 9},
+                            {"name": "意义寻求", "score": 5},
+                            {"name": "自主定向", "score": 7},
+                            {"name": "专注投入", "score": 4},
+                            {"name": "自我拓展", "score": 3},
+                            {"name": "灵活变通", "score": 2},
+                            {"name": "包容差异", "score": 9},
+                            {"name": "亲和利他", "score": 7},
+                            {"name": "自我悦纳", "score": 6},
+                        ]
+                    } 
+               }
+
+        average_value = 69.898
+        standard_diff_value = 18.912
+        positive_comments = []
+        negative_comments = []
+        negative_quotas = []
+
+        try:
+            #get personal assess status info
+            people_result = PeopleSurveyRelation.objects.get(id=personal_result_id)
+
+            #exit when not completed
+            if people_result.status != PeopleSurveyRelation.STATUS_FINISH:
+                return default_data, ErrorCode.INVALID_INPUT
+
+            #calculate peoi when calculation not ready
+            if not people_result.dimension_score or not people_result.substandard_score:
+                SurveyAlgorithm.algorithm_xfzs(personal_result_id)
+                people_result = PeopleSurveyRelation.objects.get(id=personal_result_id)
+            
+            #initialize score map
+            dimension_score_map = people_result.dimension_score_map
+            substandard_score_map = people_result.substandard_score_map
+            people = People.objects.get(id=people_result.people_id)
+            total_score = 100
+            normsdist_score = 100
+            comment = []
+            
+            data["msg"]["name"] = people.display_name
+            sex = people.get_info_value("性别", "男")
+            if sex not in ["男", "女"]:
+                sex = "男"
+
+            #get dimension info
+            for dimension in dimension_score_map:
+                if dimension_score_map[dimension]["name"] == "个人幸福能力":
+                    total_score = round(dimension_score_map[dimension]["score"], 2)
+                    normsdist_score = normsdist(((total_score - average_value) *1.00)/total_score*1.00) * 100
+                    data["msg"]["total"] = total_score
+                    break
+
+            #get title and comment
+            if normsdist_score >= 98:
+                data["msg"]["title"] = ["得力猛将","无冕之王","孤独求败"][random.randint(0,2)]
+                data["msg"]["comment1"] = ["你在职场游刃有余，具有高超的职场幸福能力！",
+                                           "请收下这对膝盖，幸福潜力MAX的你能hold住你的所有工作！"][random.randint(0,1)]
+                if sex == "男":
+                    data['msg']['image'] = "http://iwedoing-1.oss-cn-hangzhou.aliyuncs.com/report/%E4%B8%AA%E4%BA%BA%E5%B9%B8%E7%A6%8F%E8%83%BD%E5%8A%9B/pic_man01%402x.png"
+                else:
+                    data['msg']['image'] = "http://iwedoing-1.oss-cn-hangzhou.aliyuncs.com/report/%E4%B8%AA%E4%BA%BA%E5%B9%B8%E7%A6%8F%E8%83%BD%E5%8A%9B/pic_woman01%402x.png"
+            elif normsdist_score>=84:
+                data["msg"]["title"] = ["职场达人","活力本力","实干家"][random.randint(0,2)]
+                data["msg"]["comment1"] = ["你是公认的职场达人！拥有较高的职场幸福能力。",
+                                           "偶尔会烧脑但聪明的你，最后总能把压力变成幸福的动力。",
+                                           "工作注定是你的恋人，虽然有时会给你添点小麻烦但也刺激着你更有活力。"][random.randint(0,2)]
+                if sex == "男":
+                    data['msg']['image'] = "http://iwedoing-1.oss-cn-hangzhou.aliyuncs.com/report/%E4%B8%AA%E4%BA%BA%E5%B9%B8%E7%A6%8F%E8%83%BD%E5%8A%9B/pic_man02%402x.png"
+                else:
+                    data['msg']['image'] = "http://iwedoing-1.oss-cn-hangzhou.aliyuncs.com/report/%E4%B8%AA%E4%BA%BA%E5%B9%B8%E7%A6%8F%E8%83%BD%E5%8A%9B/pic_woman02%402x.png"
+
+            elif normsdist_score>=50:
+                data["msg"]["title"] = ["职场高手","职场野狼"][random.randint(0,1)]
+                data["msg"]["comment1"] = ["你是玩转职场的高手，在部分职场幸福能力上表现高超。",
+                                           "吃鸡看脸的你，还需要修炼更多硬核的幸福潜力！",
+                                           "有时候工作就像追女孩，你拼命追她拼命逃，你需要一点”撩”的技巧哦。"][random.randint(0,2)]
+                if sex == "男":
+                    data['msg']['image'] = "http://iwedoing-1.oss-cn-hangzhou.aliyuncs.com/report/%E4%B8%AA%E4%BA%BA%E5%B9%B8%E7%A6%8F%E8%83%BD%E5%8A%9B/pic_man03%402x.png"
+                else:
+                    data['msg']['image'] = "http://iwedoing-1.oss-cn-hangzhou.aliyuncs.com/report/%E4%B8%AA%E4%BA%BA%E5%B9%B8%E7%A6%8F%E8%83%BD%E5%8A%9B/pic_woman03%402x.png"
+            else:
+                data["msg"]["title"] = ["职场菜鸟","职场小奶猫"][random.randint(0,1)]
+                data["msg"]["comment1"] = ["你在12项职场幸福能力上的表现部分有待提高和发展！",
+                                           "犹如误入逃杀秀的小猫咪，总是紧张的你需要更多的方法来提升自己的职场幸福潜力",
+                                           "职场的悲伤逆流成河，或许你需要一点幸福的能量？快来看有哪些幸福潜力能够提升吧。",
+                                           "一入职场深似海，一谈工作误终生，现在的你急需提升职场活力哦。"][random.randint(0,3)]
+                if sex == "男":
+                    data['msg']['image'] = "http://iwedoing-1.oss-cn-hangzhou.aliyuncs.com/report/%E4%B8%AA%E4%BA%BA%E5%B9%B8%E7%A6%8F%E8%83%BD%E5%8A%9B/pic_man04%402x.png"
+                else:
+                    data['msg']['image'] = "http://iwedoing-1.oss-cn-hangzhou.aliyuncs.com/report/%E4%B8%AA%E4%BA%BA%E5%B9%B8%E7%A6%8F%E8%83%BD%E5%8A%9B/pic_woman04%402x.png"
+
+            #get quota info
+            for info in data["msg"]["ChartEudaemonia"]:
+                for substandard_id in substandard_score_map:
+                    if substandard_score_map[substandard_id]["name"] == info["name"]:
+                        if substandard_score_map[substandard_id]["score"] > 100:
+                            comment = POSITIVE_COMMENTS[info["name"]].split('/')
+                            positive_comments.append(comment[random.randint(0,len(comment)-1)])
+                        elif substandard_score_map[substandard_id]["score"] < 75:
+                            comment = NEGATIVE_COMMENTS[info["name"]].split('/')
+                            negative_comments.append(comment[random.randint(0,len(comment)-1)])
+                            negative_quotas.append(info["name"])
+
+                        percentage_score = round(substandard_score_map[substandard_id].get("normsdist_score", 0), 2)
+                        if percentage_score > 100:
+                            info["score"] = 10
+                        else:
+                            for index, index_score in enumerate(SCORE_MAP):
+                                if percentage_score <= index_score:
+                                    info["score"] = index + 1
+                                    break
+                        break
+
+            #get comments
+            if not positive_comments:
+                positive_comments.append(NOPOSITIVECOMMENT)
+            if not negative_comments:
+                negative_comments.append(NONEGATIVECOMMENT)
+
+            data["msg"]["comment2"]=positive_comments+negative_comments
+
+            for quota in negative_quotas:
+                comment = SUGGESTION[quota].split('/')
+                data["msg"]["comment3"].append(comment[random.randint(0,len(comment)-1)])
+
+        except Exception, e:
+            logger.error("get report data error, msg: %s " % e)
+            return data, ErrorCode.INVALID_INPUT
+        return data, ErrorCode.SUCCESS
+
+
     def post(self, request, *args, **kwargs):
         u"""
         {
@@ -2348,7 +2522,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
         }
         :param request:
         :param args:
-        :param kwargs:
+        :param kwargs:d
         :return:
         """
         # assess_project_id = self.request.data.get("assess_project_id", None)

@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     'front',
     'service',
     'console',
+    'workspace',
 ]
 DATABASE_ROUTERS = ['WeiDuAdmin.db_router.DbRouter']
 MIDDLEWARE_CLASSES = [
