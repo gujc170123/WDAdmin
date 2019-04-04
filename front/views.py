@@ -1756,18 +1756,18 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             "TestTime": "2018.09.05",
             "ChartEudaemonia":
                 [
-                    {"name": "乐观积极", "score": 6},
-                    {"name": "自信坚韧", "score": 8},
-                    {"name": "合理归因", "score": 7},
-                    {"name": "情绪调节", "score": 9},
-                    {"name": "意义寻求", "score": 5},
-                    {"name": "自主定向", "score": 7},
-                    {"name": "专注投入", "score": 4},
-                    {"name": "自我拓展", "score": 3},
-                    {"name": "灵活变通", "score": 2},
-                    {"name": "包容差异", "score": 9},
-                    {"name": "亲和利他", "score": 7},
-                    {"name": "自我悦纳", "score": 6},
+                    {"name": "乐观积极", "score": 6, "raw_score": 57.5, "percentage": '15.4%'},
+                    {"name": "自信坚韧", "score": 8, "raw_score": 57.5, "percentage": '15.4%'},
+                    {"name": "合理归因", "score": 7, "raw_score": 57.5, "percentage": '15.4%'},
+                    {"name": "情绪调节", "score": 9, "raw_score": 57.5, "percentage": '15.4%'},
+                    {"name": "意义寻求", "score": 5, "raw_score": 57.5, "percentage": '15.4%'},
+                    {"name": "自主定向", "score": 7, "raw_score": 57.5, "percentage": '15.4%'},
+                    {"name": "专注投入", "score": 4, "raw_score": 57.5, "percentage": '15.4%'},
+                    {"name": "自我拓展", "score": 3, "raw_score": 57.5, "percentage": '15.4%'},
+                    {"name": "灵活变通", "score": 2, "raw_score": 57.5, "percentage": '15.4%'},
+                    {"name": "包容差异", "score": 9, "raw_score": 57.5, "percentage": '15.4%'},
+                    {"name": "亲和利他", "score": 7, "raw_score": 57.5, "percentage": '15.4%'},
+                    {"name": "自我悦纳", "score": 6, "raw_score": 57.5, "percentage": '15.4%'},
 
                 ]
 
