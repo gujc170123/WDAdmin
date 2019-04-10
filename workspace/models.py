@@ -1,19 +1,24 @@
+# -*- coding:utf-8 -*-
 from __future__ import unicode_literals
 from django.db import models
 from utils.models import BaseModel
+from wduser.models import EnterpriseInfo
 
 class BaseOrganization(BaseModel):
-    u"""base organization object"""
+    """base organization object"""
 
-    name = models.CharField(max_length=200)
-    parent_id = models.BigIntegerField(db_index=True)
-    enterprise_id = models.BigIntegerField(db_index=True)
+    name = models.CharField(max_length=40)
+    parent_id = models.BigIntegerField(db_index=True,default=0)
+    enterprise = models.ForeignKey(EnterpriseInfo,
+                                      related_name="organ_enterprise",
+                                      on_delete=models.CASCADE)
 
-class BasePeopleOrganization(BaseModel):
-    u"""base Person organization relation object"""
+class BasePersonOrganization(BaseModel):
+    """base Person organization relation object"""
 
-    people_id = models.BigIntegerField(db_index=True)
     user_id = models.BigIntegerField(db_index=True)
-    organization_id = models.BigIntegerField(db_index=True)
+    organization = models.ForeignKey(BaseOrganization,
+                                        related_name="person_organ",
+                                        on_delete=models.CASCADE)
     name = models.CharField(max_length=50)
     ismanager = models.BooleanField(default=False)

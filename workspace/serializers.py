@@ -1,8 +1,11 @@
-from wduser.models import AuthUser, EnterpriseAccount, PeopleOrganization
-from .models import BaseOrganization, BasePeopleOrganization
+# -*- coding:utf-8 -*-
+from __future__ import unicode_literals
 from rest_framework import serializers
+from wduser.models import AuthUser, EnterpriseAccount, PeopleOrganization
+from .models import BaseOrganization, BasePersonOrganization
 
 class UserInfoSerializer(serializers.ModelSerializer):
+    """user information serializer"""
 
     enterprise_id = serializers.SerializerMethodField()
     organization_id = serializers.SerializerMethodField()
@@ -26,7 +29,16 @@ class UserInfoSerializer(serializers.ModelSerializer):
             return 0
 
 class BaseOrganizationSerializer(serializers.ModelSerializer):
+    """organization information serializer"""
 
-        class Meta:
-            model = BaseOrganization
-            fields = "__all__"
+    class Meta:
+        model = BaseOrganization
+        fields = ('id', 'enterprise_id', 'parent_id', 'name')
+
+
+class BasePersonOrganizationSerializer(serializers.ModelSerializer):
+    u"""people-organization relation serializer"""
+
+    class Meta:
+        model = BasePersonOrganization
+        fields = "__all__"
