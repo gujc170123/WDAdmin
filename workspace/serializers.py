@@ -31,6 +31,8 @@ class UserInfoSerializer(serializers.ModelSerializer):
 class BaseOrganizationSerializer(serializers.ModelSerializer):
     """organization information serializer"""
 
+    enterprise_id = serializers.IntegerField(write_only=True)
+
     class Meta:
         model = BaseOrganization
         fields = ('id', 'enterprise_id', 'parent_id', 'name')

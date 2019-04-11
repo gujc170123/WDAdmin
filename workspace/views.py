@@ -42,12 +42,11 @@ class OrganizationListCreateView(AuthenticationExceptView, WdCreateAPIView):
     """organization tree view"""
     model = BaseOrganization
     serializer_class = BaseOrganizationSerializer
-    GET_CHECK_REQUEST_PARAMETER = {"org"}
-    POST_CHECK_REQUEST_PARAMETER = {"enterprise_id", "name"}
+    GET_CHECK_REQUEST_PARAMETER = {"organization_id"}
 
     def get(self, request, *args, **kwargs):
         """get organization tree of current user"""
-        tree_orgs = OrganizationHelper.get_tree_orgs(self.org)
+        tree_orgs = OrganizationHelper.get_tree_orgs(self.organization_id)
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"data": tree_orgs})
 
 
@@ -57,18 +56,16 @@ class OrganizationlRetrieveUpdateDestroyView(AuthenticationExceptView, WdRetriev
     serializer_class = BaseOrganizationSerializer
 
     def delete(self, request, *args, **kwargs):
-
-        org = self.request.org
-        users = BasePersonOrganization.objects.filter_active(organization_id=org)
-        children = BaseOrganization.objects.filter_active(parent_id=org)
-
-        if users.exists() or children.exists():
-            #todo need a new errorcode
-            return general_json_response(status.HTTP_200_OK, ErrorCode.ORG_PEOPLE_IN_ASSESS_ERROR)
-
-        BaseOrganization.objects.filter(id=self.org).update(is_active=False)
-        logger.info('user_id %s want delete orgs %s' % (self.request.user.id,org))
-        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
+        
+        org = self.get_id()
+        org_ids = [org] + OrganizationHelper.get_child_ids(org)
+        #delete all organizations only when no active member exists
+        if BasePersonOrganization.objects.filter_active(organization_id__in=org_ids).exists():
+            return general_json_response(status.HTTP_200_OK, ErrorCode.WORKSPACE_ORG_MEMBEREXISTS)
+        else:
+            BaseOrganization.objects.filter(id__in=org_ids).update(is_active=False)
+            logger.info('user_id %s want delete orgs %s' % (self.request.user.id,org_ids))
+            return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
 class OrganizationImportExportView(AuthenticationExceptView):
     """organization template import/export"""

@@ -26,8 +26,22 @@ class OrganizationHelper(object):
         result_data={}
 
         organization = BaseOrganization.objects.get(id=org)
-        result_data = BaseOrganizationSerializer(instance=org).data
+        result_data = BaseOrganizationSerializer(instance=organization).data
         result_data["parent_id"] = 0
         result_data["children"] = OrganizationHelper.get_child_orgs(org)
+
+        return result_data
+
+    @classmethod
+    def get_child_ids(self, parent):
+
+        result_data = []
+
+        organizations = BaseOrganization.objects.filter_active(parent_id=parent)
+        
+        for organization in organizations:
+            result_data.append(organization.id)
+            child_org_data = OrganizationHelper.get_child_ids(organization.id)
+            result_data +=child_org_data
 
         return result_data

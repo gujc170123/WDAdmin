@@ -9,7 +9,7 @@ urlpatterns = [
     #list organizations
     url(r"^listorg/$", OrganizationListCreateView.as_view(), name="org-list"),
     #manage organizations
-    url(r"^updateorg/$", OrganizationlRetrieveUpdateDestroyView.as_view(), name="org-manage"),    
+    url(r"^updateorg/(?P<pk>\d+)/$", OrganizationlRetrieveUpdateDestroyView.as_view(), name="org-manage"),
     #bi
     url(r"^bi/$", Dashboard.as_view()  , name="bi"),    
 ]

@@ -121,6 +121,9 @@ class ErrorCode(object):
     PERMISSION_PHONE_EMAIL_NOT_SAME_USER = 46003
     ROLE_USER_NOT_EXISTS = 46004  # 角色不存在
 
+    # workspace
+    WORKSPACE_ORG_MEMBEREXISTS = 47001
+
     MSG = {
         SUCCESS: 'Success',
         FAILURE: 'General failure',
@@ -190,7 +193,10 @@ class ErrorCode(object):
         # permission
         PERMISSION_USER_EXISTS: u"管理员用户已经存在，请不要重复添加",
         PERMISSION_ROLE_USER_EXISTS: u"用户已经再该角色，请务重新添加",
-        PERMISSION_PHONE_EMAIL_NOT_SAME_USER: u"手机和邮箱对应两个不同帐号，请更换手机或邮箱"
+        PERMISSION_PHONE_EMAIL_NOT_SAME_USER: u"手机和邮箱对应两个不同帐号，请更换手机或邮箱",
+
+        # workspace
+        WORKSPACE_ORG_MEMBEREXISTS: u"人员已存在，请在移除人员后再删除"
     }
 
 
