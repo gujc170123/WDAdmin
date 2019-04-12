@@ -76,6 +76,7 @@ DATABASES = {
         'PASSWORD': '123456',
         'HOST': 'localhost',
         'PORT': '3306',
+        'OPTIONS': {'charset':'utf8mb4'},
     },
     'front': {
         'ENGINE': 'django.db.backends.mysql',
@@ -84,6 +85,7 @@ DATABASES = {
         'PASSWORD': '123456',
         'HOST': 'localhost',
         'PORT': '3306',
+        'OPTIONS': {'charset':'utf8mb4'},
     },
 }
 

@@ -113,7 +113,7 @@ class Question(BaseModel):
     EN_DEFAULT_MUTEX_ORDER_TITLE = [u"No.1", u"No.2", u"No.3", u"No.4", u"No.5"]
     DEFAULT_SCORES = [5, 4, 3, 2, 1]
     EN_DEFAULT_MUTEX_TITLE = [u"Likely", u"No likely"]
-    config_info = models.CharField(u"配置信息", max_length=1024, db_index=True, null=True)
+    config_info = models.CharField(u"配置信息", max_length=1024,  null=True)
     use_count = models.PositiveIntegerField(u"使用次数", default=0, db_index=True)
     average_score = models.FloatField(u"平均分", default=0, db_index=True)
     standard_deviation = models.FloatField(u"标准差", default=0, db_index=True)
