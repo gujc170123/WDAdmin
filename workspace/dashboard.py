@@ -5,7 +5,8 @@ from utils.views import AuthenticationExceptView, WdListCreateAPIView
 from utils.response import general_json_response, ErrorCode
 from rest_framework import status
 from utils.logger import get_logger
-from .models import BaseOrganization, FactOEI
+from workspace.models import FactOEI
+from wduser.models import BaseOrganization
 from .helper import OrganizationHelper
 from django.db.models import Avg
 

@@ -36,4 +36,20 @@ class TestOrganizationAPI(TransactionTestCase):
         self.assertFalse(BaseOrganization.objects.filter(name='org_2').exists())
         self.assertTrue(BaseOrganization.objects.filter(name='org_21').exists())  
 
+    def test_UserCreateView(self):
+        entid = EnterpriseInfo.objects.first().id
+        data = {'name':'org_3','enterprise_id': str(entid)}
+        response = self.client.post(reverse('org-list',current_app='workspace'),data=data)
+        orgid = BaseOrganization.objects.filter(name='org_3').first().id
+        data = {'phone':'15616661999','password':'123456','email':'test@mail.com',
+                'nickname':'nickname','account_name':'test001','department':orgid,
+                'birthday':'1992/01/01','gender':'0','hiredate':'2016/08/08','rank':'1'}
+        response = self.client.post(reverse('user-list-create',current_app='workspace'),data=data)
 
+        infos = request.data.get('infos', None)
+
+
+        response = self.client.get(reverse('user-list-create',current_app='workspace'))
+
+
+    def test_UseDetailView(self):

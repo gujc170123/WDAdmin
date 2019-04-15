@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 from __future__ import unicode_literals
-from .models import BaseOrganization
-from .serializers import BaseOrganizationSerializer
+from wduser.models import BaseOrganization
+from workspace.serializers import BaseOrganizationSerializer
 
 class OrganizationHelper(object):
 
@@ -25,7 +25,9 @@ class OrganizationHelper(object):
 
         result_data={}
 
-        organization = BaseOrganization.objects.get(id=org)
+        organization = BaseOrganization.objects.filter_active(id=org).first()
+        if organization is None:
+            return result_data
         result_data = BaseOrganizationSerializer(instance=organization).data
         result_data["parent_id"] = 0
         result_data["children"] = OrganizationHelper.get_child_orgs(org)
