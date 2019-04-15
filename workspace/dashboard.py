@@ -5,12 +5,12 @@ from utils.views import AuthenticationExceptView, WdListCreateAPIView
 from utils.response import general_json_response, ErrorCode
 from rest_framework import status
 from utils.logger import get_logger
-from workspace.models import FactOEI
-from wduser.models import BaseOrganization
+from .models import FactOEI
 from .helper import OrganizationHelper
 from django.db.models import Avg
 
 logger = get_logger("front")
+
 
 class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
     """Dashboard"""
@@ -30,9 +30,8 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         "group": "self.get_focus_group",
         # 员工幸福整体分布
         "overall": "self.get_overall",
-        "": "self.get_",
+        "business_index": "self.get_business_index",
     }
-
 
     def get_temperature(self, **kwargs):
         res = {}
@@ -80,22 +79,20 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             logger.error("get report data error, msg: %s " % e)
             return res, ErrorCode.INTERNAL_ERROR
 
+    # 员工幸福与压力整体分布
     def get_distribution(self, **kwargs):
         res = {}
         org = kwargs.get("org_id")
         scale = kwargs.get("scale_id")
-        if not org or not scale:
+        if not org or (scale not in ["scale1", "scale2"]):
             return res, ErrorCode.INVALID_INPUT
         try:
-            organization = (
-                'organization1', 'organization2', 'organization3', 'organization4', 'organization5', 'organization6')
-            org_list = org.split('.')
-            query_dict = dict(zip(organization, org_list))
+            query_dict = self.get_organization(org)[0]
             # find company
             result = FactOEI.objects.complex_filter(query_dict).values_list(scale, 'model')
             total = result.count()
             if total:
-                res = {
+                res1 = {
                     "r1c1": 0, "r1c2": 0, "r1c3": 0, "r1c4": 0, "r1c5": 0, "r1c6": 0, "r1c7": 0,
                     "r2c1": 0, "r2c2": 0, "r2c3": 0, "r2c4": 0, "r2c5": 0, "r2c6": 0, "r2c7": 0,
                     "r3c1": 0, "r3c2": 0, "r3c3": 0, "r3c4": 0, "r3c5": 0, "r3c6": 0, "r3c7": 0,
@@ -104,112 +101,19 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                     "r6c1": 0, "r6c2": 0, "r6c3": 0, "r6c4": 0, "r6c5": 0, "r6c6": 0, "r6c7": 0,
                     "r7c1": 0, "r7c2": 0, "r7c3": 0, "r7c4": 0, "r7c5": 0, "r7c6": 0, "r7c7": 0,
                 }
-                for scale, model in result:
-                    if 80 < scale <= 100:
-                        if 0 < model <= 40:
-                            res["r1c1"] += 1
-                        elif 40 < model < 60:
-                            res["r1c2"] += 1
-                        elif 60 < model < 65:
-                            res["r1c3"] += 1
-                        elif 65 < model < 70:
-                            res["r1c4"] += 1
-                        elif 70 < model < 75:
-                            res["r1c5"] += 1
-                        elif 75 < model < 80:
-                            res["r1c6"] += 1
-                        else:
-                            res["r1c7"] += 1
-                    elif 75 < scale <= 80:
-                        if 0 < model <= 40:
-                            res["r2c1"] += 1
-                        elif 40 < model < 60:
-                            res["r2c2"] += 1
-                        elif 60 < model < 65:
-                            res["r2c3"] += 1
-                        elif 65 < model < 70:
-                            res["r2c4"] += 1
-                        elif 70 < model < 75:
-                            res["r2c5"] += 1
-                        elif 75 < model < 80:
-                            res["r2c6"] += 1
-                        else:
-                            res["r2c7"] += 1
-                    elif 70 < scale <= 75:
-                        if 0 < model <= 40:
-                            res["r3c1"] += 1
-                        elif 40 < model < 60:
-                            res["r3c2"] += 1
-                        elif 60 < model < 65:
-                            res["r3c3"] += 1
-                        elif 65 < model < 70:
-                            res["r3c4"] += 1
-                        elif 70 < model < 75:
-                            res["r3c5"] += 1
-                        elif 75 < model < 80:
-                            res["r3c6"] += 1
-                        else:
-                            res["r3c7"] += 1
-                    elif 65 < scale <= 70:
-                        if 0 < model <= 40:
-                            res["r4c1"] += 1
-                        elif 40 < model < 60:
-                            res["r4c2"] += 1
-                        elif 60 < model < 65:
-                            res["r4c3"] += 1
-                        elif 65 < model < 70:
-                            res["r4c4"] += 1
-                        elif 70 < model < 75:
-                            res["r4c5"] += 1
-                        elif 75 < model < 80:
-                            res["r4c6"] += 1
-                        else:
-                            res["r4c7"] += 1
-                    elif 60 < scale <= 65:
-                        if 0 < model <= 40:
-                            res["r5c1"] += 1
-                        elif 40 < model < 60:
-                            res["r5c2"] += 1
-                        elif 60 < model < 65:
-                            res["r5c3"] += 1
-                        elif 65 < model < 70:
-                            res["r5c4"] += 1
-                        elif 70 < model < 75:
-                            res["r5c5"] += 1
-                        elif 75 < model < 80:
-                            res["r5c6"] += 1
-                        else:
-                            res["r5c7"] += 1
-                    elif 40 < scale <= 60:
-                        if 0 < model <= 40:
-                            res["r6c1"] += 1
-                        elif 40 < model < 60:
-                            res["r6c2"] += 1
-                        elif 60 < model < 65:
-                            res["r6c3"] += 1
-                        elif 65 < model < 70:
-                            res["r6c4"] += 1
-                        elif 70 < model < 75:
-                            res["r6c5"] += 1
-                        elif 75 < model < 80:
-                            res["r6c6"] += 1
-                        else:
-                            res["r6c7"] += 1
+                res2 = {
+                    "r1c1": 0, "r1c2": 0, "r1c3": 0, "r1c4": 0, "r1c5": 0, "r1c6": 0, "r1c7": 0,
+                    "r2c1": 0, "r2c2": 0, "r2c3": 0, "r2c4": 0, "r2c5": 0, "r2c6": 0, "r2c7": 0,
+                    "r3c1": 0, "r3c2": 0, "r3c3": 0, "r3c4": 0, "r3c5": 0, "r3c6": 0, "r3c7": 0,
+                    "r4c1": 0, "r4c2": 0, "r4c3": 0, "r4c4": 0, "r4c5": 0, "r4c6": 0, "r4c7": 0,
+                    "r5c1": 0, "r5c2": 0, "r5c3": 0, "r5c4": 0, "r5c5": 0, "r5c6": 0, "r5c7": 0,
+                }
+                for s, model in result:
+                    if scale == "scale1":
+                        res1 = self.get_dedication_res(s, model, res1)
                     else:
-                        if 0 < model <= 40:
-                            res["r7c1"] += 1
-                        elif 40 < model < 60:
-                            res["r7c2"] += 1
-                        elif 60 < model < 65:
-                            res["r7c3"] += 1
-                        elif 65 < model < 70:
-                            res["r7c4"] += 1
-                        elif 70 < model < 75:
-                            res["r7c5"] += 1
-                        elif 75 < model < 80:
-                            res["r7c6"] += 1
-                        else:
-                            res["r7c7"] += 1
+                        res2 = self.get_stress_res(s, model, res2)
+                res = res1 if scale == "scale1" else res2
                 for i in res:
                     res[i] = round(res[i] * 100 / total, 2)
                 return res, ErrorCode.SUCCESS
@@ -219,6 +123,193 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             logger.error("get report data error, msg: %s " % e)
             return res, ErrorCode.INTERNAL_ERROR
 
+    def get_dedication_res(self, scale, model, res):
+        if 80 <= scale <= 100:
+            if 0 <= model <= 40:
+                res["r1c1"] += 1
+            elif 40 < model <= 60:
+                res["r1c2"] += 1
+            elif 60 < model < 65:
+                res["r1c3"] += 1
+            elif 65 <= model < 70:
+                res["r1c4"] += 1
+            elif 70 <= model < 75:
+                res["r1c5"] += 1
+            elif 75 <= model < 80:
+                res["r1c6"] += 1
+            else:
+                res["r1c7"] += 1
+        elif 75 <= scale < 80:
+            if 0 <= model <= 40:
+                res["r2c1"] += 1
+            elif 40 < model <= 60:
+                res["r2c2"] += 1
+            elif 60 < model < 65:
+                res["r2c3"] += 1
+            elif 65 <= model < 70:
+                res["r2c4"] += 1
+            elif 70 <= model < 75:
+                res["r2c5"] += 1
+            elif 75 <= model < 80:
+                res["r2c6"] += 1
+            else:
+                res["r2c7"] += 1
+        elif 70 <= scale < 75:
+            if 0 <= model <= 40:
+                res["r3c1"] += 1
+            elif 40 < model <= 60:
+                res["r3c2"] += 1
+            elif 60 < model < 65:
+                res["r3c3"] += 1
+            elif 65 <= model < 70:
+                res["r3c4"] += 1
+            elif 70 <= model < 75:
+                res["r3c5"] += 1
+            elif 75 <= model < 80:
+                res["r3c6"] += 1
+            else:
+                res["r3c7"] += 1
+        elif 65 <= scale < 70:
+            if 0 <= model <= 40:
+                res["r4c1"] += 1
+            elif 40 < model <= 60:
+                res["r4c2"] += 1
+            elif 60 < model < 65:
+                res["r4c3"] += 1
+            elif 65 <= model < 70:
+                res["r4c4"] += 1
+            elif 70 <= model < 75:
+                res["r4c5"] += 1
+            elif 75 <= model < 80:
+                res["r4c6"] += 1
+            else:
+                res["r4c7"] += 1
+        elif 60 < scale < 65:
+            if 0 <= model <= 40:
+                res["r5c1"] += 1
+            elif 40 < model <= 60:
+                res["r5c2"] += 1
+            elif 60 < model < 65:
+                res["r5c3"] += 1
+            elif 65 <= model < 70:
+                res["r5c4"] += 1
+            elif 70 <= model < 75:
+                res["r5c5"] += 1
+            elif 75 <= model < 80:
+                res["r5c6"] += 1
+            else:
+                res["r5c7"] += 1
+        elif 40 < scale <= 60:
+            if 0 <= model <= 40:
+                res["r6c1"] += 1
+            elif 40 < model <= 60:
+                res["r6c2"] += 1
+            elif 60 < model < 65:
+                res["r6c3"] += 1
+            elif 65 <= model < 70:
+                res["r6c4"] += 1
+            elif 70 <= model < 75:
+                res["r6c5"] += 1
+            elif 75 <= model < 80:
+                res["r6c6"] += 1
+            else:
+                res["r6c7"] += 1
+        else:
+            if 0 <= model <= 40:
+                res["r7c1"] += 1
+            elif 40 < model <= 60:
+                res["r7c2"] += 1
+            elif 60 < model < 65:
+                res["r7c3"] += 1
+            elif 65 <= model < 70:
+                res["r7c4"] += 1
+            elif 70 <= model < 75:
+                res["r7c5"] += 1
+            elif 75 <= model < 80:
+                res["r7c6"] += 1
+            else:
+                res["r7c7"] += 1
+        return res
+
+    def get_stress_res(self, scale, model, res):
+        if 80 <= scale <= 100:
+            if 0 <= model <= 40:
+                res["r1c1"] += 1
+            elif 40 < model <= 60:
+                res["r1c2"] += 1
+            elif 60 < model < 65:
+                res["r1c3"] += 1
+            elif 65 <= model < 70:
+                res["r1c4"] += 1
+            elif 70 <= model < 75:
+                res["r1c5"] += 1
+            elif 75 <= model < 80:
+                res["r1c6"] += 1
+            else:
+                res["r1c7"] += 1
+        elif 70 <= scale < 80:
+            if 0 <= model <= 40:
+                res["r2c1"] += 1
+            elif 40 < model <= 60:
+                res["r2c2"] += 1
+            elif 60 < model < 65:
+                res["r2c3"] += 1
+            elif 65 <= model < 70:
+                res["r2c4"] += 1
+            elif 70 <= model < 75:
+                res["r2c5"] += 1
+            elif 75 <= model < 80:
+                res["r2c6"] += 1
+            else:
+                res["r2c7"] += 1
+        elif 60 <= scale < 70:
+            if 0 <= model <= 40:
+                res["r3c1"] += 1
+            elif 40 < model <= 60:
+                res["r3c2"] += 1
+            elif 60 < model < 65:
+                res["r3c3"] += 1
+            elif 65 <= model < 70:
+                res["r3c4"] += 1
+            elif 70 <= model < 75:
+                res["r3c5"] += 1
+            elif 75 <= model < 80:
+                res["r3c6"] += 1
+            else:
+                res["r3c7"] += 1
+        elif 50 <= scale < 60:
+            if 0 <= model <= 40:
+                res["r4c1"] += 1
+            elif 40 < model <= 60:
+                res["r4c2"] += 1
+            elif 60 < model < 65:
+                res["r4c3"] += 1
+            elif 65 <= model < 70:
+                res["r4c4"] += 1
+            elif 70 <= model < 75:
+                res["r4c5"] += 1
+            elif 75 <= model < 80:
+                res["r4c6"] += 1
+            else:
+                res["r4c7"] += 1
+        else:
+            if 0 <= model <= 40:
+                res["r5c1"] += 1
+            elif 40 < model <= 60:
+                res["r5c2"] += 1
+            elif 60 < model < 65:
+                res["r5c3"] += 1
+            elif 65 <= model < 70:
+                res["r5c4"] += 1
+            elif 70 <= model < 75:
+                res["r5c5"] += 1
+            elif 75 <= model < 80:
+                res["r5c6"] += 1
+            else:
+                res["r5c7"] += 1
+        return res
+
+    # 下属机构幸福指数表现
     def get_expression(self, **kwargs):
         res = {}
         org = kwargs.get("org_id")
@@ -310,6 +401,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             logger.error("get report data error, msg: %s " % e)
             return res, ErrorCode.INTERNAL_ERROR
 
+    # 幸福指数关注群体
     def get_focus_group(self, **kwargs):
         org = kwargs.get("org_id")
         profile = kwargs.get("profile_id")
@@ -325,15 +417,15 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         else:
             # 查下属部门
             child_org = self.get_child_org(query_dict)
+            types = []
             if child_org:
-                types = []
+
                 for tpl in child_org:
                     j = '.'.join([i for i in tpl if i])
                     if j not in types:
                         types.append(j)
             else:
-                types = None
-                return {}, ErrorCode.NOT_EXISTED
+                return
         for i in types:
             res[i] = {}
             if profile in profile_dict:
@@ -395,15 +487,61 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                 ret[i][level].append(j[0])
 
         for i in ret:
+            # i = model, ret[i] = {"保持区": [], "total": []}
             for j in ret[i]:
+                # j = "保持区"， ret[i][j] = [12.0, 23.3]
                 if j != "total":
                     ret[i][j] = round(len(ret[i][j]) * 100 / len(ret[i]["total"]))
+            del ret[i]["total"]
         res = {}
         res_zip = {u"企业幸福指数": "model", u"压力指数": "scale2", u"工作投入": "dimension1", u"生活愉悦": "dimension2",
                    u"成长有力": "dimension3", u"人际和谐": "dimension4", u"领导激发": "dimension5",
                    u"组织卓越": "dimension6", u"员工幸福能力": "dimension7"}
         for i in res_zip:
             res[i] = ret[res_zip[i]]
+        return res, ErrorCode.SUCCESS
+
+    # 企业幸福指数
+    def get_business_index(self, **kwargs):
+        res = {}
+        org = kwargs.get("org_id")
+        profile = kwargs.get("profile_id")
+        select = kwargs.get("select_id")
+        query_dict = self.get_organization(org)[0]
+        profile_options = [u"年龄", u"性别", u"司龄", u"层级", u"序列"]
+        # 拿到当前部门
+        department = FactOEI.objects.complex_filter(query_dict)
+        # 按profile取值
+        if profile in profile_options:
+            # 所有可选字段
+            profile_dict = {
+                u"年龄": "profile1", u"性别": "profile2", u"司龄": "profile4", u"层级": "profile5", u"序列": "profile3"
+            }
+            field_query_set = department.values_list(profile_dict[profile]).distinct()
+            field_list = [i[0] for i in field_query_set if i[0]]
+            for i in field_list:
+                value_list = department.complex_filter({profile_dict[profile]: i}).values_list("model")
+                if select and select == "-":
+                    value_list = [j[0] for j in value_list if j[0] and j[0] < 65]
+                else:
+                    value_list = [j[0] for j in value_list if j[0] and j[0] > 75]
+                res[i] = value_list
+
+        # 拿下属部门
+        else:
+            child_org = self.get_child_org(query_dict)
+            for i in child_org:
+                child_query_dict, org_list = self.get_organization('.'.join(i))
+                value_list = department.complex_filter(child_query_dict).values_list("model")
+                if select and select == "-":
+                    value_list = [j[0] for j in value_list if j[0] and j[0] < 65]
+                else:
+                    value_list = [j[0] for j in value_list if j[0] and j[0] > 75]
+                res[org_list[-1]] = value_list
+
+        total = sum([len(res[i]) for i in res])
+        for k in res:
+            res[k] = round(len(res[k])*100/total)
         return res, ErrorCode.SUCCESS
 
     def get_organization(self, org):
@@ -436,10 +574,10 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                 "organization1", "organization2", "organization3", "organization4", "organization5", "organization6"
             ).distinct()
         else:
-            child_org = None
+            child_org = [[]]
         return child_org
 
-    def get_organtree(self,**kargs):
+    def get_organtree(self, **kargs):
         """return organization tree list"""
 
         res = []
@@ -472,7 +610,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
     def get_oeistress_dist(org):
         """return oei-stress population distribution"""
         return []
-    
+
     def get_oeidevote_dist(org):
         """return oei-devotion population distribution"""
         return 0
@@ -484,7 +622,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
     def get_oei_disadvantage(org):
         """return disadvantage behaviour of oei"""
         return []
-    
+
     def get_oei_ranking(org):
         """return oei ranking of current org"""
         return []
@@ -492,16 +630,16 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
     def get_oei_dimension(org):
         """return oei dimension matrix of current org"""
         return []
-    
-    def get_oei_profilefacet(org,profile):
+
+    def get_oei_profilefacet(org, profile):
         """return oei table of selected profile facet"""
         return []
 
     def get_oei_dist(org):
         """return oei popluation distribution"""
         return []
-    
-    def get_oei_pop_dist(org,model,dimension,pop):
+
+    def get_oei_pop_dist(org, model, dimension, pop):
         """return population facet distribution of """
         return []
 
