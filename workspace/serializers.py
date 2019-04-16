@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 from rest_framework import serializers
 from wduser.models import AuthUser, EnterpriseAccount, People, BaseOrganization
+from assessment.models import AssessProject
 import json
 
 class BaseOrganizationSerializer(serializers.ModelSerializer):
@@ -28,3 +29,14 @@ class UserSerializer(serializers.ModelSerializer):
                   'gender','rank','marriage','organization','enteprise',
                   'sequence_name','gender_name','rank_name','marriage_name',
                   'organization_name')
+
+class AssessSerializer(serializers.ModelSerializer):
+    '''Assessment Serializer'''
+    distribute_type_name = serializers.ChoiceField(choices=AssessProject.DISTRIBUTE_CHOICES)
+
+    class Meta:
+        model = AssessProject
+        fields = ('id', 'name', 'en_name', 'enterprise_id', 'begin_time', 'end_time', 'advert_url', 'assess_type',
+                  'project_status', 'finish_choices', 'finish_redirect', 'finish_txt', 'assess_logo', 'org_infos',
+                  "user_count", "distribute_type", "has_distributed", 'is_answer_survey_by_order', 'has_survey_random',
+                  'survey_random_number', 'show_people_info','distribute_type_name')

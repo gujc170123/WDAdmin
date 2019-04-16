@@ -7,10 +7,12 @@ from utils.response import general_json_response, ErrorCode
 from wduser.user_utils import UserAccountUtils
 from utils.logger import get_logger
 from workspace.helper import OrganizationHelper
-from workspace.serializers import UserSerializer,BaseOrganizationSerializer
+from workspace.serializers import UserSerializer,BaseOrganizationSerializer,AssessSerializer
 from utils.regular import RegularUtils
 from assessment.views import get_mima, get_random_char, get_active_code
-from wduser.models import AuthUser, BaseOrganization
+from wduser.models import AuthUser, BaseOrganization, People, EnterpriseAccount
+from assessment.models import AssessProject, AssessSurveyRelation, AssessProjectSurveyConfig, \
+                              PeopleSurveyRelation, AssessSurveyUserDistribute
 
 #retrieve logger entry for workspace app
 logger = get_logger("workspace")
@@ -102,7 +104,7 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
 
         try:
             #create user object
-            authuser_obj = AuthUser.objects.create(
+            user = AuthUser.objects.create(
                 username=username,
                 account_name=account_name,
                 nickname=nickname,
@@ -119,8 +121,19 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
                 hiredate=hiredate,
                 marriage_id=marriage,
                 organization_id=organization.id
-            )          
-            
+            )
+
+            #create people object
+            people = People.objects.create(user_id=user.id, 
+                                           username=account_name, 
+                                           phone=phone,
+                                           email=email)
+            #create enterprise-account object
+            EnterpriseAccount.objects.create(user_id=id,
+                                             people_id=people.id,
+                                             account_name=account_name,
+                                             enterprise_id=enterprise_id)
+
             return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {'msg': u'成功'})
         except Exception, e:
             logger.error("新增用户失败 %s" % e)
@@ -138,8 +151,7 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
             return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"data": users.data})
         else:
             return general_json_response(status.HTTP_200_OK,
-                                             ErrorCode.NOT_EXISTED) 
-        
+                                             ErrorCode.NOT_EXISTED)  
         
 class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyAPIView):
     '''person detail management'''
@@ -272,4 +284,273 @@ class OrganizationImportExportView(AuthenticationExceptView):
     def post(self, request, *args, **kwargs):
         #todo
         """import organization file"""
-    
+
+class AssessCreateView(AuthenticationExceptView, WdCreateAPIView):
+    '''create assess view'''
+    model = AssessProject
+    serializer_class = AssessSerializer
+
+    SURVEY_DISC = 89
+    SURVEY_OEI = 147
+    SURVEY_IEC = 163
+    ASSESS_STA = 286
+
+    def post(self, request, *args, **kwargs):
+        name = request.data.get('name', None)
+        distribute_type = request.data.get('distribute_type', None)
+        surveys = request.data.getlist('surveys')                
+        assess = AssessProject.objects.create(name=name,
+                                              distribute_type=distribute_type)
+
+        for survey in surveys:
+            AssessSurveyRelation.objects.create(assess_id=assess.id,survey_id=survey)
+            if survey == SURVEY_OEI:
+                qs = AssessProjectSurveyConfig.objects.filter_active(survey_id=survey,
+                                                                     assess_id=ASSESS_STA)
+                qs_new = copy.copy(qs)
+                for x in qs_new:
+                    x.id = None
+                    x.assess_id=assess.id
+                AssessProjectSurveyConfig.objects.bulk_create(qs_new)
+
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
+
+class AssessDetailView(AuthenticationExceptView, WdCreateAPIView):
+    '''update/delete assess view'''
+    model = AssessProject
+    serializer_class = AssessSerializer
+
+    def delete(self, request, *args, **kwargs):
+        assess = self.get_object()
+        assess.is_active = False
+        assess.save()
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
+
+class AssessSurveyRelationDistributeView(WdListCreateAPIView):
+
+    u"""
+    项目与问卷的分发信息
+    @GET: 查看关联的问卷分发信息
+    @POST：分发按钮
+
+    @version: 20180725 分发
+    @GET：查看项目的分发信息
+    @POST: 分发按钮
+    """
+    model = AssessSurveyRelation
+    POST_CHECK_REQUEST_PARAMETER = ("assess_id", )
+    GET_CHECK_REQUEST_PARAMETER = ("assess_id", )
+
+    def get_all_survey_finish_people_count(self, finish_people_ids, assess_id):
+        # 传入有问卷的人， 去掉所有卷子中有 未开始，未完成
+        # 已完成的 = 有卷子的 - 有卷子的 - 做了一半的
+        not_finish_count = PeopleSurveyRelation.objects.filter_active(project_id=assess_id,
+                                                                      people_id__in=finish_people_ids,
+                                                                      status__in=[
+                                                                          PeopleSurveyRelation.STATUS_NOT_BEGIN,
+                                                                          PeopleSurveyRelation.STATUS_DOING,
+                                                                          PeopleSurveyRelation.STATUS_DOING_PART
+                                                                      ]
+                                                                      ).values_list(
+            "people_id", flat=True).distinct().count()
+        f_count = len(finish_people_ids) - not_finish_count
+        return f_count
+
+    def get_doing_survey_people_count(self, people_ids, assess_id):
+        # 已开发: 有卷子的人 - 已过期的 - 做了一半的 - 已完成的
+        beign_count = PeopleSurveyRelation.objects.filter_active(project_id=assess_id,
+                                                                      people_id__in=people_ids,
+                                                                      status__in=[
+                                                                          PeopleSurveyRelation.STATUS_FINISH,
+                                                                          PeopleSurveyRelation.STATUS_DOING_PART,
+                                                                          PeopleSurveyRelation.STATUS_EXPIRED
+                                                                      ]
+                                                                      ).values_list(
+            "people_id", flat=True).distinct().count()
+        not_count = len(people_ids) - beign_count
+        return not_count
+
+    def distribute_normal(self):
+        def get_random_survey_distribute_info(assess_id, random_survey_qs):
+            random_survey_ids = random_survey_qs.values_list("survey_id", flat=True)
+            random_survey_total_ids = []
+            for random_survey_id in random_survey_ids:
+                asud_qs = AssessSurveyUserDistribute.objects.filter_active(
+                    assess_id=assess_id, survey_id=random_survey_id
+                )
+                if asud_qs.exists():
+                    d_user_ids = json.loads(asud_qs[0].people_ids)
+                    if type(d_user_ids) != list:
+                        d_user_ids = []
+                    random_survey_total_ids.extend(d_user_ids)
+            return random_survey_total_ids
+
+        def polling_survey(random_num, random_index, polling_list):
+            y = random_num * random_index % len(polling_list)
+            his_survey_list = polling_list[y:y + random_num]
+            if y + random_num > len(polling_list):
+                his_survey_list += polling_list[0: (random_num - (len(polling_list) - y))]
+            return his_survey_list, random_index + 1
+
+        assess_id = self.assess_id
+        people_ids = self.request.data.get("ids", None)
+        if not people_ids:
+            people_ids = AssessUser.objects.filter_active(assess_id=assess_id).values_list("people_id", flat=True).distinct()
+            if not people_ids:
+                return ErrorCode.ORG_PEOPLE_IN_ASSESS_ERROR   # 项目组织下没有人
+        #  一以下可以单独拉出来 传入assess_id, people_id , ,给这个人发送问卷
+        new_distribute_ids = []
+        # 问卷初始状态
+        assessment_obj = AssessProject.objects.get(id=assess_id)
+        status = PeopleSurveyRelation.STATUS_DOING if assessment_obj.project_status == AssessProject.STATUS_WORKING else PeopleSurveyRelation.STATUS_NOT_BEGIN
+        # 哪些问卷
+        all_survey_qs = AssessSurveyRelation.objects.filter_active(assess_id=assess_id).distinct().order_by("-order_number")
+        if all_survey_qs.count() == 0:
+            return ErrorCode.PROJECT_SURVEY_RELATION_VALID   # 项目没有关联问卷
+        all_survey_ids = all_survey_qs.values_list("survey_id", flat=True)
+        # 找到相关问卷的发送信息
+        survey_assess_distribute_dict = {}
+        for survey_id in all_survey_ids:
+            asud_qs = AssessSurveyUserDistribute.objects.filter_active(assess_id=assess_id, survey_id=survey_id)
+            if asud_qs.exists():
+                dist_people_ids = json.loads(asud_qs[0].people_ids)
+                if type(dist_people_ids) != list:
+                    dist_people_ids = []
+            else:
+                AssessSurveyUserDistribute.objects.create(assess_id=assess_id, survey_id=survey_id, people_ids=json.dumps([]))
+                dist_people_ids = []
+            survey_assess_distribute_dict[survey_id] = dist_people_ids
+
+        random_survey_qs = all_survey_qs.filter(survey_been_random=True)
+        normal_survey_qs = all_survey_qs.filter(survey_been_random=False)
+
+        normal_survey_ids = list(normal_survey_qs.values_list('survey_id', flat=True))
+        row_random_survey_ids = list(random_survey_qs.values_list('survey_id', flat=True))
+        random_distribute_people_info_out = get_random_survey_distribute_info(assess_id, random_survey_qs)
+
+        random_num = assessment_obj.survey_random_number
+        if random_num:
+            if len(random_survey_qs) < random_num:
+                random_num = len(random_survey_qs)
+        random_index = assessment_obj.survey_random_index  # 随机标志位
+
+        people_survey_b_create_list = []
+        for people_id in people_ids:
+            # 找到随机的问卷
+            if random_num and random_survey_qs.exists() and (people_id not in random_distribute_people_info_out):
+                random_survey_ids, random_index = polling_survey(random_num, random_index, row_random_survey_ids)
+            else:
+                random_survey_ids, random_index = [], random_index
+            # 排序
+            person_survey_ids_list = [i for i in all_survey_ids if i in list(set(normal_survey_ids).union(set(random_survey_ids)))]
+            for survey_id in person_survey_ids_list:
+                survey = Survey.objects.get(id=survey_id)
+                distribute_users = survey_assess_distribute_dict[survey_id]
+                if people_id not in distribute_users:
+                    people_survey_b_create_list.append(PeopleSurveyRelation(
+                        people_id=people_id,
+                        survey_id=survey_id,
+                        project_id=assess_id,
+                        survey_name=survey.title,
+                        status=status
+                    ))
+                    survey_assess_distribute_dict[survey_id].append(people_id)
+                    if people_id not in new_distribute_ids:
+                        new_distribute_ids.append(people_id)
+            # 批量创建
+            if len(people_survey_b_create_list) > 2000:
+                PeopleSurveyRelation.objects.bulk_create(people_survey_b_create_list)
+                logger.info("people_b_create_survey")
+                people_survey_b_create_list = []
+        # 发送最后一批问卷
+        if people_survey_b_create_list:
+            logger.info("people_b_create_survey")
+            PeopleSurveyRelation.objects.bulk_create(people_survey_b_create_list)
+        # 发激活码
+        if new_distribute_ids:
+            self.send_active_code(new_distribute_ids)
+        # 保留发卷信息
+        for survey_id in survey_assess_distribute_dict:
+            AssessSurveyUserDistribute.objects.filter_active(assess_id=assess_id, survey_id=survey_id).update(people_ids=json.dumps(survey_assess_distribute_dict[survey_id]))
+        # 轮询标志位
+        assessment_obj.survey_random_index = random_index
+        assessment_obj.save()
+        return ErrorCode.SUCCESS
+
+    def post(self, request, *args, **kwargs):
+        self.assessment = AssessProject.objects.get(id=self.assess_id)
+        if self.assessment.assess_type == AssessProject.TYPE_360:
+            rst_code = self.distribute360()
+        else:
+            rst_code = self.distribute_normal()
+        return general_json_response(status.HTTP_200_OK, rst_code)
+
+    def get_project_url(self):
+        project_id_bs64 = quote(base64.b64encode(str(self.assess_id)))
+        return settings.CLIENT_HOST + '/people/join-project/?ba=%s&bs=0' % (project_id_bs64)
+
+    def get_open_project_user_statistics(self):
+        user_qs = PeopleSurveyRelation.objects.filter_active(project_id=self.assess_id)
+        all_count = user_qs.values_list("people_id", flat=True).distinct().count()
+        people_with_survey_ids = user_qs.values_list('people_id', flat=True).distinct()
+        wei_fen_fa = all_count - people_with_survey_ids.count()  # 未分发 就是 0
+        yi_wan_cheng = self.get_all_survey_finish_people_count(people_with_survey_ids, self.assess_id)
+        yi_fen_fa = self.get_doing_survey_people_count(people_with_survey_ids, self.assess_id)
+        da_juan_zhong = people_with_survey_ids.count() - yi_wan_cheng - yi_fen_fa
+        distribute_count = 0
+        return {
+            "count": all_count,  # 项目下人总数
+            "doing_count": da_juan_zhong,  # 答卷中
+            "not_begin_count": yi_fen_fa,  # 已开发
+            "finish_count": yi_wan_cheng,  # 已完成
+            "not_started": wei_fen_fa,  # 未完成
+            "distribute_count": distribute_count  # 分发数量
+        }
+
+    def get_import_project_user_statistics(self):
+        po_qs = AssessUser.objects.filter_active(assess_id=self.assess_id).values_list("people_id", flat=True).distinct()
+        all_count = po_qs.count()
+        # 项目下所有用户
+        user_qs = PeopleSurveyRelation.objects.filter_active(project_id=self.assess_id)
+        people_ids = user_qs.values_list('people_id', flat=True).distinct()
+        # 有问卷关联的用户
+        wei_fen_fa = all_count - people_ids.count()  # 未分发
+        # 没有分发的用户 必对
+        yi_wan_cheng = self.get_all_survey_finish_people_count(list(people_ids), self.assess_id)
+        # 已完成的人，
+        distribute_qs = AssessSurveyUserDistribute.objects.filter_active(assess_id=self.assess_id)
+        yi_fen_fa = self.get_doing_survey_people_count(list(people_ids), self.assess_id)
+        # 做了一部分的，包括2张中一张做完的。
+        da_juan_zhong = people_ids.count() - yi_wan_cheng - yi_fen_fa
+
+        distribute_count = people_ids.count()
+        return {
+            "count": all_count,  # 项目下人总数，有卷子和没卷子的
+            "doing_count": da_juan_zhong,  # 答卷中
+            "not_begin_count": yi_fen_fa,  # 已分发，为开始的
+            "finish_count": yi_wan_cheng,  # 完成的
+            "not_started": wei_fen_fa,  # 没卷子的
+            "distribute_count": distribute_count  # 分发数量
+        }
+
+    def get_distribute_info(self):
+        project = AssessProject.objects.get(id=self.assess_id)
+        if project.distribute_type == AssessProject.DISTRIBUTE_OPEN:
+            user_statistics = self.get_open_project_user_statistics()
+        else:
+            user_statistics = self.get_import_project_user_statistics()
+        org_ids = AssessOrganization.objects.filter_active(
+            assess_id=self.assess_id).values_list("organization_id", flat=True)
+        org_infos = Organization.objects.filter_active(id__in=org_ids).values("id", "name", "identification_code")
+        return {
+            "user_statistics": user_statistics,
+            "distribute_type": project.distribute_type,
+            "org_infos": org_infos
+        }
+
+    def get(self, request, *args, **kwargs):
+        data = {
+            "url": self.get_project_url(),
+            "distribute_info": self.get_distribute_info()
+        }
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, data)

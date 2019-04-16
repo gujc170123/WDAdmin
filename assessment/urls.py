@@ -49,4 +49,5 @@ urlpatterns = [
     url(r"^project360/survey/$", Assess360SurveyRelation.as_view(), name="project360-survey-relation-view"),
     # 报告下载
     url(r"^project/report/download/$", DownloadReportView.as_view(), name="project-report-download-view"),
+    url(r"^file/status/$", AssessmentFileStatusView.as_view(), name="project-report-download-view"),
 ]
