@@ -16,7 +16,6 @@ from question.serializers import QuestionDetailSerializer
 from research.models import ResearchModel, ResearchDimension, ResearchSubstandard
 from survey.models import Survey, SurveyQuestionResult, SurveyModelFacetRelation, SurveyQuestionRelation
 from survey.serializers import SurveyForceQuestionResultSerializer
-from utils.cache.config_cache import ConfigCache
 from utils.logger import get_logger
 from utils.rpc_service.report_service import ReportService
 from utils.response import ErrorCode
@@ -118,13 +117,6 @@ def survey_sync(survey_id, project_id):
         assess_id=project_id, survey_id=survey_id,
         model_type=AssessProjectSurveyConfig.MODEL_TYPE_DIMENSION_DESC).values("model_id", "content", "en_content")
 
-    # config_block_info = {}
-    # for config_info in assess_project_config_qs:
-    #     config_block_info[config_info["model_id"]] = config_info["content"]
-    # config_block_desc_info = {}
-    # for config_info in assess_project_desc_config_qs:
-    #     config_block_desc_info[config_info["model_id"]] = config_info["content"]
-
     config_block_info = {}
     for config_info in assess_project_config_qs:
         config_block_info[config_info["model_id"]] = {"content": config_info["content"], "en_content": config_info["en_content"]}
@@ -132,11 +124,7 @@ def survey_sync(survey_id, project_id):
     for config_info in assess_project_desc_config_qs:
         config_block_desc_info[config_info["model_id"]] = {"content": config_info["content"], "en_content": config_info["en_content"]}
 
-    # for block in rd_qs:
-    #     if block["id"] in config_block_info:
-    #         block["name"] = config_block_info[block["id"]]
-    #     if block["id"] in config_block_desc_info:
-    #         block["desc"] = config_block_desc_info[block["id"]]
+
     for block in rd_qs:
         if block["id"] in config_block_info:
             block["name"] = config_block_info[block["id"]]["content"]
@@ -157,7 +145,7 @@ def survey_sync(survey_id, project_id):
 
     survey_info_qs = SurveyInfo.objects.filter_active(survey_id=survey_id, project_id=project_id)
     # 更新或创建 问卷信息
-    if assess_survey_obj.custom_config:    #  10.9 ，360问卷json.loads(None)
+    if assess_survey_obj.custom_config:
         config = json.loads(assess_survey_obj.custom_config)
     else:
         config = None
@@ -270,9 +258,7 @@ def survey_question_sync(survey_id, project_id, block_id):
             # 分块测试
             # 所有维度
             logger.debug("survey_question_sync, test_type == TEST_TYPE_BY_PART")
-            # rd_qs = ResearchDimension.objects.filter(model_id=survey.model_id)
             dimension = ResearchDimension.objects.get(id=block_id)
-            #for dimension in rd_qs:
             # 每个维度/块 关联的题目
             relation_ids = list(SurveyModelFacetRelation.objects.filter_active(
                 survey_id=survey_id, model_id=src_survey.model_id,
@@ -355,9 +341,6 @@ def user_get_survey_ops(people_id, survey_id, project_id, block_id,
         if people_survey.status == PeopleSurveyRelation.STATUS_NOT_BEGIN:
             people_survey.status = PeopleSurveyRelation.STATUS_DOING
             is_modify = True
-        # if not people_survey.begin_answer_time:
-        #     people_survey.begin_answer_time = datetime.datetime.now()
-        #     is_modify = True
         if is_modify:
             people_survey.save()
 
@@ -365,22 +348,14 @@ def user_get_survey_ops(people_id, survey_id, project_id, block_id,
 @shared_task
 def get_report(detail, user_id=0, force_recreate=False, language=SurveyAlgorithm.LANGUAGE_ZH):
     report_request_data = []
-    enterprise_id = 0
+    psr_id = 0
     for data in detail["results"]:
-        # if data["report_status"] != PeopleSurveyRelation.REPORT_SUCCESS or force_recreate:
+        if not psr_id:
+            psr_id = data["id"]
         survey_info = data["survey_info"]
         cn_report_id, en_report_id = ReportService.get_report_template_id(survey_info["survey_id"], survey_info["project_id"])
-        # 加快 ProfessionalPpersonalit， WorkValueQuestionnaire 的处理
-        report_filter = ConfigCache().get_config_report_filter()
-        if report_filter and cn_report_id not in report_filter:
-            continue
-        project_id = data["project_id"]
-        if not enterprise_id:
-            enterprise_id = AssessProject.objects.get(id=project_id).enterprise_id
         if language in [SurveyAlgorithm.LANGUAGE_ZH, SurveyAlgorithm.LANGUAGE_ALL] and cn_report_id:
             if data["report_status"] != PeopleSurveyRelation.REPORT_SUCCESS or force_recreate or not data["report_url"]:
-                logger.debug("[report request] people_result_id: %s, cn_report_id: %s, force_recreate: %s" %(data["id"], cn_report_id, force_recreate))
-
                 report_request_data.append(
                     {
                         "report_type_id": cn_report_id,
@@ -390,7 +365,6 @@ def get_report(detail, user_id=0, force_recreate=False, language=SurveyAlgorithm
                 )
         if language in [SurveyAlgorithm.LANGUAGE_EN, SurveyAlgorithm.LANGUAGE_ALL] and en_report_id:
             if data["report_status"] != PeopleSurveyRelation.REPORT_SUCCESS or force_recreate or not data["en_report_url"]:
-                logger.debug("[report request] people_result_id: %s, en_report_id: %s, force_recreate: %s" % (data["id"], en_report_id, force_recreate))
                 report_request_data.append(
                     {
                         "report_type_id": en_report_id,
@@ -402,7 +376,14 @@ def get_report(detail, user_id=0, force_recreate=False, language=SurveyAlgorithm
         return
     report_result = None
     try:
-        report_result = ReportService.get_report(report_request_data, enterprise_id)
+        # 360 项目不在这里发请求
+        try:
+            psr_obj = PeopleSurveyRelation.objects.get(id=psr_id)
+            if AssessProject.objects.get(id=psr_obj.project_id).assess_type == AssessProject.TYPE_360:
+                return
+        except:
+            pass
+        report_result = ReportService.get_report(report_request_data)
         report_info = report_result["detail"]
         for index, data in enumerate(report_request_data):
             if int(report_info[str(index)]["status"]) == 1:
@@ -462,32 +443,6 @@ def algorithm_task(people_survey_result_id, create_report=True, force_recreate=F
 @shared_task
 def auto_submit_of_time_limit():
     pass
-    # begin_time = datetime.datetime.now()
-    # end_time = datetime.datetime.now() - datetime.timedelta(hours=2)  # 项目截止再宽松2个小时
-    # project_qs = AssessProject.objects.filter_active(begin_time__lt=begin_time, end_time__gt=end_time).values_list("id", flat=True)
-    # survey_qs = Survey.objects.filter_active(survey_status=Survey.SURVEY_STATUS_RELEASE, time_limit__gt=0).values_list("id", flat=True)
-    # limit_qs = AssessSurveyRelation.objects.filter_active(assess_id__in=project_qs, survey_id__in=survey_qs).order_by("assess_id", "survey_id")
-    # now = datetime.datetime.now() - datetime.timedelta(minutes=5)  # 5分钟宽松时间
-    # for limit_relation in limit_qs:
-    #     survey = Survey.objects.get(id=limit_relation.survey_id)
-    #     time_limit = survey.time_limit
-    #     people_result_qs = PeopleSurveyRelation.objects.filter_active(
-    #         survey_id=limit_relation.survey_id,
-    #         project_id=limit_relation.assess_id,
-    #         status=PeopleSurveyRelation.STATUS_DOING_PART
-    #     )
-    #     for people_result in people_result_qs:
-    #         used_time = now - people_result.begin_answer_time
-    #         if used_time > time_limit and people_result.status != PeopleSurveyRelation.STATUS_FINISH:
-    #             # 超时
-    #             logger.debug("EXPIRED: set people_result %s to STATUS_FINISH" % people_result.id)
-    #             people_result.status = PeopleSurveyRelation.STATUS_FINISH
-    #             people_result.finish_time = now
-    #             people_result.is_overtime = True
-    #             people_result.save()
-    #             algorithm_task.delay(people_result.id)
-    # time.sleep(60*5)
-    # auto_submit_of_time_limit.delay()
 
 auto_submit_of_time_limit.delay()
 
@@ -607,3 +562,91 @@ def send_one_user_survey(assess_id, people_id):
     AssessUser.objects.get_or_create(
         assess_id=assess_id, people_id=people.id
     )
+
+
+# 360 自评他评的异步任务：
+@shared_task
+def get_360_report(enterprise_id):
+    logger.info("get_360_report")
+    ap_qs = AssessProject.objects.filter_active(assess_type=AssessProject.TYPE_360, enterprise_id=enterprise_id)
+    for ap_obj in ap_qs:
+        need = False
+        if PeopleSurveyRelation.objects.filter_active(project_id=450,
+                                                      status__in=[PeopleSurveyRelation.STATUS_NOT_BEGIN,
+                                                                  PeopleSurveyRelation.STATUS_DOING,
+                                                                  PeopleSurveyRelation.STATUS_DOING_PART]).exists():
+            pass
+        else:
+            need = True
+            # auto_get_360_report.delay(assess_id=ap_obj.id)
+        if ap_obj.project_status > AssessProject.STATUS_WORKING:
+            need = True
+            # 处理掉一些不用统计的
+        if need:
+            logger.info("auto_get_360_report assess_id=%s" % ap_obj.id)
+            auto_get_360_report.delay(assess_id=ap_obj.id)
+
+
+@shared_task
+def auto_get_360_report(assess_id=0):
+    def somebody_need_report(people_result_id, cn_report_id, en_report_id, force_recreate=False):
+        report_request_data = []
+        if cn_report_id:
+            report_request_data.append(
+                    {
+                        "report_type_id": cn_report_id,
+                        "people_result_id": people_result_id,
+                        "force_recreate": force_recreate
+                    }
+                )
+        if en_report_id:
+            report_request_data.append(
+                {
+                    "report_type_id": en_report_id,
+                    "people_result_id": people_result_id,
+                    "force_recreate": force_recreate
+                    }
+                )
+        if not report_request_data:
+            return
+        report_result = None
+        try:
+            report_result = ReportService.get_report(report_request_data)
+            report_info = report_result["detail"]
+            for index, data in enumerate(report_request_data):
+                if int(report_info[str(index)]["status"]) == 1:
+                    report_result = PeopleSurveyRelation.objects.get(id=data["people_result_id"])
+                    if "url" in report_info[str(index)] and report_info[str(index)]["url"]:
+                        logger.info("peoplesurveyrelation {} has new report {}".format(people_result_id, report_info[str(index)]["url"]))
+                        report_result.report_url = report_info[str(index)]["url"]
+                    if "en_url" in report_info[str(index)] and report_info[str(index)]["en_url"]:
+                        report_result.en_report_url = report_info[str(index)]["en_url"]
+                    report_result.report_status = PeopleSurveyRelation.REPORT_SUCCESS
+                    report_result.save()
+                elif int(report_info[str(index)]["status"]) == 2:
+                    report_result = PeopleSurveyRelation.objects.get(id=data["people_result_id"])
+                    if report_result != PeopleSurveyRelation.REPORT_FAILED and report_result != PeopleSurveyRelation.REPORT_SUCCESS:
+                        report_result.report_status = PeopleSurveyRelation.REPORT_FAILED
+                        report_result.save()
+        except Exception, e:
+            logger.error("report create error: msg: %s, report data is %s" % (e, report_result))
+        pass
+
+    # 需要生产报告的项目
+    logger.info("auto_get_360_report assess_id=%s" % assess_id)
+    if not assess_id:
+        return
+    psr_qs = PeopleSurveyRelation.objects.filter_active(project_id=assess_id, status=PeopleSurveyRelation.STATUS_FINISH)
+    # 有哪些被评价人
+    evaluated_people_ids = list(psr_qs.values_list("evaluated_people_id", flat=True).distinct())
+    # 暂时没有 一个人只有他评，没有自评的情况
+    # 这些人需要出报告：
+    need_psr_qs = psr_qs.filter(people_id__in=evaluated_people_ids)
+    for need_obj in need_psr_qs:
+        if need_obj.report_url:
+            # 已经有报告的人不需要出报告
+            pass
+        else:
+            survey_id = need_obj.survey_id
+            zn_report_id, en_report_id = ReportService.get_report_template_id(survey_id, assess_id)
+            somebody_need_report(need_obj.id, zn_report_id, en_report_id)

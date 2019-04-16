@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 from rest_framework import status
 from utils.views import AuthenticationExceptView, WdCreateAPIView, WdRetrieveUpdateAPIView ,\
-                        WdDestroyAPIView
+                        WdDestroyAPIView, WdListCreateAPIView
 from utils.response import general_json_response, ErrorCode
 from wduser.user_utils import UserAccountUtils
 from utils.logger import get_logger
@@ -12,7 +12,9 @@ from utils.regular import RegularUtils
 from assessment.views import get_mima, get_random_char, get_active_code
 from wduser.models import AuthUser, BaseOrganization, People, EnterpriseAccount
 from assessment.models import AssessProject, AssessSurveyRelation, AssessProjectSurveyConfig, \
-                              PeopleSurveyRelation, AssessSurveyUserDistribute
+                              AssessSurveyUserDistribute,AssessUser
+from front.models import PeopleSurveyRelation
+from assessment.tasks import send_survey_active_codes
 
 #retrieve logger entry for workspace app
 logger = get_logger("workspace")
@@ -327,7 +329,6 @@ class AssessDetailView(AuthenticationExceptView, WdCreateAPIView):
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
 class AssessSurveyRelationDistributeView(WdListCreateAPIView):
-
     u"""
     项目与问卷的分发信息
     @GET: 查看关联的问卷分发信息
@@ -342,14 +343,13 @@ class AssessSurveyRelationDistributeView(WdListCreateAPIView):
     GET_CHECK_REQUEST_PARAMETER = ("assess_id", )
 
     def get_all_survey_finish_people_count(self, finish_people_ids, assess_id):
-        # 传入有问卷的人， 去掉所有卷子中有 未开始，未完成
-        # 已完成的 = 有卷子的 - 有卷子的 - 做了一半的
         not_finish_count = PeopleSurveyRelation.objects.filter_active(project_id=assess_id,
                                                                       people_id__in=finish_people_ids,
                                                                       status__in=[
                                                                           PeopleSurveyRelation.STATUS_NOT_BEGIN,
                                                                           PeopleSurveyRelation.STATUS_DOING,
-                                                                          PeopleSurveyRelation.STATUS_DOING_PART
+                                                                          PeopleSurveyRelation.STATUS_DOING_PART,
+                                                                          PeopleSurveyRelation.STATUS_EXPIRED
                                                                       ]
                                                                       ).values_list(
             "people_id", flat=True).distinct().count()
@@ -357,18 +357,85 @@ class AssessSurveyRelationDistributeView(WdListCreateAPIView):
         return f_count
 
     def get_doing_survey_people_count(self, people_ids, assess_id):
-        # 已开发: 有卷子的人 - 已过期的 - 做了一半的 - 已完成的
         beign_count = PeopleSurveyRelation.objects.filter_active(project_id=assess_id,
                                                                       people_id__in=people_ids,
                                                                       status__in=[
                                                                           PeopleSurveyRelation.STATUS_FINISH,
-                                                                          PeopleSurveyRelation.STATUS_DOING_PART,
-                                                                          PeopleSurveyRelation.STATUS_EXPIRED
+                                                                          PeopleSurveyRelation.STATUS_DOING_PART
                                                                       ]
                                                                       ).values_list(
             "people_id", flat=True).distinct().count()
         not_count = len(people_ids) - beign_count
         return not_count
+
+    def send_active_code(self, people_ids):
+        send_survey_active_codes.delay(people_ids)
+
+    def distribute360(self):
+        role_surveys = AssessSurveyRelation.objects.filter_active(
+            assess_id=self.assess_id).values("role_type", "survey_id")
+        role_survey_map = dict()
+        for role_survey in role_surveys:
+            role_survey_map[role_survey["role_type"]] = role_survey["survey_id"]
+        assess_users = AssessUser.objects.filter_active(
+            assess_id=self.assess_id, role_type=AssessUser.ROLE_TYPE_SELF
+        )
+        new_distribute_people_ids = []
+        for assess_user in assess_users:
+            evaluated_people = People.objects.get(id=assess_user.people_id)
+            for role_types in AssessUser.ROLE_CHOICES:
+                role_type = role_types[0]
+                if role_type == AssessUser.ROLE_TYPE_NORMAL:
+                    continue
+                if role_type in role_survey_map:
+                    survey_id = role_survey_map[role_type]
+                else:
+                    return ErrorCode.PROJECT_SURVEY_RELATION_VALID
+                survey = Survey.objects.get(id=survey_id)
+                distribute_users = AssessSurveyUserDistribute.objects.filter_active(
+                    assess_id=self.assess_id, evaluated_people_id=evaluated_people.id,
+                    role_type=role_type, survey_id=survey_id
+                )
+                has_distribute = distribute_users.exists()
+                if has_distribute:
+                    distribute_user_ids = json.loads(
+                        distribute_users.values_list("people_ids", flat=True)[0])
+                else:
+                    distribute_user_ids = []
+                role_people_ids = AssessUser.objects.filter_active(
+                    assess_id=self.assess_id, people_id=evaluated_people.id, role_type=role_type
+                ).values_list("role_people_id", flat=True)
+
+                people_survey_list = []
+                for people_id in role_people_ids:
+                    if people_id not in distribute_user_ids:
+                        survey_name = survey.title
+                        if role_type != AssessUser.ROLE_TYPE_SELF:
+                            survey_name = u"%s(评价%s)" %(survey.title, evaluated_people.username)
+                        people_survey_list.append(PeopleSurveyRelation(
+                            people_id=people_id,
+                            survey_id=survey_id,
+                            project_id=self.assess_id,
+                            survey_name=survey_name,
+                            role_type=role_type,
+                            evaluated_people_id=evaluated_people.id
+
+                        ))
+                        distribute_user_ids.append(people_id)
+                        if people_id not in new_distribute_people_ids:
+                            new_distribute_people_ids.append(people_id)
+                PeopleSurveyRelation.objects.bulk_create(people_survey_list)
+                if has_distribute:
+                    distribute_users.update(people_ids=json.dumps(distribute_user_ids))
+                else:
+                    AssessSurveyUserDistribute.objects.create(
+                        assess_id=self.assess_id, survey_id=survey_id,
+                        people_ids=json.dumps(distribute_user_ids),
+                        evaluated_people_id=evaluated_people.id,
+                        role_type=role_type
+                    )
+        self.send_active_code(new_distribute_people_ids)
+        return ErrorCode.SUCCESS
 
     def distribute_normal(self):
         def get_random_survey_distribute_info(assess_id, random_survey_qs):
@@ -397,18 +464,14 @@ class AssessSurveyRelationDistributeView(WdListCreateAPIView):
         if not people_ids:
             people_ids = AssessUser.objects.filter_active(assess_id=assess_id).values_list("people_id", flat=True).distinct()
             if not people_ids:
-                return ErrorCode.ORG_PEOPLE_IN_ASSESS_ERROR   # 项目组织下没有人
-        #  一以下可以单独拉出来 传入assess_id, people_id , ,给这个人发送问卷
+                return ErrorCode.ORG_PEOPLE_IN_ASSESS_ERROR 
         new_distribute_ids = []
-        # 问卷初始状态
         assessment_obj = AssessProject.objects.get(id=assess_id)
         status = PeopleSurveyRelation.STATUS_DOING if assessment_obj.project_status == AssessProject.STATUS_WORKING else PeopleSurveyRelation.STATUS_NOT_BEGIN
-        # 哪些问卷
         all_survey_qs = AssessSurveyRelation.objects.filter_active(assess_id=assess_id).distinct().order_by("-order_number")
         if all_survey_qs.count() == 0:
-            return ErrorCode.PROJECT_SURVEY_RELATION_VALID   # 项目没有关联问卷
+            return ErrorCode.PROJECT_SURVEY_RELATION_VALID
         all_survey_ids = all_survey_qs.values_list("survey_id", flat=True)
-        # 找到相关问卷的发送信息
         survey_assess_distribute_dict = {}
         for survey_id in all_survey_ids:
             asud_qs = AssessSurveyUserDistribute.objects.filter_active(assess_id=assess_id, survey_id=survey_id)
@@ -432,16 +495,14 @@ class AssessSurveyRelationDistributeView(WdListCreateAPIView):
         if random_num:
             if len(random_survey_qs) < random_num:
                 random_num = len(random_survey_qs)
-        random_index = assessment_obj.survey_random_index  # 随机标志位
+        random_index = assessment_obj.survey_random_index
 
         people_survey_b_create_list = []
         for people_id in people_ids:
-            # 找到随机的问卷
             if random_num and random_survey_qs.exists() and (people_id not in random_distribute_people_info_out):
                 random_survey_ids, random_index = polling_survey(random_num, random_index, row_random_survey_ids)
             else:
                 random_survey_ids, random_index = [], random_index
-            # 排序
             person_survey_ids_list = [i for i in all_survey_ids if i in list(set(normal_survey_ids).union(set(random_survey_ids)))]
             for survey_id in person_survey_ids_list:
                 survey = Survey.objects.get(id=survey_id)
@@ -486,51 +547,46 @@ class AssessSurveyRelationDistributeView(WdListCreateAPIView):
         return general_json_response(status.HTTP_200_OK, rst_code)
 
     def get_project_url(self):
+        # TODO: join-project interface
         project_id_bs64 = quote(base64.b64encode(str(self.assess_id)))
         return settings.CLIENT_HOST + '/people/join-project/?ba=%s&bs=0' % (project_id_bs64)
 
     def get_open_project_user_statistics(self):
+
         user_qs = PeopleSurveyRelation.objects.filter_active(project_id=self.assess_id)
         all_count = user_qs.values_list("people_id", flat=True).distinct().count()
         people_with_survey_ids = user_qs.values_list('people_id', flat=True).distinct()
-        wei_fen_fa = all_count - people_with_survey_ids.count()  # 未分发 就是 0
+        wei_fen_fa = all_count - people_with_survey_ids.count()
         yi_wan_cheng = self.get_all_survey_finish_people_count(people_with_survey_ids, self.assess_id)
         yi_fen_fa = self.get_doing_survey_people_count(people_with_survey_ids, self.assess_id)
         da_juan_zhong = people_with_survey_ids.count() - yi_wan_cheng - yi_fen_fa
         distribute_count = 0
         return {
-            "count": all_count,  # 项目下人总数
-            "doing_count": da_juan_zhong,  # 答卷中
-            "not_begin_count": yi_fen_fa,  # 已开发
-            "finish_count": yi_wan_cheng,  # 已完成
-            "not_started": wei_fen_fa,  # 未完成
-            "distribute_count": distribute_count  # 分发数量
+            "count": all_count,
+            "doing_count": da_juan_zhong,
+            "not_begin_count": yi_fen_fa,
+            "finish_count": yi_wan_cheng,
+            "not_started": wei_fen_fa,
+            "distribute_count": distribute_count
         }
 
     def get_import_project_user_statistics(self):
         po_qs = AssessUser.objects.filter_active(assess_id=self.assess_id).values_list("people_id", flat=True).distinct()
         all_count = po_qs.count()
-        # 项目下所有用户
         user_qs = PeopleSurveyRelation.objects.filter_active(project_id=self.assess_id)
         people_ids = user_qs.values_list('people_id', flat=True).distinct()
-        # 有问卷关联的用户
-        wei_fen_fa = all_count - people_ids.count()  # 未分发
-        # 没有分发的用户 必对
+        wei_fen_fa = all_count - people_ids.count() 
         yi_wan_cheng = self.get_all_survey_finish_people_count(list(people_ids), self.assess_id)
-        # 已完成的人，
-        distribute_qs = AssessSurveyUserDistribute.objects.filter_active(assess_id=self.assess_id)
         yi_fen_fa = self.get_doing_survey_people_count(list(people_ids), self.assess_id)
-        # 做了一部分的，包括2张中一张做完的。
         da_juan_zhong = people_ids.count() - yi_wan_cheng - yi_fen_fa
-
         distribute_count = people_ids.count()
         return {
-            "count": all_count,  # 项目下人总数，有卷子和没卷子的
-            "doing_count": da_juan_zhong,  # 答卷中
-            "not_begin_count": yi_fen_fa,  # 已分发，为开始的
-            "finish_count": yi_wan_cheng,  # 完成的
-            "not_started": wei_fen_fa,  # 没卷子的
-            "distribute_count": distribute_count  # 分发数量
+            "count": all_count,
+            "doing_count": da_juan_zhong,
+            "not_begin_count": yi_fen_fa,
+            "finish_count": yi_wan_cheng,
+            "not_started": wei_fen_fa,
+            "distribute_count": distribute_count 
         }
 
     def get_distribute_info(self):

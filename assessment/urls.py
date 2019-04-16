@@ -6,7 +6,8 @@ from assessment.views import AssessmentListCreateView, AssessRetrieveUpdateDestr
     AssessGatherInfoView, AssessProjectSurveyConfigView, AssessGatherInfoDetailView, AssessSurveyRelationDetailView, \
     AssessSurveyImportExportView, AssessUserListView, AssessSurveyRelationDistributeView, AssessSurveyUserExport, \
     Assess360UserListView, Assess360UserCopyView, Assess360TestUserStatisticsView, Assess360SurveyRelation, \
-    DownloadReportView, AssessUserCreateView, AssessGatherAllInfoView, AssessUseDetailView, Assess360UpuserImportView
+    DownloadReportView, AssessUserCreateView, AssessGatherAllInfoView, AssessUseDetailView, Assess360UpuserImportView, \
+    AssessmentFileStatusView
 
 urlpatterns = [
     # 项目新建 项目 列表

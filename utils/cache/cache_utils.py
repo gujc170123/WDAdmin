@@ -213,3 +213,18 @@ class UserLogCookieExpireCache(BaseBusinessCache):
 
     def direct_get(self, key):
         return self.cache.get(key)
+
+
+class FileStatusCache(AutoExpireCache):
+    """验证码自动过期缓存"""
+
+    DEFAULT_EXPIRED_SECOND = 30*60
+
+    def set_verify_code(self, value):
+        self.setex(value)
+
+    def get_verify_code(self):
+        value = self.get()
+        if value in [100, '100']:
+            self.delete()
+        return value
