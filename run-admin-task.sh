@@ -6,5 +6,8 @@ if [ -f $pid ]; then
         exit 1
     fi
 fi
-source /home/xd/xd-dev/server/xiaode-env/bin/activate
-nohup nice -n 0 celery -A WeiDuAdmin worker -l INFO > celery.log & echo $! > $pid
+#! source /home/xd/xd-dev/server/xiaode-env/bin/activate
+#source /usr/bin/virtualenvwrapper.sh
+#workon py2admin
+#cd /home/wd/production/project/admin/uwsgi
+nohup nice -n 0 celery -B -A WeiDuAdmin worker -l INFO > celery.log & echo $! > $pid

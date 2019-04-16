@@ -173,27 +173,27 @@ class PeopleActiveCodeLoginView(AuthenticationExceptView, WdCreateAPIView):
         else:
             return general_json_response(status.HTTP_200_OK, ErrorCode.USER_ACCOUNT_NOT_FOUND)
         if not people_qs.exists():
-            return general_json_response(status.HTTP_200_OK, ErrorCode.USER_ACCOUNT_NOT_FOUND)
+            return general_json_response(status.HTTP_200_OK, ErrorCode.USER_ACCOUNT_NOT_FOUND, {"msg": "people not find"})
         people_qs = people_qs.filter(active_code=self.active_code, active_code_valid=True)
         if not people_qs.exists():
             return general_json_response(status.HTTP_200_OK, ErrorCode.USER_ACTIVE_CODE_INVALID)
-        user_qs = None
-        if phone:
-            user_qs = AuthUser.objects.filter(is_active=True, phone=phone)
-        elif email:
-            user_qs = AuthUser.objects.filter(is_active=True, email=email)
-        if user_qs.exists():
-            # 存在关联的帐号，不需要设置密码，直接登录进去
-            user = user_qs[0]
-            user, err_code = UserAccountUtils.user_login_web_without_pwd(request, user)
-            user_info = people_login(request, user, self.get_serializer_context())
-            return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {
-                'login': True, 'user_info': user_info, "login_account": self.account
-            })
-        else:
-            return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {
-                'login': False
-            })
+        # user_qs = None
+        # if phone:
+        #     user_qs = AuthUser.objects.filter(is_active=True, phone=phone)
+        # elif email:
+        #     user_qs = AuthUser.objects.filter(is_active=True, email=email)
+        # if user_qs.exists():
+        #     # 存在关联的帐号，不需要设置密码，直接登录进去
+        #     user = user_qs[0]
+        #     user, err_code = UserAccountUtils.user_login_web_without_pwd(request, user)
+        #     user_info = people_login(request, user, self.get_serializer_context())
+        #     return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {
+        #         'login': False, 'user_info': user_info, "login_account": self.account
+        #     })
+        # else:
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {
+            'login': False
+        })
 
 
 class PeopleActiveCodeLoginSetPwdView(AuthenticationExceptView, WdCreateAPIView):
@@ -220,13 +220,15 @@ class PeopleActiveCodeLoginSetPwdView(AuthenticationExceptView, WdCreateAPIView)
             user_qs = AuthUser.objects.filter(is_active=True, phone=phone)
         elif email:
             user_qs = AuthUser.objects.filter(is_active=True, email=email)
-        if user_qs.exists():
-            # 存在关联的帐号， 不能设置密码生成帐号
-            return general_json_response(status.HTTP_200_OK, ErrorCode.USER_ACCOUNT_EXISTS)
         # 创建帐号
         people = people_qs[0]
-        user, code = UserAccountUtils.user_register(
-            self.pwd, phone=phone, email=email, role_type=AuthUser.ROLE_NORMAL)
+        if not user_qs.exists():
+            user, code = UserAccountUtils.user_register(
+                self.pwd, phone=phone, email=email, role_type=AuthUser.ROLE_NORMAL)
+        else:
+            user = user_qs[0]
+            user.password = make_password(self.pwd)
+            user.save()
         user, err_code = UserAccountUtils.user_login_web(request, user, self.pwd)
         user_info = people_login(request, user, self.get_serializer_context())
         people.user_id = user.id
@@ -307,6 +309,10 @@ class PeopleRegisterView(AuthenticationExceptView, WdCreateAPIView):
         # if porgs_check_qs.count() > 1:
         #     return ErrorCode.PROJECT_ORG_CODE_DOUBLE_ERROR, None   # 组织码重复
 
+        assess_id_qs = AssessOrganization.objects.filter_active(
+            organization_code=org_code).values_list("assess_id", flat=True)
+        if not assess_id_qs.exists():
+            return ErrorCode.USER_ORG_CODE_VALID, None
         phone = email = None
         if RegularUtils.phone_check(account):
             people_qs = People.objects.filter_active(phone=account)
@@ -315,7 +321,7 @@ class PeopleRegisterView(AuthenticationExceptView, WdCreateAPIView):
             people_qs = People.objects.filter_active(email=account)
             email = account
         else:
-            return ErrorCode.INVALID_INPUT
+            return ErrorCode.INVALID_INPUT, None
         user, code = UserAccountUtils.user_register(
             pwd, phone=phone, email=email, role_type=AuthUser.ROLE_NORMAL)
         if not people_qs.exists():
@@ -337,7 +343,7 @@ class PeopleRegisterView(AuthenticationExceptView, WdCreateAPIView):
         people_qs.update(user_id=user.id)
         # 加入项目
         people_id = pids[0]
-        assess_id = AssessOrganization.objects.filter_active(organization_code=org_code).values_list("assess_id", flat=True)[0]
+        assess_id = assess_id_qs[0]
         send_one_user_survey(assess_id, people_id)
         return ErrorCode.SUCCESS, user
 
@@ -731,7 +737,45 @@ class PeopleSurveyReportListView(WdListAPIView):
         people_ids = People.objects.filter_active(user_id=user_id).values_list("id", flat=True)
         qs = qs.filter(people_id__in=list(people_ids), status__gt=PeopleSurveyRelation.STATUS_DOING)
         qs = qs.filter(report_status__gt=PeopleSurveyRelation.REPORT_INIT)
-        return super(PeopleSurveyReportListView, self).qs_filter(qs)
+        # 360测评，他评人员看不到报告
+        qs = qs.filter(role_type__lt=PeopleSurveyRelation.ROLE_TYPE_HIGHER_LEVEL)
+        # 普通测评，自评 ID
+        qs_ids = list(qs.values_list("id", flat=True))
+        # 他评 ID
+        evaluate_ids = list(PeopleSurveyRelation.objects.filter_active(
+            role_type__gt=PeopleSurveyRelation.ROLE_TYPE_SELF,
+            evaluated_people_id__in=list(people_ids),
+            status__gt=PeopleSurveyRelation.STATUS_DOING,
+            report_status__gt=PeopleSurveyRelation.REPORT_INIT
+        ).values_list("id", flat=True))
+        result_ids = list(set(qs_ids + evaluate_ids))
+        qs = PeopleSurveyRelation.objects.filter_active(id__in=result_ids)
+        if not self.FILTER_FIELDS:
+            return qs
+        for filter_field in self.FILTER_FIELDS:
+            field_value = self.request.GET.get(filter_field, None)
+            if field_value:
+                if int(field_value) == PeopleSurveyRelation.REPORT_FAILED:
+                    # 报告生成失败的不返回
+                    qs = qs.filter(id=0)
+                if int(field_value) == PeopleSurveyRelation.REPORT_GENERATING:
+                    qs = qs.filter(report_status__in=[PeopleSurveyRelation.REPORT_FAILED, PeopleSurveyRelation.REPORT_GENERATING])
+                if int(field_value) == PeopleSurveyRelation.REPORT_SUCCESS:
+                    qs = qs.filter(report_status=PeopleSurveyRelation.REPORT_SUCCESS)
+
+        # 他评报告， 只返回最新的一份
+        # old_id = qs.values_list("id", flat=True)
+        # user_id = self.request.user.id
+        # print user_id
+        # print qs.values_list("id", "finish_time", "people_id")
+        qs_old = qs.exclude(people_id=people_ids[0]).order_by("-finish_time")
+        print qs_old.values_list("id", "finish_time")
+        use_less_id = list(qs_old.values_list("id", flat=True))
+        print use_less_id
+        if len(use_less_id):
+            qs = qs.exclude(id__in=use_less_id[1:])
+
+        return qs
 
     def custom_data_results(self, detail):
         language = self.request.GET.get("language", SurveyAlgorithm.LANGUAGE_ZH)
@@ -868,8 +912,8 @@ class PeopleQuestionListView(WdListAPIView):
                         if question_type in [Question.QUESTION_TYPE_SINGLE, Question.QUESTION_TYPE_MULTI]:
                             # 单选 多选
                             random.shuffle(question["options"]["option_data"])
-                        elif question_type == Question.QUESTION_TYPE_MUTEXT:
-                            # 互斥
+                        elif question_type in [Question.QUESTION_TYPE_MUTEXT, Question.QUESTION_TYPE_FORCE_ORDER_QUESTION]:
+                            # 互斥, 迫选排序题
                             random.shuffle(question["options"]["options"])
                         # elif question_type == Question.QUESTION_TYPE_SLIDE:
                         elif question_type in [Question.QUESTION_TYPE_SLIDE, Question.QUESTION_TYPE_NINE_SLIDE]:
@@ -899,8 +943,8 @@ class PeopleQuestionListView(WdListAPIView):
                             if random.randint(0, 1):
                                 new_data = list(reversed(question["options"]["option_data"])) #random.shuffle(question["options"]["option_data"])
                                 question["options"]["option_data"] = new_data
-                        elif question_type == Question.QUESTION_TYPE_MUTEXT:
-                            # 互斥
+                        elif question_type in [Question.QUESTION_TYPE_MUTEXT, Question.QUESTION_TYPE_FORCE_ORDER_QUESTION]:
+                            # 互斥, 迫排
                             if random.randint(0, 1):
                                 new_data = list(reversed(question["options"]["options"]))
                                 question["options"]["options"] = new_data
@@ -1323,7 +1367,19 @@ class UserAnswerQuestionView(WdListCreateAPIView):
                 evaluated_people_id=self.evaluated_people_id,
                 status=PeopleSurveyRelation.STATUS_FINISH
         ).exists():
-            return general_json_response(status.HTTP_200_OK, ErrorCode.PERMISSION_FAIL)
+            return general_json_response(status.HTTP_200_OK, ErrorCode.SURVEY_FINISH_PART_ERROR, {"mag": "您已提交不可重复提交"})
+        if self.block_id:
+            if UserSurveyBlockStatus.objects.filter_active(
+                people_id=people.id,
+                survey_id=self.survey_id,
+                project_id=self.project_id,
+                block_id=self.block_id,
+                status=UserSurveyBlockStatus.STATUS_READ,
+                is_finish=True,
+                role_type=self.role_type,
+                evaluated_people_id=self.evaluated_people_id
+            ).exists():
+                return general_json_response(status.HTTP_200_OK, ErrorCode.SURVEY_FINISH_PART_ERROR, {"mag": "您已提交不可重复提交"})
         question_map = {}
         for question in self.questions:
             question_id = question.get("question_id", None)
@@ -1397,10 +1453,16 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
         "C2": 'self.get_c2_value',
         # 员工自我提升
         'YGZWTS': 'self.get_ygzwts_value',
+        # 0117 领导风格
+        "LeaderStyle": 'self.get_ldfg_value',
         # 行为风格
         "BehavioralStyle": 'self.get_xwfg_value',
-        # 职业定向
+        # 职业个性
         "ZYDX": 'self.get_zydx_value',
+        # 中高层180
+        "ZGC180": 'self.get_zgc180_value',
+        # 中高层90
+        "ZGC90": 'self.get_zgc90_value',
     }
 
     def get_ygzwts_value(self, personal_result_id):
@@ -1502,8 +1564,10 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                 people_result = PeopleSurveyRelation.objects.get(id=personal_result_id)
             people = People.objects.get(id=people_result.people_id)
             default_data["msg"]["Name"] = people.display_name
-            default_data["msg"]["Sex"] = people.get_info_value("性别", "未知")
-            default_data["msg"]["Age"] = people.get_info_value("年龄", "未知")
+            default_data["msg"]["Sex"] = people.get_info_value(u"性别", u"未知")
+            default_data["msg"]["Age"] = people.get_info_value(u"年龄", u"未知")
+            if type(default_data["msg"]["Age"]) == int:
+                default_data["msg"]["Age"] = "{}".format(default_data["msg"]["Age"])
             used_time = people_result.used_time
             default_data["msg"]["CompletionTime"] = u"%s分%s秒" % (used_time / 60, used_time % 60)
             default_data["msg"]["Validation"] = people_result.praise_score
@@ -1558,8 +1622,10 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                 people_result = PeopleSurveyRelation.objects.get(id=personal_result_id)
             people = People.objects.get(id=people_result.people_id)
             default_data["msg"]["Name"] = people.display_name
-            default_data["msg"]["Sex"] = people.get_info_value("性别", "未知")
-            default_data["msg"]["Age"] = people.get_info_value("年龄", "未知")
+            default_data["msg"]["Sex"] = people.get_info_value(u"性别", u"未知")
+            default_data["msg"]["Age"] = people.get_info_value(u"年龄", u"未知")
+            if type(default_data["msg"]["Age"]) == int:
+                default_data["msg"]["Age"] = "{}".format(default_data["msg"]["Age"])
             used_time = people_result.used_time
             default_data["msg"]["CompletionTime"] = u"%s分%s秒" % (used_time / 60, used_time % 60)
             default_data["msg"]["Validation"] = people_result.praise_score
@@ -1680,6 +1746,8 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             default_data["msg"]["Name"] = people.display_name
             default_data["msg"]["Sex"] = people.get_info_value(u"性别", u"未知")
             default_data["msg"]["Age"] = people.get_info_value(u"年龄", u"未知")
+            if type(default_data["msg"]["Age"]) == int:
+                default_data["msg"]["Age"] = "{}".format(default_data["msg"]["Age"])
             substandard_score_map = people_result.substandard_score_map
             # difference
             for info in default_data["msg"]["ChartSelfImage_Indicator"]:
@@ -1743,8 +1811,10 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                 people_result = PeopleSurveyRelation.objects.get(id=personal_result_id)
             people = People.objects.get(id=people_result.people_id)
             default_data["msg"]["Name"] = people.display_name
-            default_data["msg"]["Sex"] = people.get_info_value("性别", "未知")
-            default_data["msg"]["Age"] = people.get_info_value("年龄", "未知")
+            default_data["msg"]["Sex"] = people.get_info_value(u"性别", u"未知")
+            default_data["msg"]["Age"] = people.get_info_value(u"年龄", u"未知")
+            if type(default_data["msg"]["Age"]) == int:
+                default_data["msg"]["Age"] = "{}".format(default_data["msg"]["Age"])
             used_time = people_result.used_time
             default_data["msg"]["CompletionTime"] = u"%s分%s秒" % (used_time / 60, used_time % 60)
             default_data["msg"]["Validation"] = people_result.praise_score
@@ -1802,6 +1872,8 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             default_data["msg"]["Name"] = people.display_name
             default_data["msg"]["Sex"] = people.get_info_value("性别", "不详")
             default_data["msg"]["Age"] = people.get_info_value("年龄", "不详")
+            if type(default_data["msg"]["Age"]) == int:
+                default_data["msg"]["Age"] = "{}".format(default_data["msg"]["Age"])
             if people_result.finish_time:
                 default_data["msg"]["TestTime"] = time_format4(people_result.finish_time)
             else:
@@ -1869,6 +1941,8 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             default_data["msg"]["Name"] = people.display_name
             default_data["msg"]["Sex"] = people.get_info_value("性别", "unknown")
             default_data["msg"]["Age"] = people.get_info_value("年龄", "unknown")
+            if type(default_data["msg"]["Age"]) == int:
+                default_data["msg"]["Age"] = "{}".format(default_data["msg"]["Age"])
             if people_result.finish_time:
                 default_data["msg"]["TestTime"] = time_format4(people_result.finish_time)
             else:
@@ -2017,6 +2091,8 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             default_data["msg"]["Name"] = people.display_name
             default_data["msg"]["Sex"] = people.get_info_value("性别", "不详")
             default_data["msg"]["Age"] = people.get_info_value("年龄", "不详")
+            if type(default_data["msg"]["Age"]) == int:
+                default_data["msg"]["Age"] = "{}".format(default_data["msg"]["Age"])
             if people_result.finish_time:
                 default_data["msg"]["TestTime"] = time_format5(people_result.finish_time)
             else:
@@ -2215,7 +2291,60 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             return default_data, ErrorCode.INVALID_INPUT
         return default_data, ErrorCode.SUCCESS
 
-    #  行为风格算法 获取值
+    # 0117 领导风格算法 获取值
+    def get_ldfg_value(self, personal_result_id):
+        u"""领导风格算法"""
+
+        default_data = {
+            "msg": {
+                "Name": "gljt002200",
+                "Sex": "男",
+                "Age": "未知",
+                "TestTime": "2018.12.13",
+                "chart": [
+                    {'name': u'高压风格', 'score': 80},
+                    {'name': u'权威风格', 'score': 30},
+                    {'name': u'亲和风格', 'score': 50},
+                    {'name': u'民主风格', 'score': 10},
+                    {'name': u'模范风格', 'score': 15},
+                    {'name': u'教练风格', 'score': 8},
+                ],
+            },
+            "report_type": "领导风格模板"
+        }
+        try:
+            people_result = PeopleSurveyRelation.objects.get(
+                id=personal_result_id
+            )
+            if people_result.status != PeopleSurveyRelation.STATUS_FINISH:
+                return default_data, ErrorCode.INVALID_INPUT
+            # if not people_result.dimension_score or not people_result.substandard_score:
+                # SurveyAlgorithm.algorithm_gzjzg(personal_result_id)
+            time.sleep(0.3)
+            SurveyAlgorithm.algorithm_ldfg(personal_result_id)
+            people_result = PeopleSurveyRelation.objects.get(id=personal_result_id)
+            people = People.objects.get(id=people_result.people_id)
+            default_data["msg"]["Name"] = people.display_name
+            default_data["msg"]["Sex"] = people.get_info_value(u"性别", u"未知")
+            default_data["msg"]["Age"] = people.get_info_value(u"年龄", u"未知")
+            if type(default_data["msg"]["Age"]) == int:
+                default_data["msg"]["Age"] = "{}".format(default_data["msg"]["Age"])
+            if people_result.finish_time:
+                default_data["msg"]["TestTime"] = time_format4(people_result.finish_time)
+            else:
+                default_data["msg"]["TestTime"] = time_format4(datetime.datetime.now())
+            substandard_score_map = people_result.substandard_score_map
+            for info in default_data["msg"]["chart"]:
+                for substandard_id in substandard_score_map:
+                    if substandard_score_map[substandard_id]["name"] == info["name"]:
+                        info["score"] = substandard_score_map[substandard_id]["normsdist_score"]
+                        break
+        except Exception, e:
+            logger.error("get report data error, msg: %s" % e)
+            return default_data, ErrorCode.INVALID_INPUT
+        return default_data, ErrorCode.SUCCESS
+
+    # 0117 行为风格算法 获取值
     def get_xwfg_value(self, personal_result_id):
         u"""行为风格算法"""
         default_data = {
@@ -2248,13 +2377,15 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                 return default_data, ErrorCode.INVALID_INPUT
             # if not people_result.dimension_score or not people_result.substandard_score:
                 # SurveyAlgorithm.algorithm_gzjzg(personal_result_id)
-            time.sleep(2)
+            time.sleep(0.3)
             SurveyAlgorithm.algorithm_xwfg(personal_result_id, form_type=Survey.FORM_TYPE_NORMAL)
             people_result = PeopleSurveyRelation.objects.get(id=personal_result_id)
             people = People.objects.get(id=people_result.people_id)
             default_data["msg"]["Name"] = people.display_name
             default_data["msg"]["Sex"] = people.get_info_value(u"性别", u"未知")
             default_data["msg"]["Age"] = people.get_info_value(u"年龄", u"未知")
+            if type(default_data["msg"]["Age"]) == int:
+                default_data["msg"]["Age"] = "{}".format(default_data["msg"]["Age"])
             used_time = people_result.used_time
             default_data["msg"]["CompletionTime"] = u"%s分%s秒" % (used_time / 60, used_time % 60)
             # try:
@@ -2285,7 +2416,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             return default_data, ErrorCode.INVALID_INPUT
         return default_data, ErrorCode.SUCCESS
 
-    #  职业定向算法 获取值
+    # 0117 职业定向算法 获取值
     def get_zydx_value(self, personal_result_id):
         u"""职业定向算法"""
         default_data = {
@@ -2314,7 +2445,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             )
             if people_result.status != PeopleSurveyRelation.STATUS_FINISH:
                 return default_data, ErrorCode.INVALID_INPUT
-            time.sleep(2)
+            time.sleep(0.3)
             # if not people_result.dimension_score or not people_result.substandard_score:
                 # SurveyAlgorithm.algorithm_gzjzg(personal_result_id)
             SurveyAlgorithm.algorithm_zydx(personal_result_id, form_type=Survey.FORM_TYPE_NORMAL)
@@ -2323,6 +2454,8 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             default_data["msg"]["Name"] = people.display_name
             default_data["msg"]["Sex"] = people.get_info_value(u"性别", u"未知")
             default_data["msg"]["Age"] = people.get_info_value(u"年龄", u"未知")
+            if type(default_data["msg"]["Age"]) == int:
+                default_data["msg"]["Age"] = "{}".format(default_data["msg"]["Age"])
             if people_result.finish_time:
                 default_data["msg"]["TestTime"] = time_format4(people_result.finish_time)
             else:
@@ -2332,6 +2465,415 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                 for dimension_id in dimension_score_map:
                     if dimension_score_map[dimension_id]["name"][:1] == info["name"][:1]:
                         info["score"] = dimension_score_map[dimension_id]["score"]
+                        break
+        except Exception, e:
+            logger.error("get report data error, msg: %s" % e)
+            return default_data, ErrorCode.INVALID_INPUT
+        return default_data, ErrorCode.SUCCESS
+
+    # 中高层180
+    def get_zgc180_value(self, personal_result_id):
+        u"""中高层180算法"""
+        default_data = {
+            "report_type": "中高层180模板",
+            "msg": {
+                "Name": "666",
+                "Sex": "男",
+                "Age": "25",
+                "TestTime": "2018.10.12",
+                # "chart11": [{"name": "积极进取", "score": 2},
+                #             {"name": "勇于担当", "score": 2},
+                #             {"name": "正直诚信", "score": 2},
+                #             {"name": "系统思维", "score": 3},
+                #             {"name": "变革管理", "score": 2},
+                #             {"name": "客户导向", "score": 2},
+                #             {"name": "创新优化", "score": 3},
+                #             {"name": "团队领导", "score": 3},
+                #             {"name": "跨界协同", "score": 4},
+                #             {"name": "资源整合", "score": 2},
+                #             ],
+                # 自评原始维度
+                "chart11": [{"name": "积极进取", "score": 2},
+                            {"name": "勇于担当", "score": 2},
+                            {"name": "正直诚信", "score": 2},
+                            {"name": "系统思维", "score": 3},
+                            {"name": "变革管理", "score": 2},
+                            {"name": "客户导向", "score": 2},
+                            {"name": "创新优化", "score": 3},
+                            {"name": "团队领导", "score": 3},
+                            {"name": "跨界协同", "score": 4},
+                            {"name": "资源整合", "score": 2},
+                            ],
+                # 他评原始维度
+                # name  维度名称，score: 维度分    他评
+                "chart12": [{"name": "积极进取", "score": 2},
+                            {"name": "勇于担当", "score": 2},
+                            {"name": "正直诚信", "score": 3},
+                            {"name": "系统思维", "score": 3},
+                            {"name": "变革管理", "score": 4},
+                            {"name": "客户导向", "score": 2},
+                            {"name": "创新优化", "score": 3},
+                            {"name": "团队领导", "score": 3},
+                            {"name": "跨界协同", "score": 2},
+                            {"name": "资源整合", "score": 2},
+                            ],
+
+                # name  维度名称，score: 维度分    自评
+                "chart": [
+                    {"name": u"积极进取", "score": 2},
+                    {"name": u"勇于担当", "score": 2},
+                    {"name": u"正直诚信", "score": 2},
+                    {"name": u"系统思维", "score": 3},
+                    {"name": u"变革管理", "score": 2},
+                    {"name": u"客户导向", "score": 2},
+                    {"name": u"创新优化", "score": 3},
+                    {"name": u"团队领导", "score": 3},
+                    {"name": u"跨界协同", "score": 4},
+                    {"name": u"资源整合", "score": 2},
+                      ],
+                # name  维度名称，score: 维度分     他评
+                "chart1": [
+                    {"name": u"积极进取", "score": 2},
+                    {"name": u"勇于担当", "score": 2},
+                    {"name": u"正直诚信", "score": 3},
+                    {"name": u"系统思维", "score": 3},
+                    {"name": u"变革管理", "score": 4},
+                    {"name": u"客户导向", "score": 2},
+                    {"name": u"创新优化", "score": 3},
+                    {"name": u"团队领导", "score": 3},
+                    {"name": u"跨界协同", "score": 2},
+                    {"name": u"资源整合", "score": 2},
+                       ],
+                # name1  维度名称，name  指标（即行为）   score: 指标分     自评
+                "chart2": [
+                    {"name1": u"积极进取", 'name': u'为自己设置挑战性目标', "score": 2},
+                    {"name1": u"积极进取", 'name': u'自我激发，从内心寻求动力', "score": 2},
+                    {"name1": u"积极进取", 'name': u'会付出额外的努力', "score": 2},
+                    {"name1": u"积极进取", 'name': u'积极寻求解决办法，坚持不懈', "score": 2},
+
+                    {"name1": u"勇于担当", 'name': u'明确职责，主动承担责任', "score": 2},
+                    {"name1": u"勇于担当", 'name': u'以目标为导向，完成工作', "score": 2},
+                    {"name1": u"勇于担当", 'name': u'有责无疆，积极推进', "score": 2},
+                    {"name1": u"勇于担当", 'name': u'挺身而出，成为依靠', "score": 2},
+
+                    {"name1": u"正直诚信", 'name': u'做事规范坦率真诚', "score": 3},
+                    {"name1": u"正直诚信", 'name': u'言行一致遵守承诺', "score": 3},
+                    {"name1": u"正直诚信", 'name': u'处事公平公正', "score": 3},
+                    {"name1": u"正直诚信", 'name': u'敢于当面直谏', "score": 3},
+
+                    {"name1": u"系统思维", 'name': u'原因识别及构建解决方案', "score": 3},
+                    {"name1": u"系统思维", 'name': u'过程管控与跟踪', "score": 3},
+                    {"name1": u"系统思维", 'name': u'前瞻性分析', "score": 3},
+                    {"name1": u"系统思维", 'name': u'问题发现及分析', "score": 3},
+
+                    {"name1": u"变革管理", 'name': u'理解变革', "score": 2},
+                    {"name1": u"变革管理", 'name': u'愿景塑造', "score": 2},
+                    {"name1": u"变革管理", 'name': u'管理阻抗', "score": 2},
+                    {"name1": u"变革管理", 'name': u'捍卫变革', "score": 2},
+
+                    {"name1": u"客户导向", 'name': u'换位思考，构建解决方案', "score": 2},
+                    {"name1": u"客户导向", 'name': u'倾听并及时反馈', "score": 2},
+                    {"name1": u"客户导向", 'name': u'主动关注提升满意度', "score": 2},
+                    {"name1": u"客户导向", 'name': u'协调资源超越期望', "score": 2},
+
+                    {"name1": u"创新优化", 'name': u'打造创新机制及氛围', "score": 3},
+                    {"name1": u"创新优化", 'name': u'主动关注新事物', "score": 3},
+                    {"name1": u"创新优化", 'name': u'勇于尝试持续创新', "score": 3},
+                    {"name1": u"创新优化", 'name': u'借鉴经验，快速有效优化', "score": 3},
+
+                    {"name1": u"团队领导", 'name': u'理解高效团队的重要性', "score": 3},
+                    {"name1": u"团队领导", 'name': u'高效合理授权', "score": 3},
+                    {"name1": u"团队领导", 'name': u'塑造团队文化', "score": 3},
+                    {"name1": u"团队领导", 'name': u'多形式学习交流', "score": 3},
+
+                    {"name1": u"跨界协同", 'name': u'调节冲突，达至双赢', "score": 2},
+                    {"name1": u"跨界协同", 'name': u'建立合作机制，实现效能最大化', "score": 2},
+                    {"name1": u"跨界协同", 'name': u'理解其他部门需求及利益', "score": 2},
+                    {"name1": u"跨界协同", 'name': u'换位思考，促进协作', "score": 2},
+
+                    {"name1": u"资源整合", 'name': u'主动共享信息', "score": 2},
+                    {"name1": u"资源整合", 'name': u'形成固有并可持续的模式', "score": 2},
+                    {"name1": u"资源整合", 'name': u'主动争取和协调资源', "score": 2},
+                    {"name1": u"资源整合", 'name': u'转变思维，扩展资源渠道', "score": 2},
+                ],
+                # name1  维度名称，name  指标（即行为）   score: 指标分     他评
+                "chart3": [
+                    {"name1": u"积极进取", 'name': u'为自己设置挑战性目标', "score": 2},
+                    {"name1": u"积极进取", 'name': u'自我激发，从内心寻求动力', "score": 2},
+                    {"name1": u"积极进取", 'name': u'会付出额外的努力', "score": 2},
+                    {"name1": u"积极进取", 'name': u'积极寻求解决办法，坚持不懈', "score": 2},
+
+                    {"name1": u"勇于担当", 'name': u'明确职责，主动承担责任', "score": 2},
+                    {"name1": u"勇于担当", 'name': u'以目标为导向，完成工作', "score": 2},
+                    {"name1": u"勇于担当", 'name': u'有责无疆，积极推进', "score": 2},
+                    {"name1": u"勇于担当", 'name': u'挺身而出，成为依靠', "score": 2},
+
+                    {"name1": u"正直诚信", 'name': u'做事规范坦率真诚', "score": 3},
+                    {"name1": u"正直诚信", 'name': u'言行一致遵守承诺', "score": 3},
+                    {"name1": u"正直诚信", 'name': u'处事公平公正', "score": 3},
+                    {"name1": u"正直诚信", 'name': u'敢于当面直谏', "score": 3},
+
+                    {"name1": u"系统思维", 'name': u'原因识别及构建解决方案', "score": 3},
+                    {"name1": u"系统思维", 'name': u'过程管控与跟踪', "score": 3},
+                    {"name1": u"系统思维", 'name': u'前瞻性分析', "score": 3},
+                    {"name1": u"系统思维", 'name': u'问题发现及分析', "score": 3},
+
+                    {"name1": u"变革管理", 'name': u'理解变革', "score": 2},
+                    {"name1": u"变革管理", 'name': u'愿景塑造', "score": 2},
+                    {"name1": u"变革管理", 'name': u'管理阻抗', "score": 2},
+                    {"name1": u"变革管理", 'name': u'捍卫变革', "score": 2},
+
+                    {"name1": u"客户导向", 'name': u'换位思考，构建解决方案', "score": 2},
+                    {"name1": u"客户导向", 'name': u'倾听并及时反馈', "score": 2},
+                    {"name1": u"客户导向", 'name': u'主动关注提升满意度', "score": 2},
+                    {"name1": u"客户导向", 'name': u'协调资源超越期望', "score": 2},
+
+                    {"name1": u"创新优化", 'name': u'打造创新机制及氛围', "score": 3},
+                    {"name1": u"创新优化", 'name': u'主动关注新事物', "score": 3},
+                    {"name1": u"创新优化", 'name': u'勇于尝试持续创新', "score": 3},
+                    {"name1": u"创新优化", 'name': u'借鉴经验，快速有效优化', "score": 3},
+
+                    {"name1": u"团队领导", 'name': u'理解高效团队的重要性', "score": 3},
+                    {"name1": u"团队领导", 'name': u'高效合理授权', "score": 3},
+                    {"name1": u"团队领导", 'name': u'塑造团队文化', "score": 3},
+                    {"name1": u"团队领导", 'name': u'多形式学习交流', "score": 3},
+
+                    {"name1": u"跨界协同", 'name': u'调节冲突，达至双赢', "score": 2},
+                    {"name1": u"跨界协同", 'name': u'建立合作机制，实现效能最大化', "score": 2},
+                    {"name1": u"跨界协同", 'name': u'理解其他部门需求及利益', "score": 2},
+                    {"name1": u"跨界协同", 'name': u'换位思考，促进协作', "score": 2},
+
+                    {"name1": u"资源整合", 'name': u'主动共享信息', "score": 2},
+                    {"name1": u"资源整合", 'name': u'形成固有并可持续的模式', "score": 2},
+                    {"name1": u"资源整合", 'name': u'主动争取和协调资源', "score": 2},
+                    {"name1": u"资源整合", 'name': u'转变思维，扩展资源渠道', "score": 2},
+                ],
+            }
+        }
+        try:
+            dimension_id_name_map = {}
+            people_result = PeopleSurveyRelation.objects.get(
+                id=personal_result_id
+            )
+            if people_result.status != PeopleSurveyRelation.STATUS_FINISH:
+                return default_data, ErrorCode.INVALID_INPUT
+            # if not people_result.dimension_score or not people_result.substandard_score:
+                # SurveyAlgorithm.algorithm_gzjzg(personal_result_id)
+            time.sleep(0.3)
+            SurveyAlgorithm.algorithm_zgc180(personal_result_id, form_type=Survey.FORM_TYPE_NORMAL)
+            # 算完分都重定义被评价人
+            psr_qs = PeopleSurveyRelation.objects.get(id=personal_result_id)
+            o_qs = PeopleSurveyRelation.objects.filter(project_id=psr_qs.project_id,
+                                                       evaluated_people_id=psr_qs.evaluated_people_id,
+                                                       people_id=psr_qs.evaluated_people_id,
+                                                       status=PeopleSurveyRelation.STATUS_FINISH)
+            if not o_qs.exists():
+                # 该他评没有自评
+                logger.info("%s for ZGC180 not self ZGC180" % personal_result_id)
+                return
+            else:
+
+                personal_result_id = o_qs[0].id
+
+
+            people_result = PeopleSurveyRelation.objects.get(id=personal_result_id)
+            people = People.objects.get(id=people_result.people_id)
+            default_data["msg"]["Name"] = people.display_name
+            default_data["msg"]["Sex"] = people.get_info_value(u"性别", u"未知")
+            default_data["msg"]["Age"] = people.get_info_value(u"年龄", u"未知")
+            if type(default_data["msg"]["Age"]) == int:
+                default_data["msg"]["Age"] = "{}".format(default_data["msg"]["Age"])
+            if people_result.finish_time:
+                default_data["msg"]["TestTime"] = time_format4(people_result.finish_time)
+            else:
+                default_data["msg"]["TestTime"] = time_format4(datetime.datetime.now())
+            # 自评维度
+            dimension_score_map = people_result.dimension_score_map["self"]
+            for info in default_data["msg"]["chart"]:
+                for dimension_id in dimension_score_map:
+                    if dimension_score_map[dimension_id]["name"][0:2] == info["name"][0:2]:
+                        dimension_id_name_map[dimension_id] = dimension_score_map[dimension_id]["name"]
+                        info["score"] = dimension_score_map[dimension_id]["score"]
+                        break
+            #  自评维度原始
+            for info in default_data["msg"]["chart11"]:
+                for dimension_id in dimension_score_map:
+                    if dimension_score_map[dimension_id]["name"][0:2] == info["name"][0:2]:
+                        # dimension_id_name_map[dimension_id] = dimension_score_map[dimension_id]["name"]
+                        info["score"] = dimension_score_map[dimension_id]["row_score"]
+                        break
+            # 自评子标
+            substandard_score_map = people_result.substandard_score_map["self"]
+            for info in default_data["msg"]["chart2"]:
+                for substandard_id in substandard_score_map:
+                    if substandard_score_map[substandard_id]["name"][0:3] == info["name"][0:3] and info["name1"][0:2] == substandard_score_map[substandard_id]["name1"][0:2]:
+                    # if substandard_score_map[substandard_id]["name"][0:4] == info["name"]:
+                        info["score"] = substandard_score_map[substandard_id]["score"]
+                        # info["name1"] = dimension_id_name_map[str(substandard_score_map[substandard_id]["dimension_id"])]
+                        break
+            # # 他评维度
+            dimension_score_map = people_result.dimension_score_map["others"]
+            for info in default_data["msg"]["chart1"]:
+                for dimension_id in dimension_score_map:
+                    if dimension_score_map[dimension_id]["name"][0:2] == info["name"][0:2]:
+                        dimension_id_name_map[dimension_id] = dimension_score_map[dimension_id]["name"]
+                        info["score"] = round(dimension_score_map[dimension_id]["score"])
+                        break
+            # 他评维度原始
+            for info in default_data["msg"]["chart12"]:
+                for dimension_id in dimension_score_map:
+                    if dimension_score_map[dimension_id]["name"][0:2] == info["name"][0:2]:
+                        # dimension_id_name_map[dimension_id] = dimension_score_map[dimension_id]["name"]
+                        info["score"] = dimension_score_map[dimension_id]["score"]
+                        break
+            # # 他评子标
+            substandard_score_map = people_result.substandard_score_map["others"]
+            for info in default_data["msg"]["chart3"]:
+                for substandard_id in substandard_score_map:
+                    if substandard_score_map[substandard_id]["name"][0:3] == info["name"][0:3] and info["name1"][0:2] == substandard_score_map[substandard_id]["name1"][0:2]:
+                    # if substandard_score_map[substandard_id]["name"] == info["name"]:
+                        info["score"] = substandard_score_map[substandard_id]["score"]
+                        # info["name1"] = dimension_id_name_map[str(substandard_score_map[substandard_id]["dimension_id"])]
+                        break
+        except Exception, e:
+            logger.error("get report data error, msg: %s" % e)
+            return default_data, ErrorCode.INVALID_INPUT
+        return default_data, ErrorCode.SUCCESS
+
+    # 中高层90
+    def get_zgc90_value(self, personal_result_id):
+        u"""中高层90算法"""
+        default_data = {
+            "report_type": "中高层90模板",
+            "msg": {
+                "Name": "666",
+                "Sex": "男",
+                "Age": "25",
+                "TestTime": "2018.10.12",
+                # name  维度名称，score: 维度分    自评 ， 新增维度原始分
+                "chart11": [{"name": "积极进取", "score": 2},
+                            {"name": "勇于担当", "score": 2},
+                            {"name": "正直诚信", "score": 2},
+                            {"name": "系统思维", "score": 3},
+                            {"name": "变革管理", "score": 2},
+                            {"name": "客户导向", "score": 2},
+                            {"name": "创新优化", "score": 3},
+                            {"name": "团队领导", "score": 3},
+                            {"name": "跨界协同", "score": 4},
+                            {"name": "资源整合", "score": 2},
+                            ],
+
+                # name  维度名称，score: 维度分    自评
+                "chart": [
+                    {"name": u"积极进取", "score": 2},
+                    {"name": u"勇于担当", "score": 2},
+                    {"name": u"正直诚信", "score": 2},
+                    {"name": u"系统思维", "score": 3},
+                    {"name": u"变革管理", "score": 2},
+                    {"name": u"客户导向", "score": 2},
+                    {"name": u"创新优化", "score": 3},
+                    {"name": u"团队领导", "score": 3},
+                    {"name": u"跨界协同", "score": 4},
+                    {"name": u"资源整合", "score": 2},
+                ],
+            # name1  维度名称，name  指标（即行为）   score: 指标分     自评
+                "chart2": [
+                    {"name1": u"积极进取", 'name': u'为自己设置挑战性目标', "score": 2},
+                    {"name1": u"积极进取", 'name': u'自我激发，从内心寻求动力', "score": 2},
+                    {"name1": u"积极进取", 'name': u'会付出额外的努力', "score": 2},
+                    {"name1": u"积极进取", 'name': u'积极寻求解决办法，坚持不懈', "score": 2},
+
+                    {"name1": u"勇于担当", 'name': u'明确职责，主动承担责任', "score": 2},
+                    {"name1": u"勇于担当", 'name': u'以目标为导向，完成工作', "score": 2},
+                    {"name1": u"勇于担当", 'name': u'有责无疆，积极推进', "score": 2},
+                    {"name1": u"勇于担当", 'name': u'挺身而出，成为依靠', "score": 2},
+
+                    {"name1": u"正直诚信", 'name': u'做事规范坦率真诚', "score": 3},
+                    {"name1": u"正直诚信", 'name': u'言行一致遵守承诺', "score": 3},
+                    {"name1": u"正直诚信", 'name': u'处事公平公正', "score": 3},
+                    {"name1": u"正直诚信", 'name': u'敢于当面直谏', "score": 3},
+
+                    {"name1": u"系统思维", 'name': u'原因识别及构建解决方案', "score": 3},
+                    {"name1": u"系统思维", 'name': u'过程管控与跟踪', "score": 3},
+                    {"name1": u"系统思维", 'name': u'前瞻性分析', "score": 3},
+                    {"name1": u"系统思维", 'name': u'问题发现及分析', "score": 3},
+
+                    {"name1": u"变革管理", 'name': u'理解变革', "score": 2},
+                    {"name1": u"变革管理", 'name': u'愿景塑造', "score": 2},
+                    {"name1": u"变革管理", 'name': u'管理阻抗', "score": 2},
+                    {"name1": u"变革管理", 'name': u'捍卫变革', "score": 2},
+
+                    {"name1": u"客户导向", 'name': u'换位思考，构建解决方案', "score": 2},
+                    {"name1": u"客户导向", 'name': u'倾听并及时反馈', "score": 2},
+                    {"name1": u"客户导向", 'name': u'主动关注提升满意度', "score": 2},
+                    {"name1": u"客户导向", 'name': u'协调资源超越期望', "score": 2},
+
+                    {"name1": u"创新优化", 'name': u'打造创新机制及氛围', "score": 3},
+                    {"name1": u"创新优化", 'name': u'主动关注新事物', "score": 3},
+                    {"name1": u"创新优化", 'name': u'勇于尝试持续创新', "score": 3},
+                    {"name1": u"创新优化", 'name': u'借鉴经验，快速有效优化', "score": 3},
+
+                    {"name1": u"团队领导", 'name': u'理解高效团队的重要性', "score": 3},
+                    {"name1": u"团队领导", 'name': u'高效合理授权', "score": 3},
+                    {"name1": u"团队领导", 'name': u'塑造团队文化', "score": 3},
+                    {"name1": u"团队领导", 'name': u'多形式学习交流', "score": 3},
+
+                    {"name1": u"跨界协同", 'name': u'调节冲突，达至双赢', "score": 2},
+                    {"name1": u"跨界协同", 'name': u'建立合作机制，实现效能最大化', "score": 2},
+                    {"name1": u"跨界协同", 'name': u'理解其他部门需求及利益', "score": 2},
+                    {"name1": u"跨界协同", 'name': u'换位思考，促进协作', "score": 2},
+
+                    {"name1": u"资源整合", 'name': u'主动共享信息', "score": 2},
+                    {"name1": u"资源整合", 'name': u'形成固有并可持续的模式', "score": 2},
+                    {"name1": u"资源整合", 'name': u'主动争取和协调资源', "score": 2},
+                    {"name1": u"资源整合", 'name': u'转变思维，扩展资源渠道', "score": 2},
+                ],
+            }
+        }
+        try:
+            dimension_id_name_map = {}
+            people_result = PeopleSurveyRelation.objects.get(
+                id=personal_result_id
+            )
+            if people_result.status != PeopleSurveyRelation.STATUS_FINISH:
+                return default_data, ErrorCode.INVALID_INPUT
+            # if not people_result.dimension_score or not people_result.substandard_score:
+                # SurveyAlgorithm.algorithm_gzjzg(personal_result_id)
+            time.sleep(0.3)
+            # SurveyAlgorithm.algorithm_zgc(personal_result_id, form_type=Survey.FORM_TYPE_NORMAL)
+            SurveyAlgorithm.algorithm_zgc(personal_result_id)
+            people_result = PeopleSurveyRelation.objects.get(id=personal_result_id)
+            people = People.objects.get(id=people_result.people_id)
+            default_data["msg"]["Name"] = people.display_name
+            default_data["msg"]["Sex"] = people.get_info_value(u"性别", "未知")
+            default_data["msg"]["Age"] = people.get_info_value(u"年龄", "未知")
+            if type(default_data["msg"]["Age"]) == int:
+                default_data["msg"]["Age"] = "{}".format(default_data["msg"]["Age"])
+            if people_result.finish_time:
+                default_data["msg"]["TestTime"] = time_format4(people_result.finish_time)
+            else:
+                default_data["msg"]["TestTime"] = time_format4(datetime.datetime.now())
+            dimension_score_map = people_result.dimension_score_map["self"]
+            # 新增 维度原始分
+            for info in default_data["msg"]["chart11"]:
+                for dimension_id in dimension_score_map:
+                    if dimension_score_map[dimension_id]["name"][:2] == info["name"][:2]:
+                        # dimension_id_name_map[dimension_id] = dimension_score_map[dimension_id]["name"]
+                        info["score"] = dimension_score_map[dimension_id]["row_score"]
+                        break
+            # 原来维度转换分维度
+            for info in default_data["msg"]["chart"]:
+                for dimension_id in dimension_score_map:
+                    if dimension_score_map[dimension_id]["name"][:2] == info["name"][:2]:
+                        dimension_id_name_map[dimension_id] = dimension_score_map[dimension_id]["name"]
+                        info["score"] = dimension_score_map[dimension_id]["score"]
+                        break
+            substandard_score_map = people_result.substandard_score_map["self"]
+            for info in default_data["msg"]["chart2"]:
+                for substandard_id in substandard_score_map:
+                    if substandard_score_map[substandard_id]["name"][0:3] == info["name"][0:3] and info["name1"][0:2] == substandard_score_map[substandard_id]["name1"][0:2]:
+                        info["score"] = substandard_score_map[substandard_id]["score"]
+                        # info["name1"] = dimension_id_name_map[str(substandard_score_map[substandard_id]["dimension_id"])]
                         break
         except Exception, e:
             logger.error("get report data error, msg: %s" % e)

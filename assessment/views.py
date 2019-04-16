@@ -30,6 +30,7 @@ from assessment.tasks import send_survey_active_codes, distribute_project, \
     statistics_user_count, statistics_project_survey_user_count, get_people_list_task, file_task, search_key_words, \
     assess_people_create_in_sql_task, import_assess_user_task_0916
 from front.models import PeopleSurveyRelation, SurveyInfo, SurveyQuestionInfo, UserQuestionAnswerInfo
+from front.tasks import get_360_report
 from question.models import Question
 from research.models import ResearchModel
 from research.serializers import ResearchModelDetailSerializer
@@ -37,6 +38,7 @@ from survey.models import SurveyQuestionResult
 from utils import data2file, zip_folder, get_random_char, get_random_int
 from utils.aliyun.email import EmailUtils
 from utils.aliyun.oss import AliyunOss
+from utils.cache.cache_utils import FileStatusCache
 from utils.excel import ExcelUtils
 from utils.logger import get_logger
 from utils.regular import RegularUtils, Convert
@@ -45,7 +47,7 @@ from utils.views import WdListCreateAPIView, WdRetrieveUpdateAPIView, WdDestroyA
     WdExeclExportView, WdListAPIView, WdCreateAPIView, AuthenticationExceptView
 from wduser.models import PeopleOrganization, People, Organization, AuthUser, RoleUser, RoleBusinessPermission, \
     BusinessPermission, RoleUserBusiness, EnterpriseAccount, PeopleAccount
-from wduser.serializers import PeopleSerializer
+from wduser.serializers import PeopleSerializer, PeopleSerializer360
 from survey.models import Survey
 
 logger = get_logger("assessment")
@@ -257,9 +259,9 @@ class AssessmentListCreateView(WdListCreateAPIView):
         elif order_by == "name":
             return qs.order_by(Convert('name', 'gbk').asc())
         elif order_by == "-test_count":
-            return qs
+            return qs.order_by("-user_count")
         elif order_by == "test_count":
-            return qs
+            return qs.order_by("user_count")
         elif order_by == "-begin_time":
             return qs.order_by("-begin_time")
         elif order_by == "begin_time":
@@ -268,6 +270,7 @@ class AssessmentListCreateView(WdListCreateAPIView):
             return super(AssessmentListCreateView, self).qs_order_by(qs)
 
     def qs_filter(self, qs):
+        get_360_report.delay(self.enterprise_id)
         qs = super(AssessmentListCreateView, self).qs_filter(qs)
         if self.enterprise_id == 'all':
             pass
@@ -575,6 +578,10 @@ class AssessSurveyRelationDistributeView(WdListCreateAPIView):
     GET_CHECK_REQUEST_PARAMETER = ("assess_id", )
 
     def get_all_survey_finish_people_count(self, finish_people_ids, assess_id):
+        """
+        已完成的人数 = 有问卷的人数 - 人中有（未开始，已开放，答卷中, 已过期的人）
+        即，应该问卷中只有已完成卷子的人
+        """
         # 传入有问卷的人， 去掉所有卷子中有 未开始，未完成
         # 已完成的 = 有卷子的 - 有卷子的 - 做了一半的
         not_finish_count = PeopleSurveyRelation.objects.filter_active(project_id=assess_id,
@@ -582,7 +589,8 @@ class AssessSurveyRelationDistributeView(WdListCreateAPIView):
                                                                       status__in=[
                                                                           PeopleSurveyRelation.STATUS_NOT_BEGIN,
                                                                           PeopleSurveyRelation.STATUS_DOING,
-                                                                          PeopleSurveyRelation.STATUS_DOING_PART
+                                                                          PeopleSurveyRelation.STATUS_DOING_PART,
+                                                                          PeopleSurveyRelation.STATUS_EXPIRED
                                                                       ]
                                                                       ).values_list(
             "people_id", flat=True).distinct().count()
@@ -590,13 +598,14 @@ class AssessSurveyRelationDistributeView(WdListCreateAPIView):
         return f_count
 
     def get_doing_survey_people_count(self, people_ids, assess_id):
-        # 已开发: 有卷子的人 - 已过期的 - 做了一半的 - 已完成的
+        """
+        已分发的人：有问卷子的人 - 卷子中有（完成的，过期的， 答卷的状态的人）
+        """
         beign_count = PeopleSurveyRelation.objects.filter_active(project_id=assess_id,
                                                                       people_id__in=people_ids,
                                                                       status__in=[
                                                                           PeopleSurveyRelation.STATUS_FINISH,
-                                                                          PeopleSurveyRelation.STATUS_DOING_PART,
-                                                                          PeopleSurveyRelation.STATUS_EXPIRED
+                                                                          PeopleSurveyRelation.STATUS_DOING_PART
                                                                       ]
                                                                       ).values_list(
             "people_id", flat=True).distinct().count()
@@ -799,6 +808,19 @@ class AssessSurveyRelationDistributeView(WdListCreateAPIView):
         return settings.CLIENT_HOST + '/people/join-project/?ba=%s&bs=0' % (project_id_bs64)
 
     def get_open_project_user_statistics(self):
+        """
+        开放测评人数统计：
+        总人数 ： 有问卷的人数
+        有问卷的人数： 有问卷的人数
+        未分发的人数： 总人数 - 有问卷的人数 = 0
+        已完成的人数： 有问卷的人数 - 人中有（未开始，已开放，答卷中的人）
+        已分发（未开始，已分发的人） ：有问卷子的人 - 卷子中有（完成的，过期的， 答卷的状态的人）
+        # 注意： 一个人有2张问卷的话，可以是一张已分发的状态，一张已完成的状态
+        答卷中的人数： 有卷子数 - 已完成 - 已分发的
+        分发数量： 0 开放问卷没有分发按钮
+
+        1226修改，将状态已过期的人，归为已分发
+        """
         user_qs = PeopleSurveyRelation.objects.filter_active(project_id=self.assess_id)
         all_count = user_qs.values_list("people_id", flat=True).distinct().count()
         people_with_survey_ids = user_qs.values_list('people_id', flat=True).distinct()
@@ -812,24 +834,30 @@ class AssessSurveyRelationDistributeView(WdListCreateAPIView):
             "doing_count": da_juan_zhong,  # 答卷中
             "not_begin_count": yi_fen_fa,  # 已开发
             "finish_count": yi_wan_cheng,  # 已完成
-            "not_started": wei_fen_fa,  # 未完成
+            "not_started": wei_fen_fa,  # 未分发
             "distribute_count": distribute_count  # 分发数量
         }
 
     def get_import_project_user_statistics(self):
+        """
+        组织型项目：
+        总人数： 项目下的用户
+        有问卷的人数
+        未分发： 总人数 - 有问卷的人数
+        已完成的人数： 有问卷的人数 - 人中有（未开始，已开放，答卷中的人）
+        未开始这个状态： 项目没有开始问卷已经分发的状态
+        已分发（未开始，已分发的人） ：有问卷子的人 - 卷子中有（完成的，过期的， 答卷的状态的人）
+        答卷中： 有问卷的人数 - 已完成 - 已分发
+        分发数量： 有问卷的人数不就得了？
+        """
         po_qs = AssessUser.objects.filter_active(assess_id=self.assess_id).values_list("people_id", flat=True).distinct()
         all_count = po_qs.count()
-        # 项目下所有用户
         user_qs = PeopleSurveyRelation.objects.filter_active(project_id=self.assess_id)
         people_ids = user_qs.values_list('people_id', flat=True).distinct()
-        # 有问卷关联的用户
         wei_fen_fa = all_count - people_ids.count()  # 未分发
-        # 没有分发的用户 必对
         yi_wan_cheng = self.get_all_survey_finish_people_count(list(people_ids), self.assess_id)
-        # 已完成的人，
-        distribute_qs = AssessSurveyUserDistribute.objects.filter_active(assess_id=self.assess_id)
+        # distribute_qs = AssessSurveyUserDistribute.objects.filter_active(assess_id=self.assess_id)
         yi_fen_fa = self.get_doing_survey_people_count(list(people_ids), self.assess_id)
-        # 做了一部分的，包括2张中一张做完的。
         da_juan_zhong = people_ids.count() - yi_wan_cheng - yi_fen_fa
         # if distribute_qs.exists():
         #     pid_all = []
@@ -1053,10 +1081,14 @@ class AssessSurveyImportExportView(AuthenticationExceptView, WdExeclExportView):
         file_data = request.data["file"]
         file_name = request.data["name"]
         file_path = AssessImportExport.import_data(file_data, file_name, self.assess_id)
+        key = 'assess_id_%s' % self.assess_id
+        FileStatusCache(key).set_verify_code(5)
         error_code, msg, index, new_user, old_user = import_assess_user_task_0916(self.assess_id, file_path)
         if error_code == ErrorCode.SUCCESS:
             assess_people_create_in_sql_task.delay(old_user, new_user, self.assess_id)
             # assess_people_create_in_sql_task(old_user, new_user, self.assess_id)
+        else:
+            FileStatusCache(key).set_verify_code(100)
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {
             'err_code': error_code,
             'data_index': index,
@@ -1080,6 +1112,18 @@ class AssessUserListView(WdListAPIView, WdDestroyAPIView):
     POST_DATA_RESPONSE = True
     UPDATE_TAG = False
     partial = False
+
+    def get_check_parameter(self, kwargs):
+        if self.GET_CHECK_REQUEST_PARAMETER:
+            for parameter in self.GET_CHECK_REQUEST_PARAMETER:
+                setattr(self, parameter, kwargs.get(parameter, None))
+                if getattr(self, parameter) is None:
+                    return ErrorCode.INVALID_INPUT
+        assess_type = AssessProject.objects.filter_active(id=self.assess_id)[0].assess_type
+        user_id = self.request.GET.get('user_id', None)
+        if assess_type == 300 and user_id:
+            self.serializer_class = PeopleSerializer360
+        return ErrorCode.SUCCESS
 
     def qs_search(self, qs):
         u"""REF: restframe work SearchFilter"""
@@ -1205,6 +1249,16 @@ class AssessUserCreateView(WdCreateAPIView):
                 return general_json_response(status.HTTP_200_OK, ErrorCode.USER_ACCOUNT_NAME_ERROR, {'msg': u'账户在本企业已存在'})
         if not org_codes:
             return general_json_response(status.HTTP_200_OK, ErrorCode.PROJECT_ORG_EMPTY_ERROR, {'msg': u'项目组织为空'})
+        #
+        for org_code in org_codes:
+            # [{"id":1}]
+            org_obj = Organization.objects.filter_active(id=org_code["id"])
+            if not org_obj.exists():
+                return general_json_response(status.HTTP_200_OK, ErrorCode.PROJECT_ORG_INPUT_ERROR,
+                                             {'msg': u'项目组织输入有误'})
+            else:
+                org_code["identification_code"] = org_obj[0].identification_code
+        #
         org_check = check_org(org_codes)
         if org_check != ErrorCode.SUCCESS:
             return general_json_response(status.HTTP_200_OK, ErrorCode.PROJECT_ORG_INPUT_ERROR, {'msg': u'项目组织输入有误'})
@@ -1295,6 +1349,15 @@ class AssessUseDetailView(WdRetrieveUpdateAPIView):
                                              {'data': u'账户在本企业已存在'})
         if not org_codes:
             return general_json_response(status.HTTP_200_OK, ErrorCode.PROJECT_ORG_EMPTY_ERROR, {'msg': u'项目组织为空'})
+        for org_code in org_codes:
+            # [{"id":1}]
+            org_obj = Organization.objects.filter_active(id=org_code["id"])
+            if not org_obj.exists():
+                return general_json_response(status.HTTP_200_OK, ErrorCode.PROJECT_ORG_INPUT_ERROR,
+                                             {'msg': u'项目组织输入有误'})
+            else:
+                org_code["identification_code"] = org_obj[0].identification_code
+
         org_check = check_org(org_codes)
         if org_check != ErrorCode.SUCCESS:
             return general_json_response(status.HTTP_200_OK, ErrorCode.PROJECT_ORG_INPUT_ERROR, {'msg': u'项目组织输入有误'})
@@ -1412,9 +1475,30 @@ class Assess360UserListView(WdListCreateAPIView):
             return qs.filter(people_id=self.user_id)
 
     def post(self, request, *args, **kwargs):
+        # if self.role_type == 40:  #  下级
+        #     if AssessUser.objects.filter_active(
+        #         assess_id=self.assess_id,
+        #         people_id=self.user_id,
+        #         role_type=30   # 检查上级
+        #     ).exists():
+        #         return general_json_response(status.HTTP_200_OK, ErrorCode.ASSESSUSER_360_ROLE_TYPE_UP_DOWN_ERROR,
+        #                                      {"msg": "42212该用户已有上级，不能设置下级"})
+        #
+        # 检查这个人有没有上级，如果有
+        #
         self.role_user_ids = [int(user_id) for user_id in self.role_user_ids]
         assess_user_bulk_list = []
         for role_user_id in self.role_user_ids:
+            if self.user_id == role_user_id:
+                AssessUser.objects.get_or_create(
+                    assess_id=self.assess_id,
+                    people_id=self.user_id,
+                    role_type=AssessUser.ROLE_TYPE_SELF,
+                    role_people_id=role_user_id,
+                    is_active=True
+                )
+                continue
+
             if self.role_type == AssessUser.ROLE_TYPE_SELF:
                 user_id = role_user_id
             else:
@@ -1763,3 +1847,16 @@ class DownloadReportView(WdExeclExportView):
             r = FileResponse(open(file_full_path, "rb"))
             r['Content-Disposition'] = 'attachment; filename=%s' % self.default_export_file_name
             return r
+
+
+class AssessmentFileStatusView(AuthenticationExceptView, WdListAPIView):
+    """获取上传进度状态"""
+
+    def get(self, request, *args, **kwargs):
+        assess_id = request.GET.get("assess_id", 'None')
+        if not assess_id:
+            file_status = 100
+        else:
+            key = 'assess_id_%s' % assess_id
+            file_status = FileStatusCache(key).get_verify_code()
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"status": file_status})

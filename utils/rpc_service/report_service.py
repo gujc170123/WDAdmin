@@ -46,15 +46,21 @@ class ReportService(HttpService):
                 return "EmployeeMentalHealth", "EmployeeMentalHealth_EN"
             elif model.algorithm_id == ResearchModel.ALGORITHM_XFXQ:
                 return "HappinessNeeds", None
-            #  领导风格
-            # elif model.algorithm_id == ResearchModel.ALGORITHM_LDFG:
-            #     return "LeaderStyle", None
+            # 0117 领导风格
+            elif model.algorithm_id == ResearchModel.ALGORITHM_LDFG:
+                return "LeaderStyle", None
             # 行为风格
             elif model.algorithm_id == ResearchModel.ALGORITHM_XWFG:
                 return "BehavioralStyle", None
             # 职业定向
             elif model.algorithm_id == ResearchModel.ALGORITHM_ZYDX:
                 return "ZYDX", None
+            # 中高层180
+            elif model.algorithm_id == ResearchModel.ALGORITHM_ZGC180:
+                return "ZGC180", None
+            # 中高层90
+            elif model.algorithm_id == ResearchModel.ALGORITHM_ZGC90:
+                return "ZGC90", None
             return None, None   # 默认不出报告
             # return "CapacityEvaluation", None
         else:

@@ -45,8 +45,8 @@ class ResearchModel(BaseModel):
     ALGORITHM_LDFG = 9
     ALGORITHM_YGXLJK = 10
     ALGORITHM_ZYDX = 11
-    ALGORITHM_ZGC_ZP = 12
-    ALGORITHM_ZGC_TP = 13
+    ALGORITHM_ZGC90 = 12
+    ALGORITHM_ZGC180 = 13
     ALGORITHM_XFZS_EN = 14
     ALGORITHM_YGXLJK_EN = 15
     ALGORITHM_XFXQ = 16
@@ -62,11 +62,11 @@ class ResearchModel(BaseModel):
         (ALGORITHM_LDFG, u"领导风格算法"),
         (ALGORITHM_YGXLJK, u"员工心理健康算法"),
         (ALGORITHM_ZYDX, u"职业定向算法"),
-        (ALGORITHM_ZGC_ZP, u"中高层管理能力-自评算法"),
-        (ALGORITHM_ZGC_TP, u"中高层管理能力-他评算法"),
         (ALGORITHM_XFZS_EN, u"幸福指数算法英文"),
         (ALGORITHM_YGXLJK_EN, u"员工心理健康算法英文"),
-        (ALGORITHM_XFXQ, u"幸福需求算法")
+        (ALGORITHM_XFXQ, u"幸福需求算法"),
+        (ALGORITHM_ZGC180, u"中高层管理能力180算法"),
+        (ALGORITHM_ZGC90, u"中高层管理能力90算法"),
     )
     algorithm_id = models.BigIntegerField(u"算法", db_index=True, default=ALGORITHM_WEIGHTED, choices=ALGORITHM_CHOICES)
     inherit_count = models.PositiveIntegerField(u"派生次数", db_index=True, default=0)

@@ -6,7 +6,8 @@ from assessment.views import AssessmentListCreateView, AssessRetrieveUpdateDestr
     AssessGatherInfoView, AssessProjectSurveyConfigView, AssessGatherInfoDetailView, AssessSurveyRelationDetailView, \
     AssessSurveyImportExportView, AssessUserListView, AssessSurveyRelationDistributeView, AssessSurveyUserExport, \
     Assess360UserListView, Assess360UserCopyView, Assess360TestUserStatisticsView, Assess360SurveyRelation, \
-    DownloadReportView, AssessUserCreateView, AssessGatherAllInfoView, AssessUseDetailView, Assess360UpuserImportView
+    DownloadReportView, AssessUserCreateView, AssessGatherAllInfoView, AssessUseDetailView, Assess360UpuserImportView, \
+    AssessmentFileStatusView
 
 urlpatterns = [
     # 项目新建 项目 列表
@@ -49,4 +50,5 @@ urlpatterns = [
     url(r"^project360/survey/$", Assess360SurveyRelation.as_view(), name="project360-survey-relation-view"),
     # 报告下载
     url(r"^project/report/download/$", DownloadReportView.as_view(), name="project-report-download-view"),
+    url(r"^file/status/$", AssessmentFileStatusView.as_view(), name="project-report-download-view"),
 ]

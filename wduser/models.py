@@ -300,7 +300,7 @@ class BusinessPermission(object):
     PERMISSION_MAP = [
         {"pid": PERMISSION_PERMISSION_ROLE, "pname": u"增加/删除/修改/查看角色", "pdesc": u"具有增加/删除/修改/查看角色权限"},
         {"pid": PERMISSION_PERMISSION_ROLE_USER, "pname": u"增加/删除/修改/查看用户", "pdesc": u"具有增加/删除/修改/查看角色用户权限"},
-        {"pid": PERMISSION_PERMISSION_PROJECT_ASSIGNED, "pname": u"项目分配权限", "pdesc": u"可以通过权限管理，查看具有项目管理权限的角色用户，并进行项目分配"},
+        # {"pid": PERMISSION_PERMISSION_PROJECT_ASSIGNED, "pname": u"项目分配权限", "pdesc": u"可以通过权限管理，查看具有项目管理权限的角色用户，并进行项目分配"},
         {"pid": PERMISSION_ENTERPRISE_ALL_SEE, "pname": u"企业查看权限", "pdesc": u"查看所有企业信息，包括查看项目信息"},
         {"pid": PERMISSION_ENTERPRISE_PART, "pname": u"企业管理权限", "pdesc": u"查看和编辑自己建立的企业和企业下的所有项目"},
         {"pid": PERMISSION_PROJECT_PART, "pname": u"项目管理权限", "pdesc": u"查看和编辑分配的项目"},

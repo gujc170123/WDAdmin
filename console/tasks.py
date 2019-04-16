@@ -55,38 +55,81 @@ def auto_update_database():
 @shared_task
 def auto_update_clean_status(task_id=None):
     from console.etl import EtlTrialClean
+    from console.etl import EtlClean
     """试清洗状态更新"""
     if not task_id:
-        qs = CleanTask.objects.filter_active(clean_status=10)
+        qs_trial = CleanTask.objects.filter_active(clean_status__in=[10, 20])
+        qs = CleanTask.objects.filter_active(clean_status__in=[40, 50])
     else:
-        qs = CleanTask.objects.filter_active(id=task_id)
-        if qs.first() and qs.first().clean_status == 30:
+        re = CleanTask.objects.filter_active(id=task_id)
+        if re.first():
+            if re.first().clean_status in [30, 60, 70]:
+                return
+            elif re.first().clean_status in [10, 20]:
+                qs_trial = re
+            elif re.first().clean_status in [40, 50]:
+                qs = re
+        else:
             return
     # {survey_overview_id: [1,2,3,], survey_overview_id: [3,5,7]}
     status_dic = {}
-    for ret in qs:
-        etl = EtlTrialClean(ret.id)
-        ret.schedule = etl.progress if etl.progress else 0.00
-        status = etl.status
-        if status == "ongoing":
-            ret.clean_status = 20
-        elif status == "finished":
-            ret.clean_status = 30
-        elif status == "stop":
-            ret.clean_status = 70
-        if etl.end_time:
-            ret.end_time = datetime.strptime(etl.end_time, "%Y-%m-%d %H:%M:%S")
-            print("end_time:%s" % ret.end_time)
-        print("schedule:%s, clean_status:%s" % (ret.schedule, ret.clean_status))
-        ret.save()
+    try:
+        if qs_trial:
+            for ret in qs_trial:
+                etl = EtlTrialClean(ret.id)
+                ret.schedule = etl.progress if etl.progress else 0.00
+                status = etl.status
+                if status == "ongoing":
+                    ret.clean_status = 20
+                elif status == "finished":
+                    ret.clean_status = 30
+                elif status == "stop":
+                    ret.clean_status = 70
+                if etl.end_time:
+                    ret.end_time = datetime.strptime(etl.end_time, "%Y-%m-%d %H:%M:%S")
+                ret.save()
 
-        survey_overview_ids = eval(ret.survey_overview_ids)
-        for survey_overview_id in survey_overview_ids:
-            if ret.clean_status < 40:
-                if status_dic.has_key(survey_overview_id):
-                    status_dic[survey_overview_id].append(ret.clean_status)
-                else:
-                    status_dic.update({survey_overview_id: [ret.clean_status]})
+                survey_overview_ids = eval(ret.survey_overview_ids)
+                for survey_overview_id in survey_overview_ids:
+                    if ret.clean_status < 40:
+                        if status_dic.has_key(survey_overview_id):
+                            status_dic[survey_overview_id].append(ret.clean_status)
+                        else:
+                            status_dic.update({survey_overview_id: [ret.clean_status]})
+    except:
+        pass
+
+    try:
+        if qs:
+            for ret in qs:
+                logger.debug(u"正式清洗开始了")
+                etl = EtlClean(ret.id)
+                logger.debug(u"异步开始执行")
+                ret.schedule = etl.progress if etl.progress else 0.00
+                status = etl.status
+                logger.debug("ret.schedule=%s, status=%s" % (ret.schedule, status))
+                if status == "ongoing":
+                    ret.clean_status = 50
+                elif status == "finished":
+                    ret.clean_status = 60
+                elif status == "stop":
+                    ret.clean_status = 70
+                if etl.end_time:
+                    ret.end_time = datetime.strptime(etl.end_time, "%Y-%m-%d %H:%M:%S")
+                    logger.debug("清洗任务结束时间")
+                    logger.debug(etl.end_time)
+                ret.save()
+                logger.debug(u"异步执行完毕")
+                logger.debug(status)
+                survey_overview_ids = eval(ret.survey_overview_ids)
+                for survey_overview_id in survey_overview_ids:
+                    if ret.clean_status < 70:
+                        if status_dic.has_key(survey_overview_id):
+                            status_dic[survey_overview_id].append(ret.clean_status)
+                        else:
+                            status_dic.update({survey_overview_id: [ret.clean_status]})
+    except:
+        pass
 
     # [(survey_overview_id: 1), (survey_overview_id: 3)] 元祖第二个元素是最小状态
     status_list = map(lambda x: (x, min(status_dic[x])), status_dic)

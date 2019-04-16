@@ -21,6 +21,12 @@ class CleanTaskSerializer(serializers.ModelSerializer):
         model = CleanTask
 
 
+class OfficialCleanTaskSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = CleanTask
+
+
 class CleanTaskListSerializer(CleanTaskSerializer):
     overview_info = serializers.SerializerMethodField()
     clean_result = serializers.SerializerMethodField()
@@ -38,8 +44,11 @@ class CleanTaskListSerializer(CleanTaskSerializer):
         return SurveyOverviewSerializer(instance=qs, many=True, context=self.context).data
 
     def get_clean_result(self, obj):
-        from console.etl import EtlTrialClean
-        etl = EtlTrialClean(obj.id)
+        from console.etl import EtlTrialClean, EtlClean
+        if obj.parent_id:
+            etl = EtlClean(obj.id)
+        else:
+            etl = EtlTrialClean(obj.id)
         happy_score, valid, dimension_score = etl.result
         result = {'happy_score': happy_score, 'valid': valid, 'dimension_score': dimension_score}
         return result

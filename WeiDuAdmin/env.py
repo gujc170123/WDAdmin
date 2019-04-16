@@ -2,9 +2,7 @@
 from __future__ import unicode_literals
 
 """
-settings related with environment: development or production
-default is development env
-deploy in production env, need replaced with env_pro.py
+settings related with environment: production
 """
 
 import os
@@ -16,54 +14,51 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEBUG = True
 
 # allow host settings
-ALLOWED_HOSTS = ['localhost:3000', 'wd-admin.exuetech.com', 'wd-user.exuetech.com']
+ALLOWED_HOSTS = ['assess.admin.iwedoing.com', 'assess.iwedoing.com']
 
-# csrf setting
-CORS_ORIGIN_ALLOW_ALL = True
-CORS_ALLOW_CREDENTIALS = True
-CORS_ORIGIN_WHITELIST = (
-      'localhost:3000',
-)
 
 # Database
+# https://docs.djangoproject.com/en/1.10/ref/settings/#databases
 # database settings
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'backend',
-        'USER': 'root',
-        'PASSWORD': '123456',
-        'HOST': '127.0.0.1',
+        'NAME': 'wdadmin',
+        'USER': 'ad_wd',
+        'PASSWORD': 'Admin@Weidu2018',
+        'HOST': 'rm-bp1i2yah9e5d27k26.mysql.rds.aliyuncs.com',
         'PORT': '3306',
     },
     'front': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'front',
-        'USER': 'root',
-        'PASSWORD': '123456',
-        'HOST': '127.0.0.1',
+        'NAME': 'wdfront',
+        'USER': 'ad_wd',
+        'PASSWORD': 'Admin@Weidu2018',
+        'HOST': 'rm-bp1i2yah9e5d27k26.mysql.rds.aliyuncs.com',
         'PORT': '3306',
-    },
-
+    }
 }
 #
-CLIENT_HOST = 'http://wd-user.exuetech.com'
-REPORT_HOST = 'http://172.16.124.92'
-REPORT_HOSTS = ['http://172.16.124.92']
-CUSTOM_HOSTS = ['http://172.16.124.92']
-
+CLIENT_HOST = 'http://assess.iwedoing.com'
+# REPORT_HOST = 'http://assess.admin.iwedoing.com'
+REPORT_HOST = 'http://172.16.124.77'
+#REPORT_HOSTS = ['http://172.16.124.77']
+#CUSTOM_HOSTS = ['http://172.16.124.96']
+#
 # redis config
+# redis config
+# stream redis config
 CACHE = {
     'redis': {
         'default': {
-            'host': 'localhost',
+            'host': '127.0.0.1',
             'port': 6379,
             'db': 0,
             'password': None
         },
         'celery': {
-            'host': 'localhost',
-            'port': 6379,
+            'host': '127.0.0.1',
+            'port': 6380,
             'db': 0,
             'password': None
         }

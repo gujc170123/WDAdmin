@@ -9,7 +9,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 # Create your models here.
-from assessment.models import AssessSurveyRelation
+# from assessment.models import AssessSurveyRelation
 from question.models import Question
 from survey.models import Survey
 from utils.models import BaseModel
