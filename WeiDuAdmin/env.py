@@ -16,7 +16,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEBUG = True
 
 # allow host settings
-ALLOWED_HOSTS = ['localhost:3000', 'wd-admin.exuetech.com', 'wd-user.exuetech.com']
+ALLOWED_HOSTS = ['localhost:3000', 'wd-admin.exuetech.com', 'wd-user.exuetech.com', 'admin.yx.iwedoing.com']
 
 # csrf setting
 CORS_ORIGIN_ALLOW_ALL = True
@@ -90,7 +90,8 @@ DATABASES = {
 }
 
 #
-CLIENT_HOST = 'http://wd-user.exuetech.com'
+# CLIENT_HOST = 'http://wd-user.exuetech.com'
+CLIENT_HOST = 'http://yx.iwedoing.com'
 REPORT_HOST = 'http://172.16.124.92'
 REPORT_HOSTS = ['http://172.16.124.92']
 CUSTOM_HOSTS = ['http://172.16.124.92']
@@ -99,14 +100,14 @@ CUSTOM_HOSTS = ['http://172.16.124.92']
 CACHE = {
     'redis': {
         'default': {
-            'host': 'localhost',
+            'host': '127.0.0.1',
             'port': 6379,
             'db': 0,
             'password': None
         },
         'celery': {
-            'host': 'localhost',
-            'port': 6379,
+            'host': '127.0.0.1',
+            'port': 6380,
             'db': 0,
             'password': None
         }

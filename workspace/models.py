@@ -3,6 +3,34 @@ from __future__ import unicode_literals
 from django.db import models
 from utils.models import BaseModel
 
+
+class Dimension(models.Model):
+    title = models.CharField(max_length=32)
+
+
+class Quote(models.Model):
+    title = models.CharField(max_length=32)
+
+
+class Action(models.Model):
+    title = models.CharField(max_length=32)
+
+
+class WDIndex(models.Model):
+    AssessKey = models.IntegerField(db_index=True)
+    DW_Person_ID = models.IntegerField(db_index=True)
+    organization1 = models.CharField(max_length=30, db_index=True, null=True, blank=True)
+    organization2 = models.CharField(max_length=30, db_index=True, null=True, blank=True)
+    organization3 = models.CharField(max_length=30, db_index=True, null=True, blank=True)
+    organization4 = models.CharField(max_length=30, db_index=True, null=True, blank=True)
+    organization5 = models.CharField(max_length=30, db_index=True, null=True, blank=True)
+    organization6 = models.CharField(max_length=30, db_index=True, null=True, blank=True)
+    dimension = models.ForeignKey("Dimension", null=True, blank=True)
+    quote = models.ForeignKey("Quote", null=True, blank=True)
+    action = models.ForeignKey("Action", null=True, blank=True)
+    score = models.IntegerField()
+
+
 class FactOEI(models.Model):
     AssessKey = models.IntegerField(db_index=True)
     DW_Person_ID = models.IntegerField(db_index=True)
