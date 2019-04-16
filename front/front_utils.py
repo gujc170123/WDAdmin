@@ -1045,7 +1045,10 @@ class SurveyAlgorithm(object):
                 # 幸福能力分 == 幸福能力维度分
                 happy_ability_score = dimension_score[dimension["id"]]["score"]
         # 幸福效能分 = 各个维度下的幸福效能指标分平均
-        happy_efficacy_score = happy_efficacy_score * 1.00 / efficacy_substandard_count
+        if efficacy_substandard_count < 1:
+            happy_efficacy_score = 0
+        else:
+            happy_efficacy_score = happy_efficacy_score * 1.00 / efficacy_substandard_count
         # 幸福指数分
         model_score = happy_score * 0.8 + happy_ability_score * 0.2
         # 测谎题A：得分=[(GCH1-G3)+(SCH1-S9)+(CCH1-C3)+(RCH1-R2)+(LCH1-L5)+(ZCH1-Z5)]/6
@@ -1603,7 +1606,936 @@ class SurveyAlgorithm(object):
                                                            (substandard_whole_map[csubstandard_info["name"]]["count"] * 1.00)
         cls.save_score(people_survey_result_id, model_score, dimension_map, substandard_info_map)
 
-    #     行为风格 和 职业定向
+
+    @classmethod
+    def algorithm_zgc(cls, people_survey_result_id, form_type=Survey.FORM_TYPE_FORCE,
+                             remove_weight_zero=True, multiply_weight=True, score_handler=None, for_other=False):
+        u"""
+        中高层算法， 包括 90，
+        计算方式：
+
+        自评：
+        行为原始分为整数，最小为-3分，最大为+3分；最终得分介于0-5分之间
+        最终得分=（行为原始分+3)/1.2
+        他评：
+
+        行为原始分最小为1分，最大为5分；最终得分介于1-5分之间
+        他评=各个评价人分数的平均
+        default_data = {
+            "report_type": "中高层90模板",
+            "msg": {
+                "Name": "666",
+                "Sex": "男",
+                "Age": "25",
+                "TestTime": "2018.10.12",
+                # name  维度名称，score: 维度分    自评
+                "chart": [
+                    {"name": "积极进取", "score": 2},
+                    {"name": "勇于担当", "score": 2},
+                    {"name": "正直诚信", "score": 2},
+                    {"name": "系统思维", "score": 3},
+                    {"name": "变革管理", "score": 2},
+                    {"name": "客户导向", "score": 2},
+                    {"name": "创新优化", "score": 3},
+                    {"name": "团队领导", "score": 3},
+                    {"name": "跨界协同", "score": 4},
+                    {"name": "资源整合", "score": 2},
+                ],
+            # name1  维度名称，name  指标（即行为）   score: 指标分     自评
+                "chart2": [
+                    {"name1": "积极进取", 'name': '为自己设置挑战性目标', "score": 2},
+                    {"name1": "积极进取", 'name': '自我激发，从内心寻求动力', "score": 2},
+                    {"name1": "积极进取", 'name': '会付出额外的努力', "score": 2},
+                    {"name1": "积极进取", 'name': '积极寻求解决办法，坚持不懈', "score": 2},
+
+                    {"name1": "勇于担当", 'name': '明确职责，主动承担责任', "score": 2},
+                    {"name1": "勇于担当", 'name': '以目标为导向，完成工作', "score": 2},
+                    {"name1": "勇于担当", 'name': '有责无疆，积极推进', "score": 2},
+                    {"name1": "勇于担当", 'name': '挺身而出，成为依靠', "score": 2},
+
+                    {"name1": "正直诚信", 'name': '做事规范坦率真诚', "score": 3},
+                    {"name1": "正直诚信", 'name': '言行一致遵守承诺', "score": 3},
+                    {"name1": "正直诚信", 'name': '处事公平公正', "score": 3},
+                    {"name1": "正直诚信", 'name': '敢于当面直谏', "score": 3},
+
+                    {"name1": "系统思维", 'name': '原因识别及构建解决方案', "score": 3},
+                    {"name1": "系统思维", 'name': '过程管控与跟踪', "score": 3},
+                    {"name1": "系统思维", 'name': '前瞻性分析', "score": 3},
+                    {"name1": "系统思维", 'name': '问题发现及分析', "score": 3},
+
+                    {"name1": "变革管理", 'name': '理解变革', "score": 2},
+                    {"name1": "变革管理", 'name': '愿景塑造', "score": 2},
+                    {"name1": "变革管理", 'name': '管理阻抗', "score": 2},
+                    {"name1": "变革管理", 'name': '捍卫变革', "score": 2},
+
+                    {"name1": "客户导向", 'name': '换位思考，构建解决方案', "score": 2},
+                    {"name1": "客户导向", 'name': '倾听并及时反馈', "score": 2},
+                    {"name1": "客户导向", 'name': '主动关注提升满意度', "score": 2},
+                    {"name1": "客户导向", 'name': '协调资源超越期望', "score": 2},
+
+                    {"name1": "创新优化", 'name': '打造创新机制及氛围', "score": 3},
+                    {"name1": "创新优化", 'name': '主动关注新事物', "score": 3},
+                    {"name1": "创新优化", 'name': '勇于尝试持续创新', "score": 3},
+                    {"name1": "创新优化", 'name': '借鉴经验，快速有效优化', "score": 3},
+
+                    {"name1": "团队领导", 'name': '理解高效团队的重要性', "score": 3},
+                    {"name1": "团队领导", 'name': '高效合理授权', "score": 3},
+                    {"name1": "团队领导", 'name': '塑造团队文化', "score": 3},
+                    {"name1": "团队领导", 'name': '多形式学习交流', "score": 3},
+
+                    {"name1": "跨界协同", 'name': '调节冲突，达至双赢', "score": 2},
+                    {"name1": "跨界协同", 'name': '建立合作机制，实现效能最大化', "score": 2},
+                    {"name1": "跨界协同", 'name': '理解其他部门需求及利益', "score": 2},
+                    {"name1": "跨界协同", 'name': '换位思考，促进协作', "score": 2},
+
+                    {"name1": "资源整合", 'name': '主动共享信息', "score": 2},
+                    {"name1": "资源整合", 'name': '形成固有并可持续的模式', "score": 2},
+                    {"name1": "资源整合", 'name': '主动争取和协调资源', "score": 2},
+                    {"name1": "资源整合", 'name': '转变思维，扩展资源渠道', "score": 2},
+                ],
+            }
+        }
+        """
+
+        # 中高层的算法先写在这里， 但是出报告的时候不是正常答完题调用的，
+        # 是所有人完成答卷 或者项目结束时调用
+
+        def process_substandard_score(dimension, substandard, for_other=False):
+            substandard_score[substandard["id"]] = {
+                "score": 0,
+                "name": substandard["name"],
+                "dimension_id": dimension["id"],
+                "name1": dimension["name"]
+            }
+            if substandard["substandards"]:
+                all_child_score = 0
+                all_child_count = 0
+                for child_substandard in substandard["substandards"]:
+                    process_substandard_score(dimension, child_substandard)
+                    all_child_count += 1
+                    all_child_score += substandard_score[child_substandard["id"]]["score"]
+                substandard_score[substandard["id"]]["score"] = all_child_score
+                # logger.debug("process_substandard_score --> process substandard of %s, %s, %s" % (
+                # substandard["id"], substandard["name"], substandard_score[substandard["id"]]["score"]))
+            else:
+                # logger.debug("begin process_substandard_score --> process substandard of %s, %s" % (
+                #     substandard["id"], substandard["name"]))
+                facet_id_map = SurveyAlgorithm.get_substandard_facet_map(substandard, survey)
+                question_ids = []
+                question_substandard_score = 0
+                for facet_id in facet_id_map:
+                    facet_info = facet_id_map[facet_id]
+                    question_ids += facet_info["questions"]
+                    if facet_id not in facet_score:
+                        facet_score[facet_id] = {
+                            "score": 0,
+                            "name": facet_id_map[facet_id]["name"],
+                            "substandard_id": substandard["id"],
+                            "dimension_id": dimension["id"]
+                        }
+                    facet_question_count = len(facet_info["questions"])
+                    if form_type == Survey.FORM_TYPE_FORCE:
+                        question_answer_infos = question_answers.filter(answer_id__in=facet_info["questions"])
+                    else:
+                        question_answer_infos = question_answers.filter(question_id__in=facet_info["questions"])
+                    question_score = 0
+                    for question_answer in question_answer_infos:
+                        # 自评
+                        if not for_other:
+                            question_score += question_answer.answer_score
+                            question_substandard_score += question_answer.answer_score
+                            # if question_substandard_score > 5:
+                            #     question_substandard_score = 5
+                            # if question_substandard_score < 0:
+                            #     question_substandard_score = 0
+                        # 评价他人
+                        else:
+                            question_score += question_answer.answer_score
+                            question_substandard_score += question_answer.answer_score
+                            # if question_substandard_score > 5:
+                            #     question_substandard_score = 5
+                            # if question_substandard_score < 1:
+                            #     question_substandard_score = 1
+
+                    if facet_question_count:
+                        facet_score[facet_id]["score"] = int(round((question_score*1.00 / facet_question_count*1.00) * facet_id_map[facet_id]["weight"], 1))
+                    else:
+                        facet_score[facet_id]["score"] = 0
+
+                question_count = len(question_ids)
+                if question_count:
+                    if not for_other:
+                        question_substandard_score = round((question_substandard_score + 3) / 1.2, 2)
+                    substandard_score[substandard["id"]]["score"] = question_substandard_score
+                else:
+                    substandard_score[substandard["id"]]["score"] = 0
+                # logger.debug("process_substandard_score --> process substandard of %s, %s, %s, %s, %s, %s" % (
+                #     substandard["id"], substandard["name"], substandard_score[substandard["id"]]["score"],
+                #     question_substandard_score, question_count, substandard["weight"]))
+
+        # 自己对他人的评价分数
+        for_other_dimension_score = {}
+        for_other_substandard_score = {}
+
+        facet_score = {}
+        substandard_score = {}
+        dimension_score = {}
+        model_score = 0  # 总分
+        logger.debug("algorithm_average_weight --> people_survey_result_id is %s" % people_survey_result_id)
+        people_survey_result = PeopleSurveyRelation.objects.get(id=people_survey_result_id)
+        survey = Survey.objects.get(id=people_survey_result.survey_id)
+        research_model = ResearchModel.objects.get(id=survey.model_id)
+        model_info = SurveyAlgorithm.get_model_detail_info(research_model)
+        question_answers = SurveyAlgorithm.get_question_answer(
+            people_survey_result.people_id,
+            people_survey_result.survey_id,
+            people_survey_result.project_id,
+            people_survey_result.role_type,
+            people_survey_result.evaluated_people_id
+        )
+        dimensions = model_info['dimension']
+        dimension_count = 0
+        dimension_total_score = 0
+        # 评价他人
+        if for_other:
+            for dimension in dimensions:
+                substandards = dimension['substandards']
+                dimension_score[dimension["id"]] = {
+                    "score": 0,
+                    "name": dimension["name"],
+                    "row_score": 0
+                }
+                if not substandards:
+                    pass
+                else:
+                    substandard_count = 0
+                    score = 0
+                    for substandard in substandards:
+                        process_substandard_score(dimension, substandard, for_other=True)
+                        tag_qs = Tag.objects.filter_active(business_model=Tag.MODEL_SUBSTANDARD,
+                                                           tag_name=u"是否计入维度分").order_by("-id")
+                        if tag_qs.exists():
+                            tag = tag_qs[0]
+                            str_qs = SubstandardTagRelation.objects.filter_active(tag_id=tag.id,
+                                                                                  object_id=substandard["id"]).order_by(
+                                "-id")
+                            if str_qs.exists():
+                                str_tag = str_qs[0]
+                                if str_tag == u"否":
+                                    pass
+                            else:
+                                substandard_count += 1
+                                score += substandard_score[substandard["id"]]["score"]
+                        else:
+                            substandard_count += 1
+                            score += substandard_score[substandard["id"]]["score"]
+                    # 能力 即 维度，  能力分 = 行为分求平均
+                    d_score = int(round((score * 1.00 / substandard_count * 1.00)))
+                    if d_score > 5:
+                        d_score = 5
+                    if d_score < 0:
+                        d_score = 0
+                    dimension_score[dimension["id"]]["score"] = d_score
+                    dimension_score[dimension["id"]]["row_score"] = round((score * 1.00 / substandard_count * 1.00), 3)
+                tag_qs = Tag.objects.filter_active(business_model=Tag.MODEL_DIMENSION, tag_name=u"是否计入模型分").order_by(
+                    "-id")
+                if tag_qs.exists():
+                    tag = tag_qs[0]
+                    str_qs = DimensionTagRelation.objects.filter_active(tag_id=tag.id,
+                                                                        object_id=dimension["id"]).order_by(
+                        "-id")
+                    if str_qs.exists():
+                        str_tag = str_qs[0]
+                        if str_tag == u"否":
+                            pass
+                    else:
+                        dimension_count += 1
+                        dimension_total_score += dimension_score[dimension["id"]]["score"]
+                else:
+                    dimension_count += 1
+                    dimension_total_score += dimension_score[dimension["id"]]["score"]
+            model_score = int(round((dimension_total_score * 1.00 / dimension_count * 1.00), 1))
+            if score_handler:
+                score_handler(model_score, dimension_score, substandard_score)
+            # 找到所有他评人员， 找他们的对此人的分
+            dimension_score = {"self": {}, "others": {},
+                               "for_other": dimension_score}
+            substandard_score = {"self": {}, "others": {},
+                                 "for_other": substandard_score}
+            cls.save_score(people_survey_result_id, model_score, dimension_score, substandard_score,
+                           facet_score=facet_score)
+        # 自评，以及获取他评
+        else:
+            for dimension in dimensions:
+                substandards = dimension['substandards']
+                dimension_score[dimension["id"]] = {
+                    "score": 0,
+                    "name": dimension["name"],
+                    "row_score": 0,
+                }
+                if not substandards:
+                    pass
+                else:
+                    substandard_count = 0
+                    score = 0
+                    for substandard in substandards:
+                        process_substandard_score(dimension, substandard)
+                        tag_qs = Tag.objects.filter_active(business_model=Tag.MODEL_SUBSTANDARD, tag_name=u"是否计入维度分").order_by("-id")
+                        if tag_qs.exists():
+                            tag = tag_qs[0]
+                            str_qs = SubstandardTagRelation.objects.filter_active(tag_id=tag.id, object_id=substandard["id"]).order_by("-id")
+                            if str_qs.exists():
+                                str_tag = str_qs[0]
+                                if str_tag == u"否":
+                                    pass
+                            else:
+                                substandard_count += 1
+                                score += substandard_score[substandard["id"]]["score"]
+                        else:
+                            substandard_count += 1
+                            score += substandard_score[substandard["id"]]["score"]
+                    # 能力 即 维度，  能力分 = 行为分求平均
+                    d_score = int(round((score*1.00/substandard_count*1.00)))
+                    dimension_score[dimension["id"]]["row_score"] = round((score*1.00/substandard_count*1.00), 3)
+                    if d_score > 5:
+                        d_score = 5
+                    if d_score < 0:
+                        d_score = 0
+                    dimension_score[dimension["id"]]["score"] = d_score
+                tag_qs = Tag.objects.filter_active(business_model=Tag.MODEL_DIMENSION, tag_name=u"是否计入模型分").order_by("-id")
+                if tag_qs.exists():
+                    tag = tag_qs[0]
+                    str_qs = DimensionTagRelation.objects.filter_active(tag_id=tag.id, object_id=dimension["id"]).order_by(
+                        "-id")
+                    if str_qs.exists():
+                        str_tag = str_qs[0]
+                        if str_tag == u"否":
+                            pass
+                    else:
+                        dimension_count += 1
+                        dimension_total_score += dimension_score[dimension["id"]]["score"]
+                else:
+                    dimension_count += 1
+                    dimension_total_score += dimension_score[dimension["id"]]["score"]
+            model_score = int(round((dimension_total_score*1.00 / dimension_count*1.00), 1))
+            if score_handler:
+                score_handler(model_score, dimension_score, substandard_score)
+            # 自评和他评的计算方式不同， 所以加一个参数作为标志位
+            # 检查有哪些人评价了他， 然后计算，
+
+            # 他人对自己的评价分数
+            other_dimension_score = {}
+            other_substandard_score = {}
+
+            evaluated_people_id = people_survey_result.people_id
+            project_id = people_survey_result.project_id
+            evaluate_qs = PeopleSurveyRelation.objects.filter_active(evaluated_people_id=evaluated_people_id, project_id=project_id,
+                                                       status=PeopleSurveyRelation.STATUS_FINISH)
+            others_count = evaluate_qs.count()
+            if others_count:
+                for evaluate_obj in evaluate_qs:
+                    if evaluate_obj.people_id == evaluated_people_id:
+                        others_count -= 1
+                        if not others_count:
+                            break
+                    else:
+                        cls.algorithm_zgc(evaluate_obj.id, form_type=Survey.FORM_TYPE_NORMAL, for_other=True)
+                        evaluate_obj = PeopleSurveyRelation.objects.get(id=evaluate_obj.id)
+                        one_other_dimension_score = evaluate_obj.dimension_score_map["for_other"]
+                        one_other_substandard_score = evaluate_obj.substandard_score_map["for_other"]
+                        if not other_dimension_score:
+                            other_dimension_score = one_other_dimension_score
+                            other_substandard_score = one_other_substandard_score
+                        else:
+                            for other_dimension in other_dimension_score:
+                                for one_other_dimension in one_other_dimension_score:
+                                    if other_dimension == one_other_dimension:
+                                        other_dimension_score[other_dimension]["score"] += one_other_dimension_score[one_other_dimension]["score"]
+                            for other_substandard in other_substandard_score:
+                                for one_other_substandard in one_other_substandard_score:
+                                    if other_substandard == one_other_substandard:
+                                        other_substandard_score[other_substandard]["score"] += one_other_substandard_score[one_other_substandard]["score"]
+                if others_count:
+                    for other_dimension in other_dimension_score:
+                        other_dimension_score[other_dimension]["score"] = int(round(other_dimension_score[other_dimension]["score"] / (others_count * 1.00), 1))
+                    for other_substandard in other_substandard_score:
+                        other_substandard_score[other_substandard]["score"] = int(round(other_substandard_score[other_substandard]["score"] / (others_count * 1.00), 1))
+
+            # 找到所有他评人员， 找他们的对此人的分
+            dimension_score = {"self": dimension_score, "others": other_dimension_score, "for_other": for_other_dimension_score}
+            substandard_score = {"self": substandard_score, "others": other_substandard_score, "for_other": for_other_substandard_score}
+            cls.save_score(people_survey_result_id, model_score, dimension_score, substandard_score, facet_score=facet_score)
+
+    @classmethod
+    def algorithm_zgc180(cls, people_survey_result_id, form_type=Survey.FORM_TYPE_FORCE,
+                      remove_weight_zero=True, multiply_weight=True, score_handler=None, for_other=False):
+        u"""
+        中高层算法， 包括 180.
+        计算方式：
+
+        自评：
+        行为原始分为整数，最小为-3分，最大为+3分；最终得分介于0-5分之间
+        最终得分=（行为原始分+3)/1.2
+        他评：
+
+        行为原始分最小为1分，最大为5分；最终得分介于1-5分之间
+        他评=各个评价人分数的平均
+        default_data = {
+            "report_type": "中高层90模板",
+            "msg": {
+                "Name": "666",
+                "Sex": "男",
+                "Age": "25",
+                "TestTime": "2018.10.12",
+                # name  维度名称，score: 维度分    自评
+                "chart": [
+                    {"name": "积极进取", "score": 2},
+                    {"name": "勇于担当", "score": 2},
+                    {"name": "正直诚信", "score": 2},
+                    {"name": "系统思维", "score": 3},
+                    {"name": "变革管理", "score": 2},
+                    {"name": "客户导向", "score": 2},
+                    {"name": "创新优化", "score": 3},
+                    {"name": "团队领导", "score": 3},
+                    {"name": "跨界协同", "score": 4},
+                    {"name": "资源整合", "score": 2},
+                ],
+            # name1  维度名称，name  指标（即行为）   score: 指标分     自评
+                "chart2": [
+                    {"name1": "积极进取", 'name': '为自己设置挑战性目标', "score": 2},
+                    {"name1": "积极进取", 'name': '自我激发，从内心寻求动力', "score": 2},
+                    {"name1": "积极进取", 'name': '会付出额外的努力', "score": 2},
+                    {"name1": "积极进取", 'name': '积极寻求解决办法，坚持不懈', "score": 2},
+
+                    {"name1": "勇于担当", 'name': '明确职责，主动承担责任', "score": 2},
+                    {"name1": "勇于担当", 'name': '以目标为导向，完成工作', "score": 2},
+                    {"name1": "勇于担当", 'name': '有责无疆，积极推进', "score": 2},
+                    {"name1": "勇于担当", 'name': '挺身而出，成为依靠', "score": 2},
+
+                    {"name1": "正直诚信", 'name': '做事规范坦率真诚', "score": 3},
+                    {"name1": "正直诚信", 'name': '言行一致遵守承诺', "score": 3},
+                    {"name1": "正直诚信", 'name': '处事公平公正', "score": 3},
+                    {"name1": "正直诚信", 'name': '敢于当面直谏', "score": 3},
+
+                    {"name1": "系统思维", 'name': '原因识别及构建解决方案', "score": 3},
+                    {"name1": "系统思维", 'name': '过程管控与跟踪', "score": 3},
+                    {"name1": "系统思维", 'name': '前瞻性分析', "score": 3},
+                    {"name1": "系统思维", 'name': '问题发现及分析', "score": 3},
+
+                    {"name1": "变革管理", 'name': '理解变革', "score": 2},
+                    {"name1": "变革管理", 'name': '愿景塑造', "score": 2},
+                    {"name1": "变革管理", 'name': '管理阻抗', "score": 2},
+                    {"name1": "变革管理", 'name': '捍卫变革', "score": 2},
+
+                    {"name1": "客户导向", 'name': '换位思考，构建解决方案', "score": 2},
+                    {"name1": "客户导向", 'name': '倾听并及时反馈', "score": 2},
+                    {"name1": "客户导向", 'name': '主动关注提升满意度', "score": 2},
+                    {"name1": "客户导向", 'name': '协调资源超越期望', "score": 2},
+
+                    {"name1": "创新优化", 'name': '打造创新机制及氛围', "score": 3},
+                    {"name1": "创新优化", 'name': '主动关注新事物', "score": 3},
+                    {"name1": "创新优化", 'name': '勇于尝试持续创新', "score": 3},
+                    {"name1": "创新优化", 'name': '借鉴经验，快速有效优化', "score": 3},
+
+                    {"name1": "团队领导", 'name': '理解高效团队的重要性', "score": 3},
+                    {"name1": "团队领导", 'name': '高效合理授权', "score": 3},
+                    {"name1": "团队领导", 'name': '塑造团队文化', "score": 3},
+                    {"name1": "团队领导", 'name': '多形式学习交流', "score": 3},
+
+                    {"name1": "跨界协同", 'name': '调节冲突，达至双赢', "score": 2},
+                    {"name1": "跨界协同", 'name': '建立合作机制，实现效能最大化', "score": 2},
+                    {"name1": "跨界协同", 'name': '理解其他部门需求及利益', "score": 2},
+                    {"name1": "跨界协同", 'name': '换位思考，促进协作', "score": 2},
+
+                    {"name1": "资源整合", 'name': '主动共享信息', "score": 2},
+                    {"name1": "资源整合", 'name': '形成固有并可持续的模式', "score": 2},
+                    {"name1": "资源整合", 'name': '主动争取和协调资源', "score": 2},
+                    {"name1": "资源整合", 'name': '转变思维，扩展资源渠道', "score": 2},
+                ],
+            }
+        }
+        """
+
+        # 中高层的算法先写在这里， 但是出报告的时候不是正常答完题调用的，
+        # 是所有人完成答卷 或者项目结束时调用
+
+        def process_substandard_score(dimension, substandard, for_other=False):
+            substandard_score[substandard["id"]] = {
+                "score": 0,
+                "name": substandard["name"],
+                "dimension_id": dimension["id"],
+                "name1": dimension["name"]
+            }
+            if substandard["substandards"]:
+                all_child_score = 0
+                all_child_count = 0
+                for child_substandard in substandard["substandards"]:
+                    process_substandard_score(dimension, child_substandard)
+                    all_child_count += 1
+                    all_child_score += substandard_score[child_substandard["id"]]["score"]
+                substandard_score[substandard["id"]]["score"] = all_child_score
+            else:
+                facet_id_map = SurveyAlgorithm.get_substandard_facet_map(substandard, survey)
+                question_ids = []
+                question_substandard_score = 0
+                for facet_id in facet_id_map:
+                    facet_info = facet_id_map[facet_id]
+                    question_ids += facet_info["questions"]
+                    if facet_id not in facet_score:
+                        facet_score[facet_id] = {
+                            "score": 0,
+                            "name": facet_id_map[facet_id]["name"],
+                            "substandard_id": substandard["id"],
+                            "dimension_id": dimension["id"]
+                        }
+                    facet_question_count = len(facet_info["questions"])
+                    if form_type == Survey.FORM_TYPE_FORCE:
+                        question_answer_infos = question_answers.filter(answer_id__in=facet_info["questions"])
+                    else:
+                        question_answer_infos = question_answers.filter(question_id__in=facet_info["questions"])
+                    question_score = 0
+                    for question_answer in question_answer_infos:
+                        # 自评
+                        if not for_other:
+                            question_score += question_answer.answer_score
+                            question_substandard_score += question_answer.answer_score
+
+                        # 评价他人
+                        else:
+                            question_score += question_answer.answer_score
+                            question_substandard_score += question_answer.answer_score
+                    if facet_question_count:
+                        facet_score[facet_id]["score"] = int(round(
+                            (question_score * 1.00 / facet_question_count * 1.00) * facet_id_map[facet_id]["weight"],
+                            1))
+                    else:
+                        facet_score[facet_id]["score"] = 0
+
+                question_count = len(question_ids)
+                if question_count:
+                    if not for_other:
+                        question_substandard_score = round((question_substandard_score + 3) / 1.2, 2)
+                    substandard_score[substandard["id"]]["score"] = question_substandard_score
+                else:
+                    substandard_score[substandard["id"]]["score"] = 0
+
+        # 他评 ， 这里修改为评价人的访问， 改为被评人的分
+        psr_qs = PeopleSurveyRelation.objects.get(id=people_survey_result_id)
+        o_qs = PeopleSurveyRelation.objects.filter(project_id=psr_qs.project_id,
+                                            evaluated_people_id=psr_qs.evaluated_people_id,
+                                            people_id=psr_qs.evaluated_people_id,
+                                            status=PeopleSurveyRelation.STATUS_FINISH)
+        if not o_qs.exists():
+            # 该他评没有自评
+            logger.info("%s for ZGC180 not self ZGC180" % people_survey_result_id)
+            return
+        else:
+            print(people_survey_result_id)
+            people_survey_result_id = o_qs[0].id
+            print(people_survey_result_id)
+        # 自己对他人的评价分数
+        for_other_dimension_score = {}
+        for_other_substandard_score = {}
+        psr_qs = PeopleSurveyRelation.objects.filter(id=people_survey_result_id)
+        self_d = {}
+        self_s = {}
+        if psr_qs.exists():
+            psr_obj = psr_qs[0]
+            self_d = psr_obj.dimension_score_map["self"]
+            self_s = psr_obj.substandard_score_map["self"]
+        facet_score = {}
+        substandard_score = {}
+        dimension_score = {}
+        model_score = 0  # 总分
+        logger.debug("algorithm_average_weight --> people_survey_result_id is %s" % people_survey_result_id)
+        people_survey_result = PeopleSurveyRelation.objects.get(id=people_survey_result_id)
+        survey = Survey.objects.get(id=people_survey_result.survey_id)
+        research_model = ResearchModel.objects.get(id=survey.model_id)
+        model_info = SurveyAlgorithm.get_model_detail_info(research_model)
+        question_answers = SurveyAlgorithm.get_question_answer(
+            people_survey_result.people_id,
+            people_survey_result.survey_id,
+            people_survey_result.project_id,
+            people_survey_result.role_type,
+            people_survey_result.evaluated_people_id
+        )
+        dimensions = model_info['dimension']
+        dimension_count = 0
+        dimension_total_score = 0
+        # 评价他人
+        if for_other:
+            for dimension in dimensions:
+                substandards = dimension['substandards']
+                dimension_score[dimension["id"]] = {
+                    "score": 0,
+                    "name": dimension["name"],
+                    "row_score": 0
+                }
+                if not substandards:
+                    pass
+                else:
+                    substandard_count = 0
+                    score = 0
+                    for substandard in substandards:
+                        process_substandard_score(dimension, substandard, for_other=True)
+                        tag_qs = Tag.objects.filter_active(business_model=Tag.MODEL_SUBSTANDARD,
+                                                           tag_name=u"是否计入维度分").order_by("-id")
+                        if tag_qs.exists():
+                            tag = tag_qs[0]
+                            str_qs = SubstandardTagRelation.objects.filter_active(tag_id=tag.id,
+                                                                                  object_id=substandard["id"]).order_by(
+                                "-id")
+                            if str_qs.exists():
+                                str_tag = str_qs[0]
+                                if str_tag == u"否":
+                                    pass
+                            else:
+                                substandard_count += 1
+                                score += substandard_score[substandard["id"]]["score"]
+                        else:
+                            substandard_count += 1
+                            score += substandard_score[substandard["id"]]["score"]
+                    # 能力 即 维度，  能力分 = 行为分求平均
+                    d_score = int(round((score * 1.00 / substandard_count * 1.00)))
+                    if d_score > 5:
+                        d_score = 5
+                    if d_score < 0:
+                        d_score = 0
+                    dimension_score[dimension["id"]]["score"] = d_score
+                    dimension_score[dimension["id"]]["row_score"] = round((score * 1.00 / substandard_count * 1.00), 3)
+                tag_qs = Tag.objects.filter_active(business_model=Tag.MODEL_DIMENSION, tag_name=u"是否计入模型分").order_by(
+                    "-id")
+                if tag_qs.exists():
+                    tag = tag_qs[0]
+                    str_qs = DimensionTagRelation.objects.filter_active(tag_id=tag.id,
+                                                                        object_id=dimension["id"]).order_by(
+                        "-id")
+                    if str_qs.exists():
+                        str_tag = str_qs[0]
+                        if str_tag == u"否":
+                            pass
+                    else:
+                        dimension_count += 1
+                        dimension_total_score += dimension_score[dimension["id"]]["score"]
+                else:
+                    dimension_count += 1
+                    dimension_total_score += dimension_score[dimension["id"]]["score"]
+            model_score = int(round((dimension_total_score * 1.00 / dimension_count * 1.00), 1))
+            if score_handler:
+                score_handler(model_score, dimension_score, substandard_score)
+            # 找到所有他评人员， 找他们的对此人的分
+            dimension_score = {"self": {}, "others": {},
+                               "for_other": dimension_score}
+            substandard_score = {"self": {}, "others": {},
+                                 "for_other": substandard_score}
+            cls.save_score(people_survey_result_id, model_score, dimension_score, substandard_score,
+                           facet_score=facet_score)
+        # 自评，以及获取他评
+        else:
+            for dimension in dimensions:
+                substandards = dimension['substandards']
+                dimension_score[dimension["id"]] = {
+                    "score": 0,
+                    "name": dimension["name"],
+                    "row_score": 0,
+                }
+                if not substandards:
+                    pass
+                else:
+                    substandard_count = 0
+                    score = 0
+                    for substandard in substandards:
+                        process_substandard_score(dimension, substandard)
+                        tag_qs = Tag.objects.filter_active(business_model=Tag.MODEL_SUBSTANDARD,
+                                                           tag_name=u"是否计入维度分").order_by("-id")
+                        if tag_qs.exists():
+                            tag = tag_qs[0]
+                            str_qs = SubstandardTagRelation.objects.filter_active(tag_id=tag.id,
+                                                                                  object_id=substandard["id"]).order_by(
+                                "-id")
+                            if str_qs.exists():
+                                str_tag = str_qs[0]
+                                if str_tag == u"否":
+                                    pass
+                            else:
+                                substandard_count += 1
+                                score += substandard_score[substandard["id"]]["score"]
+                        else:
+                            substandard_count += 1
+                            score += substandard_score[substandard["id"]]["score"]
+                    # 能力 即 维度，  能力分 = 行为分求平均
+                    d_score = int(round((score * 1.00 / substandard_count * 1.00)))
+                    dimension_score[dimension["id"]]["row_score"] = round((score * 1.00 / substandard_count * 1.00), 3)
+                    if d_score > 5:
+                        d_score = 5
+                    if d_score < 0:
+                        d_score = 0
+                    dimension_score[dimension["id"]]["score"] = d_score
+                tag_qs = Tag.objects.filter_active(business_model=Tag.MODEL_DIMENSION, tag_name=u"是否计入模型分").order_by(
+                    "-id")
+                if tag_qs.exists():
+                    tag = tag_qs[0]
+                    str_qs = DimensionTagRelation.objects.filter_active(tag_id=tag.id,
+                                                                        object_id=dimension["id"]).order_by(
+                        "-id")
+                    if str_qs.exists():
+                        str_tag = str_qs[0]
+                        if str_tag == u"否":
+                            pass
+                    else:
+                        dimension_count += 1
+                        dimension_total_score += dimension_score[dimension["id"]]["score"]
+                else:
+                    dimension_count += 1
+                    dimension_total_score += dimension_score[dimension["id"]]["score"]
+            model_score = int(round((dimension_total_score * 1.00 / dimension_count * 1.00), 1))
+            if score_handler:
+                score_handler(model_score, dimension_score, substandard_score)
+            # 自评和他评的计算方式不同， 所以加一个参数作为标志位
+            # 检查有哪些人评价了他， 然后计算，
+            #
+            # 他人对自己的评价分数
+            other_dimension_score = {}
+            other_substandard_score = {}
+
+            evaluated_people_id = people_survey_result.people_id
+            project_id = people_survey_result.project_id
+            evaluate_qs = PeopleSurveyRelation.objects.filter_active(evaluated_people_id=evaluated_people_id,
+                                                                     project_id=project_id,
+                                                                     status=PeopleSurveyRelation.STATUS_FINISH)
+            others_count = evaluate_qs.count()
+            if others_count:
+                for evaluate_obj in evaluate_qs:
+                    if evaluate_obj.people_id == evaluated_people_id:
+                        others_count -= 1
+                        if not others_count:
+                            break
+                    else:
+                        cls.algorithm_zgc(evaluate_obj.id, form_type=Survey.FORM_TYPE_NORMAL, for_other=True)
+                        evaluate_obj = PeopleSurveyRelation.objects.get(id=evaluate_obj.id)
+                        one_other_dimension_score = evaluate_obj.dimension_score_map["for_other"]
+                        one_other_substandard_score = evaluate_obj.substandard_score_map["for_other"]
+                        if not other_dimension_score:
+                            other_dimension_score = one_other_dimension_score
+                            other_substandard_score = one_other_substandard_score
+                        else:
+                            for other_dimension in other_dimension_score:
+                                for one_other_dimension in one_other_dimension_score:
+                                    if other_dimension == one_other_dimension:
+                                        other_dimension_score[other_dimension]["row_score"] += \
+                                        one_other_dimension_score[one_other_dimension]["row_score"]
+                            for other_substandard in other_substandard_score:
+                                for one_other_substandard in one_other_substandard_score:
+                                    if other_substandard == one_other_substandard:
+                                        other_substandard_score[other_substandard]["score"] += \
+                                        one_other_substandard_score[one_other_substandard]["score"]
+                if others_count:
+                    for other_dimension in other_dimension_score:
+                        other_dimension_score[other_dimension]["score"] = round((other_dimension_score[other_dimension]["row_score"] / (others_count * 1.00)), 3)
+                    for other_substandard in other_substandard_score:
+                        other_substandard_score[other_substandard]["score"] = round((other_substandard_score[other_substandard]["score"] / (others_count * 1.00)), 2)
+
+            # 找到所有他评人员， 找他们的对此人的分
+            if self_d and self_s:
+                dimension_score = {"self": self_d, "others": other_dimension_score,
+                                   "for_other": for_other_dimension_score}
+                substandard_score = {"self": self_s, "others": other_substandard_score,
+                                     "for_other": for_other_substandard_score}
+            else:
+                dimension_score = {"self": dimension_score, "others": other_dimension_score,
+                                   "for_other": for_other_dimension_score}
+                substandard_score = {"self": substandard_score, "others": other_substandard_score,
+                                     "for_other": for_other_substandard_score}
+            cls.save_score(people_survey_result_id, model_score, dimension_score, substandard_score,
+                           facet_score=facet_score)
+
+    @classmethod
+    def algorithm_ldfg(cls, people_survey_result_id, form_type=Survey.FORM_TYPE_FORCE,
+                             remove_weight_zero=True, multiply_weight=True, score_handler=None):
+        u"""
+        领导风格
+          领导风格算法：
+        substandard_score {'id':{'name'xx,'normsdist_score':xx}}
+        1、本测验是领导风格测验，共有abcdef六种类型领导风格，采用迫选法，每个题目有两种领导风格的描述，
+            受测者需要在两者中选其一，D列标注了每种描述对应的领导风格。
+        2、计分方式，每个题目有两种描述，
+            选中的描述对应D列的领导风格计1分，没选中的对应领导风格记0分，
+            分别统计abcdef的得分。然后根据Profile里面每种风格的得分分布，分析受测者的风格类型。
+        3、其中，由6题是，同一种领导风格的两条描述组合在一起，所以每种领导风格的得分区间为：[1,11]
+
+        """
+
+        def process_substandard_score(dimension, substandard):
+            name = substandard["name"] + u"风格"
+            substandard_score[substandard["id"]] = {
+                "score": 0,
+                # "name": substandard["name"],
+                "name": name,
+                "dimension_id": dimension["id"],
+                "normsdist_score": 0,
+            }
+            if substandard["substandards"]:
+                all_child_score = 0
+                all_child_count = 0
+                for child_substandard in substandard["substandards"]:
+                    process_substandard_score(dimension, child_substandard)
+                    all_child_count += 1
+                    all_child_score += substandard_score[child_substandard["id"]]["score"]
+                substandard_score[substandard["id"]]["score"] = all_child_score
+                logger.debug("process_substandard_score --> process substandard of %s, %s, %s" % (
+                substandard["id"], substandard["name"], substandard_score[substandard["id"]]["score"]))
+            else:
+                logger.debug("begin process_substandard_score --> process substandard of %s, %s" % (
+                    substandard["id"], substandard["name"]))
+                facet_id_map = cls.get_substandard_facet_map(substandard, survey)
+                question_ids = []
+                question_substandard_score = 0
+                for facet_id in facet_id_map:
+                    facet_info = facet_id_map[facet_id]
+                    question_ids += facet_info["questions"]
+                    if facet_id not in facet_score:
+                        facet_score[facet_id] = {
+                            "score": 0,
+                            "name": facet_id_map[facet_id]["name"],
+                            "substandard_id": substandard["id"],
+                            "dimension_id": dimension["id"]
+                        }
+                    facet_question_count = len(facet_info["questions"])
+                    if form_type == Survey.FORM_TYPE_FORCE:
+                        question_answer_infos = question_answers.filter(answer_id__in=facet_info["questions"])
+                    else:
+                        question_answer_infos = question_answers.filter(question_id__in=facet_info["questions"])
+                    question_score = 0
+                    for question_answer in question_answer_infos:
+                        if question_answer.answer_score < 0:
+                            pass
+                        else:
+                            question_score += question_answer.answer_score
+                            question_substandard_score += question_answer.answer_score
+                    if facet_question_count:
+                        facet_score[facet_id]["score"] = round((question_score*1.00 / facet_question_count*1.00), 2)
+                    else:
+                        facet_score[facet_id]["score"] = 0
+
+                question_count = len(question_ids)
+                if question_count:
+                    substandard_score[substandard["id"]]["score"] = question_substandard_score
+                else:
+                    substandard_score[substandard["id"]]["score"] = 0
+                logger.debug("process_substandard_score --> process substandard of %s, %s, %s, %s, %s, %s" % (
+                    substandard["id"], substandard["name"], substandard_score[substandard["id"]]["score"],
+                    question_substandard_score, question_count, substandard["weight"]))
+
+        facet_score = {}
+        substandard_score = {}
+        dimension_score = {}
+        model_score = 0  # 总分
+        logger.debug("algorithm_average_weight --> people_survey_result_id is %s" % people_survey_result_id)
+        people_survey_result = PeopleSurveyRelation.objects.get(id=people_survey_result_id)
+        survey = Survey.objects.get(id=people_survey_result.survey_id)
+        research_model = ResearchModel.objects.get(id=survey.model_id)
+        model_info = cls.get_model_detail_info(research_model)
+        question_answers = cls.get_question_answer(
+            people_survey_result.people_id,
+            people_survey_result.survey_id,
+            people_survey_result.project_id,
+            people_survey_result.role_type,
+            people_survey_result.evaluated_people_id
+        )
+        dimensions = model_info['dimension']
+        dimension_count = 0
+        dimension_total_score = 0
+        for dimension in dimensions:
+            substandards = dimension['substandards']
+            dimension_score[dimension["id"]] = {
+                "score": 0,
+                "name": dimension["name"]
+            }
+            if not substandards:
+                pass
+            else:
+                substandard_count = 0
+                score = 0
+                for substandard in substandards:
+                    process_substandard_score(dimension, substandard)
+                    tag_qs = Tag.objects.filter_active(business_model=Tag.MODEL_SUBSTANDARD, tag_name=u"是否计入维度分").order_by("-id")
+                    if tag_qs.exists():
+                        tag = tag_qs[0]
+                        str_qs = SubstandardTagRelation.objects.filter_active(tag_id=tag.id, object_id=substandard["id"]).order_by("-id")
+                        if str_qs.exists():
+                            str_tag = str_qs[0]
+                            if str_tag == u"否":
+                                pass
+                        else:
+                            substandard_count += 1
+                            score += substandard_score[substandard["id"]]["score"]
+                    else:
+                        substandard_count += 1
+                        score += substandard_score[substandard["id"]]["score"]
+                dimension_score[dimension["id"]]["score"] = round((score*1.00/substandard_count*1.00), 2)
+            tag_qs = Tag.objects.filter_active(business_model=Tag.MODEL_DIMENSION, tag_name=u"是否计入模型分").order_by("-id")
+            if tag_qs.exists():
+                tag = tag_qs[0]
+                str_qs = DimensionTagRelation.objects.filter_active(tag_id=tag.id, object_id=dimension["id"]).order_by(
+                    "-id")
+                if str_qs.exists():
+                    str_tag = str_qs[0]
+                    if str_tag == u"否":
+                        pass
+                else:
+                    dimension_count += 1
+                    dimension_total_score += dimension_score[dimension["id"]]["score"]
+            else:
+                dimension_count += 1
+                dimension_total_score += dimension_score[dimension["id"]]["score"]
+        model_score = round((dimension_total_score*1.00 / dimension_count*1.00), 2)
+        if score_handler:
+            score_handler(model_score, dimension_score, substandard_score)
+
+        def get_normsdist_score(substandard_name, substandard_row_score):
+            if substandard_row_score > 12:
+                return 100
+            if substandard_row_score < 0:
+                return 0
+            substandard_score_map_change = {
+                u"高压风格": {"12": 100, "11": 100, "10": 97, "9": 95, "8": 90, "7": 88, "6": 74, "5": 57, "4": 47,
+                          "3": 28,
+                          "2": 8, "1": 0, "0": 0},
+                u"权威风格": {"12": 100, "11": 100, "10": 95, "9": 88, "8": 67, "7": 48, "6": 28, "5": 9, "4": 6, "3": 3,
+                          "2": 0, "1": 0, "0": 0},
+                u"亲和风格":
+                     {"12": 100, "11": 100, "10": 100, "9": 98, "8": 97, "7": 95, "6": 87, "5": 68, "4": 48,
+                      "3": 28,
+                      "2": 8, "1": 3, "0": 0},
+                u"民主风格"
+                 : {"12": 98, "11": 96, "10": 88, "9": 74, "8": 58, "7": 30, "6": 17, "5": 9, "4": 6, "3": 4,
+                    "2": 0, "1": 0, "0": 0},
+                u"模范风格"
+                 : {"12": 100, "11": 100, "10": 98, "9": 95, "8": 93, "7": 88, "6": 68, "5": 48, "4": 36,
+                    "3": 8,
+                    "2": 5, "1": 0, "0": 0},
+                u"教练风格"
+                 : {"12": 98, "11": 95, "10": 88, "9": 68, "8": 37, "7": 18, "6": 8, "5": 4, "4": 2, "3": 0,
+                    "2": 0, "1": 0, "0": 0}
+            }
+            ret = 0
+            mid = substandard_score_map_change.get(substandard_name, None)
+            if mid:
+                ret = mid.get(str(substandard_row_score), None)
+            return ret
+
+        for substandard_id in substandard_score:
+            substandard_name = substandard_score[substandard_id]['name']
+            substandard_row_score = substandard_score[substandard_id]['score']
+            ret = 0
+            try:
+                ret = get_normsdist_score(substandard_name, int(substandard_row_score))
+            except:
+                logger.error("ldfg row_score change error %s" % people_survey_result_id)
+            substandard_score[substandard_id]['normsdist_score'] = ret
+        cls.save_score(people_survey_result_id, model_score, dimension_score, substandard_score, facet_score=facet_score)
+
+
     @classmethod
     def algorithm_xwfg(cls, people_survey_result_id, form_type=Survey.FORM_TYPE_FORCE,
                              remove_weight_zero=True, multiply_weight=True, score_handler=None):
@@ -1916,8 +2848,5 @@ class SurveyAlgorithm(object):
         if score_handler:
             score_handler(model_score, dimension_score, substandard_score)
         cls.save_score(people_survey_result_id, model_score, dimension_score, substandard_score, facet_score=facet_score)
-
-
-
 
 

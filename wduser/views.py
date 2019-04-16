@@ -232,7 +232,13 @@ class EnterpriseListCreateView(WdListCreateAPIView):
             return qs
         role_user_qs = RoleUserBusiness.objects.filter_active(
             user_id=self.request.user.id, model_type=RoleUserBusiness.MODEL_TYPE_ENTERPRISE)
-        model_ids = role_user_qs.values_list("model_id", flat=True)
+
+        ass_ids = list(RoleUserBusiness.objects.filter_active(
+            user_id=self.request.user.id, model_type=RoleUserBusiness.MODEL_TYPE_PROJECT).values_list("model_id", flat=True))
+        ap_ids = list(AssessProject.objects.filter_active(id__in=ass_ids).values_list("enterprise_id", flat=True))
+
+        model_ids = list(role_user_qs.values_list("model_id", flat=True))
+        model_ids.extend(ap_ids)
         return qs.filter(id__in=model_ids)
 
     def get(self, request, *args, **kwargs):
@@ -588,6 +594,9 @@ class RoleUserListCreateView(WdListCreateAPIView, WdDestroyAPIView):
         if AuthUser.objects.filter(is_active=True).filter(
                         Q(phone=self.phone) | Q(email=self.email)).count() > 1:
             return ErrorCode.PERMISSION_PHONE_EMAIL_NOT_SAME_USER
+        if AuthUser.objects.filter(is_active=True).filter(
+                        Q(phone=self.phone) | Q(email=self.email)).count() > 0:
+            return ErrorCode.USER_HAS_IN_ROLETYPE_ERROR   #, {"msg": "账号已存在"})
         return ErrorCode.SUCCESS
 
     def post(self, request, *args, **kwargs):

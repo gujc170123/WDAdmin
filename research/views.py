@@ -521,7 +521,19 @@ class ReportSurveyListCreateAPIView(WdListCreateAPIView):
     def post(self, request, *args, **kwargs):
         report_assess_survey = []
         for survey_info in self.survey_infos:
+
             survey_name = Survey.objects.get(id=survey_info["survey_id"]).title
+            try:
+                asr_qs = AssessSurveyRelation.objects.filter_active(assess_id=survey_info["project_id"],
+                                                                survey_id=survey_info["survey_id"])
+                if asr_qs.exists():
+                    a = json.loads(asr_qs[0].custom_config)
+                    survey_name_after = a.get("survey_name", None)
+                    if survey_name_after:
+                        survey_name = survey_name_after
+            except:
+                survey_name = Survey.objects.get(id=survey_info["survey_id"]).title
+
             if not ReportSurveyAssessmentProjectRelation.objects.filter_active(
                     assessment_project_id=survey_info["project_id"],
                     survey_id=survey_info["survey_id"],

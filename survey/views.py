@@ -58,7 +58,7 @@ class OrgSurveyListCreateView(WdListCreateAPIView):
         pm_ids = RoleBusinessPermission.objects.filter_active(
             role_id__in=role_ids).values_list("permission_id", flat=True)
         if BusinessPermission.PERMISSION_ALL in pm_ids or BusinessPermission.PERMISSION_SURVEY_ORG_ALL in pm_ids \
-            or BusinessPermission.PERMISSION_ENTERPRISE_PART in pm_ids:
+            or BusinessPermission.PERMISSION_ENTERPRISE_PART in pm_ids or BusinessPermission.PERMISSION_PROJECT_PART in pm_ids:
             return qs
         role_user_qs = RoleUserBusiness.objects.filter_active(
             user_id=self.request.user.id, model_type=RoleUserBusiness.MODEL_TYPE_SURVEY)

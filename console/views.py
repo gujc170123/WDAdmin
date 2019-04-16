@@ -4,7 +4,8 @@ from __future__ import unicode_literals
 from console.tasks import auto_update_clean_status
 from utils.views import WdListCreateAPIView, WdRetrieveUpdateAPIView, WdListAPIView, WdCreateAPIView, WdDestroyAPIView
 from console.serializers import SurveyOverviewSerializer,  CleanTaskSerializer, AnalysisTaskSerializer,\
-     EscapeTaskSerializer, CleanTaskListSerializer, EscapeTaskListSerializer, AnalysisTaskListSerializer
+     EscapeTaskSerializer, CleanTaskListSerializer, EscapeTaskListSerializer, AnalysisTaskListSerializer, \
+     OfficialCleanTaskSerializer
 from .models import SurveyOverviewCleanTask, EscapeTask, SurveyOverviewAnalysisTask, SurveyOverviewEscapeTask, \
     SurveyOverview, CleanTask, AnalysisTask, ConsoleSurveyModelFacetRelation as SM, ConsoleSurveyQuestionRelation as SQ
 from research.models import ResearchModel, ResearchDimension
@@ -16,7 +17,7 @@ from rest_framework import status
 from question.models import Question, QuestionFacet
 from question.serializers import QuestionSerializer, QuestionFacetSerializer
 import json
-from console.etl import EtlTrialClean
+from console.etl import EtlTrialClean, EtlClean
 
 
 logger = get_logger("console")
@@ -27,7 +28,7 @@ class SignalView(WdCreateAPIView):
 
     def trial(self):
         for trial_id in self.task_id:
-            if type(trial_id) == str:
+            if type(trial_id) in [str, unicode]:
                 trial_id = eval(trial_id)
             obj = EtlTrialClean(trial_id)
             if self.status == u'start':
@@ -36,14 +37,28 @@ class SignalView(WdCreateAPIView):
                 obj.stop()
         return ErrorCode.SUCCESS
 
+    def clean(self):
+        for clean_id in self.task_id:
+            if type(clean_id) in [str, unicode]:
+                clean_id = eval(clean_id)
+            obj = EtlClean(clean_id)
+            if self.status == u'start':
+                logger.debug(u"任务启动")
+                obj.start()
+                logger.debug(u"正式清洗任务清洗完毕")
+            elif self.status == u'stop':
+                logger.debug(u"任务终止")
+                obj.stop()
+                logger.debug(u"正式清洗任务已被终止")
+        return ErrorCode.SUCCESS
+
     def post(self, request, *args, **kwargs):
         logger.debug("状态:%s， 任务:%s, id:%s" % (self.status, self.task, self.task_id) )
         task = self.task
         if task in ['trail_task', 'clean']:
             ret_code = self.trial()
-        else:
-            # TODO 等待后续清洗 转义 解析 相关接口
-            ret_code = ErrorCode.SUCCESS
+        elif task in ['official_clean']:
+                ret_code = self.clean()
         return general_json_response(status.HTTP_200_OK, ret_code)
 
 
@@ -82,8 +97,9 @@ class TrialCleanTaskListCreateView(WdListCreateAPIView):
 class CleanTaskListCreateView(WdListCreateAPIView):
     u"""清洗任务创建与展示"""
     model = CleanTask
-    p_serializer_class = CleanTaskSerializer
+    p_serializer_class = OfficialCleanTaskSerializer
     g_serializer_class = CleanTaskListSerializer
+    serializer_class = p_serializer_class
     POST_CHECK_REQUEST_PARAMETER = ('parent_id',)
     POST_DATA_RESPONSE = True
     POST_DATA_ID_RESPONSE = True
@@ -92,6 +108,9 @@ class CleanTaskListCreateView(WdListCreateAPIView):
         qs = super(CleanTaskListCreateView, self).get_queryset()
         qs = qs.filter(parent_id__gt=1)
         return qs
+
+    # def get_serializer_class(self):
+    #     return self.p_serializer_class
 
     def perform_create(self, serializer):
         super(CleanTaskListCreateView, self).perform_create(serializer)
@@ -104,7 +123,7 @@ class CleanTaskListCreateView(WdListCreateAPIView):
         obj.score_difference_of_each_group = clean_task.score_difference_of_each_group
         obj.social_desirability_score = clean_task.social_desirability_score
         obj.survey_overview_ids = clean_task.survey_overview_ids
-        obj.clean_status = 30
+        obj.clean_status = 40
         obj.save()
         bulk_list = []
         survey_overview_ids = clean_task.survey_overview_ids

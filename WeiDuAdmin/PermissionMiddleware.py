@@ -36,7 +36,7 @@ class PermissionMiddleware(MiddlewareMixin):
             BusinessPermission.PERMISSION_ENTERPRISE_ALL,
             BusinessPermission.PERMISSION_ENTERPRISE_PART,
             # 权限管理
-            BusinessPermission.PERMISSION_PERMISSION_ALL
+            BusinessPermission.PERMISSION_PERMISSION_ALL,
         ],
         "research": [
             BusinessPermission.PERMISSION_MODEL_ORG_ALL,
@@ -52,7 +52,9 @@ class PermissionMiddleware(MiddlewareMixin):
             # 企业管理 会访问模型
             BusinessPermission.PERMISSION_ENTERPRISE_ALL,
             BusinessPermission.PERMISSION_ENTERPRISE_PART,
-            BusinessPermission.PERMISSION_ENTERPRISE_ALL_SEE
+            BusinessPermission.PERMISSION_ENTERPRISE_ALL_SEE,
+            # 1205 项目管理权限
+            BusinessPermission.PERMISSION_PROJECT_PART
 
         ],
         "survey": [
@@ -70,7 +72,7 @@ class PermissionMiddleware(MiddlewareMixin):
             # 权限管理
             BusinessPermission.PERMISSION_PERMISSION_ALL,
             # 项目管理权限 9.15
-            # BusinessPermission.PERMISSION_PROJECT_PART
+            BusinessPermission.PERMISSION_PROJECT_PART
         ],
         "question": [
             #

@@ -31,6 +31,7 @@ from utils import get_random_int, get_random_char, str_check, zip_folder, data2f
 from utils.aliyun.email import EmailUtils
 from utils.aliyun.oss import AliyunOss
 from utils.aliyun.sms.newsms import Sms
+from utils.cache.cache_utils import FileStatusCache
 from utils.excel import ExcelUtils
 from utils.logger import get_logger
 from utils.regular import RegularUtils
@@ -227,7 +228,8 @@ def do_new_authusers(new_authusers):
                 account_name=account,
                 phone=phone,
                 email=email
-            )
+            ).order_by('-id')
+            # 新建的号肯定在最后面
             finish_authusers.append((authuser_obj[0], new_authuser))
 
         return ErrorCode.SUCCESS, finish_authusers
@@ -423,10 +425,24 @@ def do_org(finish_peoples):
         return ErrorCode.FAILURE, None, u'组织修改失败'
 
 
-def do_dedicated_link(authusers):
+def do_dedicated_link(authusers, assess_id=0):
     try:
-        for authuser in authusers:
+        key = 'assess_id_%s' % assess_id
+        try:
+            num = len(authusers)
+            if num <= 0:
+                num = 1
+        except:
+            pass
+        for index, authuser in enumerate(authusers):
             authuser_obj = authuser[0]
+            try:
+                if index % 1000 == 0:
+                    file_status = int(25 * index / num)
+                    file_status += 70
+                    FileStatusCache(key).set_verify_code(file_status)
+            except:
+                pass
             if not authuser_obj.dedicated_link:
                 id_str = "%10d" % authuser_obj.id
                 sha1 = hashlib.sha1()
@@ -536,6 +552,12 @@ def statistics_project_survey_user_count(project_id):
 
 @shared_task
 def statistics_user_count(enterprise_id):
+    """获取企业的每个项目的实际完成的测验人次
+    每个项目：
+    总人数 =  有该项目问卷的人数 （ 未分发的怎么算 ？ ）
+    未完成的人数 = 该项目下有未完成问卷的人数  （这里也没有记录未分发的）
+    完成人数 = 总人数 - 未完成的人数 （ 所以计数正确 ）
+    """
     if enterprise_id == 'all':
         return
     else:
@@ -1053,7 +1075,7 @@ def get_file(assess_id, people_ids, x, is_simple=False):
                         status = u'答卷中'
                     if rel_obj.finish_time:
                         status = u'已完成'
-                    if status == u"进行中":
+                    if status == u"未答题":
                         status = u"已分发"
                     people_data = []
                     # 人员组织信息
@@ -1094,7 +1116,13 @@ def get_file(assess_id, people_ids, x, is_simple=False):
                                     round(uniformity_score.get("K", 0), 2),
                                 ]
                             dismension_score_map = rel_obj.dimension_score_map
-                            substandard_score_map = rel_obj.all_substandard_score_map()
+                            if dismension_score_map.get("self", None):
+                                dismension_score_map = dismension_score_map["self"]
+                            substandard_score_map = rel_obj.substandard_score_map
+                            if substandard_score_map.get("self", None):
+                                substandard_score_map = substandard_score_map["self"]
+                            else:
+                                substandard_score_map = rel_obj.all_substandard_score_map()
 
                             for dismension_id in dismension_ids:
                                 if str(dismension_id) in dismension_score_map:
@@ -1327,22 +1355,27 @@ def zip_excel(path_list, assess_id):
 
 @shared_task
 def assess_people_create_in_sql_task(old_authusers, new_authusers, assess_id):
+    key = 'assess_id_%s' % assess_id
+    FileStatusCache(key).set_verify_code(20)
     ret = do_old_authuser(old_authusers)
     if not ret[0]:
         finish_old_authuser_list = ret[1]
     else:
         return ret
+    FileStatusCache(key).set_verify_code(30)
     ret = do_new_authusers(new_authusers)
     if not ret[0]:
         finish_new_authuser_list = ret[1]
     else:
         return ret
     finish_authusers = finish_new_authuser_list + finish_old_authuser_list
+    FileStatusCache(key).set_verify_code(40)
     ret = do_people(finish_authusers)
     if not ret[0]:
         finish_peoples = au_id_to_po_obj(ret[1])
     else:
         return ret
+    FileStatusCache(key).set_verify_code(50)
     ret = do_enterprise(finish_peoples, assess_id)
     if ret[0]:
         return ret
@@ -1350,15 +1383,21 @@ def assess_people_create_in_sql_task(old_authusers, new_authusers, assess_id):
         ret = do_people_account(finish_peoples, assess_id)
         if ret[0]:
             return ret
+    FileStatusCache(key).set_verify_code(60)
     ret = do_assessuser(finish_peoples, assess_id)
     if ret[0]:
         return ret
+    FileStatusCache(key).set_verify_code(70)
+
+    ret = do_dedicated_link(finish_authusers, assess_id)
+    if ret[0]:
+        return ret
+    FileStatusCache(key).set_verify_code(95)
+
     ret = do_org(finish_peoples)
     if ret[0]:
         return ret
-    ret = do_dedicated_link(finish_authusers)
-    if ret[0]:
-        return ret
+    FileStatusCache(key).set_verify_code(100)
     return ErrorCode.SUCCESS, None, u"SUCCESS"
 
 
@@ -1599,6 +1638,12 @@ def import_assess_user_task_0916(assess_id, file_path):
             infos = [x if not x else RegularUtils.remove_illegal_char(str_check(x)) for x in infos]
         except:
             return ErrorCode.FAILURE, '有非法字符', index, new_user, old_user
+        if index == 5000:
+            key = 'assess_id_%s' % assess_id
+            FileStatusCache(key).set_verify_code(10)
+        if index == 10000:
+            key = 'assess_id_%s' % assess_id
+            FileStatusCache(key).set_verify_code(15)
         try:
             if index == 0:
                 free_infos_name = []
@@ -2109,7 +2154,7 @@ def get_file_back(assess_id, people_ids, x):
                         status = u'答卷中'
                     if rel_obj.finish_time:
                         status = u'已完成'
-                    if status == u"进行中":
+                    if status == u"未答题":
                         status = u"已分发"
                     people_data = []
                     # 人员组织信息

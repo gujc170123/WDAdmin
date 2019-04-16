@@ -46,6 +46,7 @@ class ErrorCode(object):
     USER_ACCOUNT_DOUBLE_ERROR = USER_CODE + 23
     USER_HAS_LOGIN_ERROR = USER_CODE + 24  # 用户已经登陆
     USER_HAS_LOGIN_OTHER_PLACE_ERROR = USER_CODE + 25  # 用户在另地登陆，或已过期
+    USER_HAS_IN_ROLETYPE_ERROR = USER_CODE + 26  # 账号已存在 41026
 
 
     # enterprise
@@ -75,6 +76,7 @@ class ErrorCode(object):
     PROJECT_ORG_CODE_EMPTY_ERROR = ENTERPRISE + 209  # 组织码不存在
     PROJECT_ORG_CODE_DOUBLE_ERROR = ENTERPRISE + 210  # 组织码重复
     PROJECT_NOT_OPEN_ERROR = ENTERPRISE + 211  # 项目非开放,
+    ASSESSUSER_360_ROLE_TYPE_UP_DOWN_ERROR = ENTERPRISE + 212   # 该用户已有上级，不能设置下级
 
     # research
     RESEARCH = 43000
@@ -102,11 +104,12 @@ class ErrorCode(object):
     SURVEY_FORCE_OPTION_RELATED_ERROR = SURVEY + 6
     SURVEY_QUESTION_AUTO_EMPTY = SURVEY + 7
     SURVEY_RAMDOM_NUM_ERROR = SURVEY + 8
-    SURVEY_FORCE_OPTION_DIMENSION_ERROR = SURVEY + 9   #  问卷选项迫选个数大于维度个数  44009
+    SURVEY_FORCE_OPTION_DIMENSION_ERROR = SURVEY + 9   # 问卷选项迫选个数大于维度个数  44009
     SURVEY_REALTION_OPTION_REPEAT_ERROR = SURVEY + 10  # 一个选项不能关联2个指标
     SURVEY_QUESTION_OPTION_DOUBLE_ERROR = SURVEY + 11   # 问卷不能同时关联选项与题目
     SURVEY_OPTION_QUESTION_TYPE_ERROR = SURVEY + 12   # 选项的题目类型不是迫选排序题
     SURVEY_OPTION_QUESTION_OF_DIMENSION_ERROR = SURVEY + 13   # 迫选排序题的不同选项不能关联在不同维度下
+    SURVEY_FINISH_PART_ERROR = SURVEY + 14   # 您已提交不可重复提交 44014
 
     # question
     QUESTION = 45000
@@ -190,7 +193,9 @@ class ErrorCode(object):
         # permission
         PERMISSION_USER_EXISTS: u"管理员用户已经存在，请不要重复添加",
         PERMISSION_ROLE_USER_EXISTS: u"用户已经再该角色，请务重新添加",
-        PERMISSION_PHONE_EMAIL_NOT_SAME_USER: u"手机和邮箱对应两个不同帐号，请更换手机或邮箱"
+        PERMISSION_PHONE_EMAIL_NOT_SAME_USER: u"手机和邮箱对应两个不同帐号，请更换手机或邮箱",
+        USER_HAS_IN_ROLETYPE_ERROR: u"账号已存在",
+
     }
 
 

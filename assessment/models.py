@@ -9,6 +9,8 @@ from django.db import models
 
 # Create your models here.
 from WeiDuAdmin import settings
+# from front.models import PeopleSurveyRelation
+# from front.tasks import auto_get_360_report
 from utils.models import BaseModel
 from wduser.models import Organization
 
@@ -64,6 +66,11 @@ class AssessProject(BaseModel):
 
     @property
     def project_status(self):
+        # if self.assess_type == AssessProject.TYPE_360:
+        #     if PeopleSurveyRelation.objects.filter(project_id=self.id, status__lt=PeopleSurveyRelation.STATUS_FINISH).exists():
+        #         pass
+        #     else:
+        #         auto_get_360_report.delay(self.id)
         now = datetime.datetime.now()
         # now = now.replace(tzinfo=pytz.timezone(settings.TIME_ZONE))
         if self.begin_time is None or self.end_time is None:
@@ -73,6 +80,7 @@ class AssessProject(BaseModel):
         elif self.begin_time < now < self.end_time:
             return self.STATUS_WORKING
         elif now > self.end_time:
+            # auto_get_360_report.delay(self.id)
             return self.STATUS_END
         else:
             return self.STATUS_WAITING
@@ -147,7 +155,7 @@ class AssessSurveyUser(BaseModel):
     STATUS_EXPIRED = 40
     STATUS_CHOICES = (
         (STATUS_NOT_BEGIN, u"未开始"),
-        (STATUS_DOING, u"进行中"),
+        (STATUS_DOING, u"未答题"),
         (STATUS_FINISH, u"已完成"),
         (STATUS_EXPIRED, u"已过期/未完成")
     )

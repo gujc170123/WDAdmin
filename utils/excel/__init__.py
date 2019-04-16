@@ -76,7 +76,8 @@ class ExcelUtils(object):
         　　isBold:true:粗字段，false:普通字体"""
         if not with_openpyxl:
             i = 0
-            style = xlwt.easyxf('font: bold 1')
+            style = xlwt.easyxf('font: bold 1', num_format_str='M/D/YY')
+            # style = xlwt.easyxf('pattern: pattern solid, fore_color red;')
             for svalue in rowValueList:
                 if isBold:
                     sheet_obj.write(rowIndex, i, svalue, style)

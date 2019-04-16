@@ -44,7 +44,7 @@ class AssessImportExport(ExcelUtils):
             u"操作（增加/修改/删除）",
         ]
         title_info = [
-            u"出生日期(如20010101)",  # 注 用户信息从6开始,前面如若增加,需谨慎
+            u"出生日期(如:20010101)",  # 注 用户信息从6开始,前面如若增加,需谨慎
             u"身份证",
             u"面试场地",
             u"岗位",
@@ -109,7 +109,7 @@ class AssessImportExport(ExcelUtils):
         u"""
         :return: 项目导入模版文件路径 文件名
         """
-        file_name = u"wd-assess-import-template-v14.xlsx"
+        file_name = u"wd-assess-import-template-v17.xlsx"
         assess_id = settings.dingzhi_DEBUG
         if assess_id:
             file_name = u"wd-assess-import-template-v16-%s.xlsx" % assess_id

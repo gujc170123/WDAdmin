@@ -4,11 +4,12 @@ from __future__ import unicode_literals
 import hashlib
 import json
 import urllib2
+import datetime
 
 from rest_framework import serializers
 
 from WeiDuAdmin import settings
-from assessment.models import AssessProject
+from assessment.models import AssessProject, AssessUser
 from front.models import PeopleSurveyRelation
 from utils import get_random_int
 from utils.serializers import WdTagListSerializer
@@ -79,10 +80,20 @@ class PeopleSerializer(serializers.ModelSerializer):
         if surery_rels.filter(status=PeopleSurveyRelation.STATUS_EXPIRED).exists():
             return u"已过期"
         if surery_rels.filter(status=PeopleSurveyRelation.STATUS_FINISH).count() == surery_rels.count():
-            return u'已完成'
+            return u'已结束'
         if surery_rels.filter(status__in=[PeopleSurveyRelation.STATUS_DOING_PART, PeopleSurveyRelation.STATUS_FINISH]).exists():
             return u'答卷中'
         else:
+            try:
+                now = datetime.datetime.now()
+                p_obj_time = AssessProject.objects.get(id=assess_id).begin_time
+                if now > p_obj_time:
+                    return u'已分发'
+            except:
+                pass
+            if surery_rels.filter(
+                    status=PeopleSurveyRelation.STATUS_NOT_BEGIN).exists():
+                return u"未开放"
             return u'已分发'
 
 
@@ -374,3 +385,99 @@ class RoleUserBusinessListSeriaSerializer(RoleUserBusinessBasicSeriaSerializer):
             return AuthUser.objects.get(id=obj.user_id).nickname
         except:
             return u''
+
+
+class PeopleSerializer360(serializers.ModelSerializer):
+    u"""360 用户序列化"""
+
+    org_names = serializers.SerializerMethodField()
+    infos = serializers.SerializerMethodField()
+    account_name = serializers.SerializerMethodField()
+    people_role = serializers.SerializerMethodField()
+    user_id = serializers.SerializerMethodField()
+
+    class Meta:
+        model = People
+        fields = ("id", "username", "phone", "email", "org_names", 'infos', 'account_name', 'people_role', "user_id")
+
+    def get_infos(self, obj):
+        if obj.more_info:
+            return json.loads(obj.more_info)
+        else:
+            return []
+
+    def get_user_id(self, obj):
+        return obj.id
+
+    def get_org_names(self, obj):
+        org_info_list = []
+        identification_codes = PeopleOrganization.objects.filter_active(people_id=obj.id).values_list('org_code', flat=True)
+        identification_codes = Organization.objects.filter_active(identification_code__in=identification_codes).order_by('parent_id').values_list('identification_code', flat=True)
+        def get_infos(org_obj):
+            return {"id": org_obj.id, "name": org_obj.name, "identification_code": org_obj.identification_code}
+        for identification_code in identification_codes:
+            org_qs = Organization.objects.filter_active(identification_code=identification_code)
+            if org_qs.count() > 1:
+                logger.error('identificationn org has org,error %s ' % identification_code)
+                return []
+            if org_qs.exists():
+                org_obj = org_qs[0]
+                org_info_list.append(get_infos(org_obj))
+                # while True:
+                #     if org_obj.parent_id:
+                #         try:
+                #             org_obj = Organization.objects.get(id=org_obj.parent_id)
+                #         except Exception, e:
+                #             logger.error('org has two parent org,error %s '% e)
+                #             return []
+                #         org_info_list.append(get_infos(org_obj))
+                #     else:
+                #         break
+        return org_info_list
+
+        # request = self.context.get("request", None)
+        # if request and request.GET.get("assess_id", None) is not None:
+        #     assess_id = request.GET.get("assess_id")
+        #     assess = AssessProject.objects.get(id=assess_id)
+        #     org_codes = Organization.objects.filter_active(
+        #         identification_code__in=obj.org_codes, assess_id=assess.id).values_list("identification_code", flat=True)
+        #         identification_code__in=obj.org_codes, enterprise_id=assess.enterprise_id).values_list("identification_code", flat=True)
+        # else:
+            # org_codes = Organization.objects.filter_active(
+            #     identification_code__in=obj.org_codes).values_list("identification_code", flat=True)
+            # org_codes = obj.org_codes
+        #     已经没有这个了
+        # if not identification_code:
+        #     identification_code = None
+        # return OrganizationUtils.get_parent_org_names(identification_code)
+
+    def get_account_name(self, obj):
+        user_id = obj.user_id
+        try:
+            account_name = AuthUser.objects.get(id=user_id).account_name
+            return account_name
+        except Exception, e:
+            logger.error("people has no user error,%s, people - %s" % (e, obj.id))
+            return None
+
+    def get_people_role(self, obj):
+        request = self.context.get('request', None)
+        user_id = request.GET.get('user_id', None)
+        assess_id = request.GET.get('assess_id', None)
+        au_qs = AssessUser.objects.filter_active(
+            assess_id=assess_id,
+            people_id=user_id,
+            role_people_id=obj.id,
+            role_type__in=[AssessUser.ROLE_TYPE_HIGHER_LEVEL,
+                           AssessUser.ROLE_TYPE_LOWER_LEVEL,
+                           AssessUser.ROLE_TYPE_SAME_LEVEL,
+                           AssessUser.ROLE_TYPE_SUPPLIER_LEVEL]
+        )
+        if au_qs.count() > 1:
+            ids = list(au_qs.values_list("id", flat=True))[1:]
+            au_qs.filter(id__in=ids).update(is_active=False)
+        if au_qs.exists():
+            ret = au_qs[0].role_type
+        else:
+            ret = 10
+        return ret

@@ -12,8 +12,9 @@ from front.models import PeopleSurveyRelation, SurveyInfo, SurveyQuestionInfo, U
     UserQuestionAnswerInfo
 from front.tasks import survey_sync, algorithm_task
 from research.models import ResearchModel, ResearchDimension
-from survey.models import Survey
+from survey.models import Survey, SurveyModelFacetRelation
 from utils.logger import get_logger
+from wduser.models import People
 
 logger = get_logger("front")
 
@@ -25,12 +26,14 @@ class SurveyInfoSerializer(serializers.ModelSerializer):
     block_info = serializers.SerializerMethodField()
     show_people_info = serializers.SerializerMethodField()
     time_limit_original = serializers.SerializerMethodField()
+    is_dimension_by_order = serializers.SerializerMethodField()
 
     class Meta:
         model = SurveyInfo
         fields = ("survey_id", "project_id", "survey_name", 'en_survey_name', "survey_desc", 'en_survey_desc',
                   "project_name", "en_project_name", "survey_type", "begin_time", "end_time", "project_type", "config",
-                  "status", "block_info", "form_type", "time_limit", "show_people_info", "time_limit_original")
+                  "status", "block_info", "form_type", "time_limit", "show_people_info", "time_limit_original",
+                  'is_dimension_by_order')
 
     def get_config(self, obj):
         if not obj.config_info:
@@ -58,6 +61,17 @@ class SurveyInfoSerializer(serializers.ModelSerializer):
             return obj.time_limit
         except:
             return 0
+
+    def get_is_dimension_by_order(self, obj):
+        try:
+            model_id = SurveyModelFacetRelation.objects.filter_active(survey_id=obj.survey_id)[0].model_id
+            order_list = list(ResearchDimension.objects.filter_active(model_id=model_id).values_list('order_number', flat=True))
+            if max(order_list) > 0:
+                return True
+            else:
+                return False
+        except:
+            return False
 
 
 class PeopleSurveySerializer(serializers.ModelSerializer):
@@ -197,6 +211,14 @@ class PeopleSurveySerializer(serializers.ModelSerializer):
         if obj_modify:
             # TODO: 异步实现
             obj.save()
+        psr_obj = obj
+        if psr_obj.evaluated_people_id and psr_obj.people_id:
+            if psr_obj.evaluated_people_id != psr_obj.people_id:
+                try:
+                    evaluated_people_name = People.objects.filter_active(id=psr_obj.evaluated_people_id)[0].username
+                except:
+                    evaluated_people_name = ""
+                survey_info["survey_name"] = survey_info["survey_name"] + " " + evaluated_people_name
         return survey_info
 
 

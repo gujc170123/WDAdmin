@@ -20,7 +20,6 @@ from utils.response import ErrorCode
 from utils.views import WdTemplateView, AuthenticationExceptView
 from wduser.models import People, AuthUser
 from wduser.user_utils import UserAccountUtils
-import uuid
 
 logger = get_logger("front")
 
@@ -136,49 +135,6 @@ class OpenProjectJoinView(AuthenticationExceptView, WdTemplateView):
         # TODO: 跳转我的测评页面
         return HttpResponseRedirect("/#/")
 
-class OpenJoinView(AuthenticationExceptView, WdTemplateView):
-    u"""开放项目加入"""
-    template_name = 'join.html'
-
-    def get(self, request, *args, **kwargs):
-        bs = 0
-        ba = self.request.GET.get("ba", 0)
-        assess_id = base64.b64decode(ba)
-        try:
-            project = AssessProject.objects.get(id=assess_id)
-        except:
-            # 跳转我的测评页面
-            logger.error("project id %s is not found" % assess_id)
-            # return HttpResponseRedirect("/#/")
-            return Response({"err_code": 1})
-        if project.distribute_type == AssessSurveyRelation.DISTRIBUTE_IMPORT:
-            logger.error("project(%s) is not open" % (assess_id))
-            return Response({"err_code": 2})
-        
-        relation_qs = AssessSurveyRelation.objects.filter_active(assess_id=assess_id, survey_been_random=False)
-        random_relation_qs = AssessSurveyRelation.objects.filter_active(assess_id=assess_id, survey_been_random=True).values_list('survey_id', flat=True)
-        random_num = project.survey_random_number
-        if random_num is None:
-            random_num = 0
-        if len(random_relation_qs) < random_num:
-            random_num = len(random_relation_qs)
-        if (not relation_qs.exists()) and (not random_relation_qs):
-            logger.error("project(%s) survey relation is not found" % (assess_id))
-            # 跳转我的测评页面
-            return HttpResponseRedirect("/#/")
-
-        user, code = UserAccountUtils.user_register(
-            pwd, username=str(uuid.uuid4()), phone='', email='', role_type=AuthUser.ROLE_NORMAL)
-
-        people = People.objects.create(
-            user_id=user.id, username=user.nickname, phone=user.phone, email=user.email)
-            
-        try:
-            send_one_user_survey(assess_id, people.id)
-        except Exception, e:
-            logger.error("add people to project error, %s, %s" %(people.id, assess_id))
-        # TODO: 跳转我的测评页面
-        return HttpResponseRedirect("/#/")
 
 class LinkProjectJoinView(AuthenticationExceptView, WdTemplateView):
     # 个人链接登陆
