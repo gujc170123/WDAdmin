@@ -10,7 +10,7 @@ from wduser.models import BaseOrganization
 from .helper import OrganizationHelper
 from django.db.models import Avg
 
-logger = get_logger("front")
+logger = get_logger("workspace")
 
 
 class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
@@ -18,7 +18,6 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
 
     api_mapping = {
         "organtree": 'self.get_organtree',
-        "facet": 'self.get_get_facet',
         # 团队幸福温度
         "temperature": "self.get_temperature",
         # 团队幸福指数整体特征
@@ -83,7 +82,6 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             logger.error("get report data error, msg: %s " % e)
             return res, ErrorCode.INTERNAL_ERROR
 
-    # 员工幸福与压力整体分布
     def get_distribution(self, **kwargs):
         res = {}
         org = kwargs.get("org_id")
@@ -313,7 +311,6 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                 res["r5c7"] += 1
         return res
 
-    # 下属机构幸福指数表现
     def get_expression(self, **kwargs):
         res = {}
         org = kwargs.get("org_id")
@@ -337,7 +334,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             else:
                 company = FactOEI.objects.complex_filter(query_dict).aggregate(Avg("model"), Avg("scale2"))
             res[org_list[-1]] = company
-            # 查下属机构
+            # get child department
             child_org = self.get_child_org(query_dict)
             if child_org:
                 child_list = []
@@ -405,7 +402,6 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             logger.error("get report data error, msg: %s " % e)
             return res, ErrorCode.INTERNAL_ERROR
 
-    # 幸福指数关注群体
     def get_focus_group(self, **kwargs):
         org = kwargs.get("org_id")
         profile = kwargs.get("profile_id")
@@ -421,7 +417,6 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             types = [i[0] for i in types]
 
         else:
-            # 查下属部门
             child_org = self.get_child_org(query_dict)
             types = []
             if child_org:
@@ -452,7 +447,6 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             res[i][u"区间"] = level
         return res, ErrorCode.SUCCESS
 
-    # 获取梯队区间
     def get_level(self, score):
         if 80 <= score <= 100:
             level = u"优势区"
@@ -470,7 +464,6 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             level = u"障碍区"
         return level
 
-    # 员工幸福整体分布
     def get_overall(self, **kwargs):
         org = kwargs.get("org_id")
         query_dict = self.get_organization(org)[0]
@@ -495,9 +488,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                 ret[i][level].append(j[0])
 
         for i in ret:
-            # i = model, ret[i] = {"保持区": [], "total": []}
             for j in ret[i]:
-                # j = "保持区"， ret[i][j] = [12.0, 23.3]
                 if j != "total":
                     ret[i][j] = round(len(ret[i][j]) * 100 / len(ret[i]["total"]))
             del ret[i]["total"]
@@ -509,7 +500,6 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             res[i] = ret[res_zip[i]]
         return res, ErrorCode.SUCCESS
 
-    # 企业幸福指数
     def get_business_index(self, **kwargs):
         res = {}
         org = kwargs.get("org_id")
@@ -517,13 +507,13 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         select = kwargs.get("select_id")
         query_dict = self.get_organization(org)[0]
         profile_options = [u"年龄", u"性别", u"司龄", u"层级", u"序列"]
-        # 拿到当前部门
+        # current department
         department = FactOEI.objects.complex_filter(query_dict)
         if not department.exists():
             return res, ErrorCode.INVALID_INPUT
-        # 按profile取值
+        # get result by profile
         if profile in profile_options:
-            # 所有可选字段
+            # all optional fields
             profile_dict = {
                 u"年龄": "profile1", u"性别": "profile2", u"司龄": "profile4", u"层级": "profile5", u"序列": "profile3"
             }
@@ -537,7 +527,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                     value_list = [j[0] for j in value_list if j[0] and j[0] > 75]
                 res[i] = value_list
 
-        # 拿下属部门
+        # get child department
         else:
             child_org = self.get_child_org(query_dict)
             for i in child_org:
@@ -554,7 +544,6 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             res[k] = round(len(res[k]) * 100 / total)
         return res, ErrorCode.SUCCESS
 
-    # 团队幸福指数特征
     def WDindex(self, **kwargs):
         res = {"high": [], "low": []}
         org = kwargs.get("org_id")
@@ -635,54 +624,6 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             logger.error("get report data error, msg: %s " % e)
             return res, ErrorCode.INTERNAL_ERROR
 
-    def get_facet(org):
-        """return facet list of eoi"""
-        return []
-
-    def get_eoi(org):
-        """return current organization's oei"""
-        return 0
-
-    def get_eoi_std(org):
-        """return oei benchmark"""
-        return 65
-
-    def get_oeistress_dist(org):
-        """return oei-stress population distribution"""
-        return []
-
-    def get_oeidevote_dist(org):
-        """return oei-devotion population distribution"""
-        return 0
-
-    def get_oei_advantage(org):
-        """return advantage behaviour of oei"""
-        return []
-
-    def get_oei_disadvantage(org):
-        """return disadvantage behaviour of oei"""
-        return []
-
-    def get_oei_ranking(org):
-        """return oei ranking of current org"""
-        return []
-
-    def get_oei_dimension(org):
-        """return oei dimension matrix of current org"""
-        return []
-
-    def get_oei_profilefacet(org, profile):
-        """return oei table of selected profile facet"""
-        return []
-
-    def get_oei_dist(org):
-        """return oei popluation distribution"""
-        return []
-
-    def get_oei_pop_dist(org, model, dimension, pop):
-        """return population facet distribution of """
-        return []
-
     def post(self, request, *args, **kwargs):
         api_id = self.request.data.get("api", None)
         org_id = self.request.data.get("org", None)
@@ -691,13 +632,8 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         population_id = self.request.data.get("population", None)
         scale_id = self.request.data.get("scale", None)
         select_id = self.request.data.get("select", None)
-        args = {"org_id": org_id,
-                "profile_id": profile_id,
-                "dimension_id": dimension_id,
-                "population_id": population_id}
         try:
             # retrieve chart's data
-
             data, err_code = eval(self.api_mapping[api_id])(org_id=org_id,
                                                             profile_id=profile_id,
                                                             dimension_id=dimension_id,
