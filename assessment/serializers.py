@@ -20,7 +20,6 @@ class AssessmentBasicSerializer(WdTagListSerializer, serializers.ModelSerializer
     u"""测评项目列表 创建序列化"""
 
     org_infos = serializers.SerializerMethodField()
-    # user_count = serializers.SerializerMethodField()
 
     class Meta:
         model = AssessProject
@@ -32,9 +31,6 @@ class AssessmentBasicSerializer(WdTagListSerializer, serializers.ModelSerializer
     def get_org_infos(self, obj):
         org_ids = AssessOrganization.objects.filter_active(assess_id=obj.id).values_list("organization_id", flat=True)
         return Organization.objects.filter_active(id__in=org_ids).values("id", "name", "identification_code")
-
-    # def get_user_count(self, obj):
-    #     return PeopleSurveyRelation.objects.filter_active(project_id=obj.id).count()
 
 
 class AssessmentSurveyRelationPostSerializer(serializers.ModelSerializer):
@@ -78,8 +74,6 @@ class AssessmentSurveyRelationGetSerializer(serializers.ModelSerializer):
 
 
 class AssessSurveyReportListSerializer(AssessmentSurveyRelationGetSerializer):
-    u""""""
-
     enterprise_project_info = serializers.SerializerMethodField()
 
     class Meta:
@@ -101,71 +95,9 @@ class AssessSurveyReportListSerializer(AssessmentSurveyRelationGetSerializer):
 class AssessmentSurveyRelationDetailGetSerializer(AssessmentSurveyRelationGetSerializer):
     u"""项目问卷详情接口"""
 
-    # org_infos = serializers.SerializerMethodField()
-
     class Meta:
         model = AssessSurveyRelation
         fields = AssessmentSurveyRelationGetSerializer.Meta.fields
-    #
-    # def get_org_infos(self, obj):
-    #     org_ids = AssessSurveyOrganization.objects.filter_active(
-    #         assess_id=obj.assess_id, survey_id=obj.survey_id).values_list("organization_id", flat=True)
-    #     return Organization.objects.filter_active(id__in=org_ids).values("id", "name", "identification_code")
-
-#
-# class AssessmentSurveyRelationDistributeSerializer(serializers.ModelSerializer):
-#     u"""项目问卷分发信息"""
-#
-#     # survey_url = serializers.SerializerMethodField()
-#     # user_statistics = serializers.SerializerMethodField()
-#     project_url = serializers.SerializerMethodField()
-#     distribute_info = serializers.SerializerMethodField()
-#
-#     class Meta:
-#         model = AssessSurveyRelation
-#         fields = ("project_url", "distribute_info")
-#
-#     def get_project_url(self, obj):
-#         # TODO: join-project interface
-#         project_id_bs64 = quote(base64.b64encode(str(obj.assess_id)))
-#         return settings.CLIENT_HOST + '/join-project/?ba=%s' % (project_id_bs64)
-#
-#     def get_survey_url(self, obj):
-#         survey_id_bs64 = quote(base64.b64encode(str(obj.survey_id)))
-#         project_id_bs64 = quote(base64.b64encode(str(obj.assess_id)))
-#         return settings.CLIENT_HOST + '/join-survey/?bs=%s&ba=%s' %(survey_id_bs64, project_id_bs64)
-#
-#     def get_user_statistics(self, obj):
-#         # org_codes = AssessSurveyOrganization.objects.filter_active(
-#         #     assess_id=obj.assess_id, survey_id=obj.survey_id).values_list("organization_code", flat=True)
-#         org_codes = AssessOrganization.objects.filter_active(
-#             assess_id=obj.assess_id
-#         ).values_list("organization_code", flat=True)
-#         po_qs = PeopleOrganization.objects.filter_active(
-#             org_code__in=org_codes).values_list("people_id", flat=True).distinct()
-#         count = po_qs.count()
-#         user_qs = PeopleSurveyRelation.objects.filter_active(
-#             project_id=obj.assess_id, survey_id=obj.survey_id, people_id__in=list(po_qs))
-#         doing_count = user_qs.filter(status=PeopleSurveyRelation.STATUS_DOING).count()
-#         finish_count = user_qs.filter(
-#             status__in=[PeopleSurveyRelation.STATUS_FINISH, PeopleSurveyRelation.STATUS_EXPIRED]).count()
-#         distribute_qs = AssessSurveyUserDistribute.objects.filter_active(
-#             assess_id=obj.assess_id, survey_id=obj.survey_id
-#         )
-#         if distribute_qs.exists():
-#             distribute_count = len(json.loads(distribute_qs[0].people_ids))
-#         else:
-#             distribute_count = 0
-#         return {
-#             "count": count,
-#             "doing_count": doing_count,
-#             "finish_count": finish_count,
-#             "not_started": count-doing_count-finish_count,
-#             "distribute_count": distribute_count
-#         }
-#
-#     def get_distribute_info(self, obj):
-#         return None
 
 
 class AssessGatherInfoSerializer(serializers.ModelSerializer):

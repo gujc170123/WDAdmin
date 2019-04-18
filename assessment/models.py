@@ -7,16 +7,13 @@ import json
 import pytz
 from django.db import models
 
-# Create your models here.
 from WeiDuAdmin import settings
 from utils.models import BaseModel
-from wduser.models import Organization
+from wduser.models import Organization, BaseOrganization, AuthUser
 
 
 class AssessProject(BaseModel):
-    u"""测评项目
-    """
-    # TODO: 360度测评是体现在问卷中，还是体现在项目中
+
     enterprise_id = models.BigIntegerField(u"企业ID", db_index=True, default=0)
     name = models.CharField(u"项目名称", max_length=100, db_index=True)
     en_name = models.CharField(u"英文项目名称", max_length=100, default=u'', db_index=True, blank=True, null=True)
@@ -50,7 +47,6 @@ class AssessProject(BaseModel):
         (DISTRIBUTE_IMPORT, u"导入测评"),
     )
     distribute_type = models.PositiveIntegerField(u"分发类型", default=DISTRIBUTE_OPEN, choices=DISTRIBUTE_CHOICES, db_index=True)
-    # custom_config = models.CharField(u"配置信息", max_length=2048)
     has_distributed = models.BooleanField(u"是否分发过", default=False)
     is_answer_survey_by_order = models.BooleanField(u"是否按顺序做问卷", default=False)
     has_survey_random = models.BooleanField(u"是否有问卷随机", default=False)
@@ -65,7 +61,6 @@ class AssessProject(BaseModel):
     @property
     def project_status(self):
         now = datetime.datetime.now()
-        # now = now.replace(tzinfo=pytz.timezone(settings.TIME_ZONE))
         if self.begin_time is None or self.end_time is None:
             return self.STATUS_WAITING
         elif now < self.begin_time:
@@ -96,7 +91,6 @@ class AssessOrganization(BaseModel):
     organization_id = models.BigIntegerField(u"组织ID", db_index=True, default=0)
     organization_code = models.CharField(u"组织标识码", max_length=20, db_index=True, null=True)
 
-
 class AssessSurveyOrganization(BaseModel):
     u"""测评问卷组织关联
     @version: 20180725 弃用
@@ -106,6 +100,15 @@ class AssessSurveyOrganization(BaseModel):
     organization_id = models.BigIntegerField(u"组织ID", db_index=True)
     organization_code = models.CharField(u"组织标识码", max_length=20, db_index=True, null=True)
 
+class FullOrganization(BaseModel):
+    assess = models.ForeignKey(AssessProject)
+    organization = models.ForeignKey(Organization)
+    organization1 = models.BigIntegerField(db_index=True, null=True)
+    organization2 = models.BigIntegerField(db_index=True, null=True)
+    organization3 = models.BigIntegerField(db_index=True, null=True)
+    organization4 = models.BigIntegerField(db_index=True, null=True)
+    organization5 = models.BigIntegerField(db_index=True, null=True)
+    organization6 = models.BigIntegerField(db_index=True, null=True)
 
 class AssessUser(BaseModel):
     u"""项目所有用户
@@ -170,22 +173,14 @@ class AssessSurveyRelation(BaseModel):
     u"""项目与问卷关联"""
     assess_id = models.BigIntegerField(u"测评项目ID", db_index=True, default=0)
     survey_id = models.BigIntegerField(u"测评问卷ID", db_index=True, default=0)
-    # 该项目中的问卷是否被选为随机
     survey_been_random = models.BooleanField(u"该问卷是否随机", db_index=True, default=False)
     role_type = models.PositiveSmallIntegerField(
         u"测评角色", default=AssessUser.ROLE_TYPE_NORMAL, choices=AssessUser.ROLE_CHOICES, db_index=True)
-    # begin_time = models.DateTimeField(u"开始时间", db_index=True, blank=True, null=True)
-    # end_time = models.DateTimeField(u"结束时间", db_index=True, blank=True, null=True)
     user_count = models.PositiveIntegerField(u"测验人次", default=0, db_index=True)
     DISTRIBUTE_OPEN = 10
     DISTRIBUTE_IMPORT = 20
-    # 轮播广告幅，完成后跳转链接，自定义LOGO，继承自项目，可修改调整
-    # {"finish_redirect": "", "assess_logo":"", "advert_url":"", "distribute_type": DISTRIBUTE_OPEN}
-    # 20180725 仅assess_logo支持问卷当中自定义，其他的暂不支持
     custom_config = models.CharField(u"问卷配置信息", max_length=2048)
-    # 顺序答题
     order_number = models.PositiveSmallIntegerField(u"问卷顺序", default=0)
-    # 个人是否可以查看报告
     CAN_VIEW_REPORT = 1
     CAN_NOT_VIEW_REPORT = 0
     people_view_report = models.PositiveSmallIntegerField(u"报告个人是否可以查看", default=CAN_NOT_VIEW_REPORT, db_index=True)
@@ -209,7 +204,6 @@ class AssessSurveyRelation(BaseModel):
     @property
     def survey_status(self):
         now = datetime.datetime.now()
-        # now = now.replace(tzinfo=pytz.timezone(settings.TIME_ZONE))
         if self.begin_time is None or self.end_time is None:
             return AssessProject.STATUS_WAITING
         elif now < self.begin_time:
@@ -234,23 +228,14 @@ class AssessSurveyRelation(BaseModel):
         logo = custom_config.get("assess_logo", None)
         if not logo:
             logo = self.get_project().assess_logo
-        # return self.get_project().assess_logo
         return logo
 
     @property
     def advert_url(self):
-        # if not self.custom_config:
-        #     return None
-        # custom_config = json.loads(self.custom_config)
-        # return custom_config.get("advert_url", None)
         return self.get_project().advert_url
 
     @property
     def distribute_type(self):
-        # if not self.custom_config:
-        #     return None
-        # custom_config = json.loads(self.custom_config)
-        # return custom_config.get("distribute_type", self.DISTRIBUTE_OPEN)
         return self.get_project().distribute_type
 
 
@@ -274,14 +259,6 @@ class AssessGatherInfo(BaseModel):
     config_info = models.CharField(u"信息配置", max_length=1024)
     is_required = models.BooleanField(u"是否必填", default=False, db_index=True)
     is_modified = models.BooleanField(u"是否可以修改", default=True, db_index=True)
-
-#
-# class AssessGatherInfoConfig(BaseModel):
-#     u"""项目信息配置"""
-#     assess_id = models.BigIntegerField(u"测评项目ID", db_index=True, default=0)
-#     info_id = models.BigIntegerField(u"收集信息ID", db_index=True, default=0)
-#     can_be_modify = models.PositiveSmallIntegerField(u"测评用户是否可修改", default=True)
-
 
 class AssessProjectSurveyConfig(BaseModel):
     u"""项目问卷自定义配置

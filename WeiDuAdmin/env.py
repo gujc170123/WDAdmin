@@ -95,6 +95,7 @@ CLIENT_HOST = 'http://yx.iwedoing.com'
 REPORT_HOST = 'http://172.16.124.92'
 REPORT_HOSTS = ['http://172.16.124.92']
 CUSTOM_HOSTS = ['http://172.16.124.92']
+FRONT_HOST ='front'
 
 # redis config
 CACHE = {
@@ -107,7 +108,7 @@ CACHE = {
         },
         'celery': {
             'host': '127.0.0.1',
-            'port': 6380,
+            'port': 6379,
             'db': 0,
             'password': None
         }

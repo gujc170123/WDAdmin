@@ -10,11 +10,16 @@ from workspace.helper import OrganizationHelper
 from workspace.serializers import UserSerializer,BaseOrganizationSerializer,AssessSerializer
 from utils.regular import RegularUtils
 from assessment.views import get_mima, get_random_char, get_active_code
-from wduser.models import AuthUser, BaseOrganization, People, EnterpriseAccount
+from wduser.models import AuthUser, BaseOrganization, People, EnterpriseAccount, Organization
 from assessment.models import AssessProject, AssessSurveyRelation, AssessProjectSurveyConfig, \
-                              AssessSurveyUserDistribute,AssessUser
+                              AssessSurveyUserDistribute,AssessUser, AssessOrganization, \
+                              FullOrganization
+from rest_framework.views import APIView                              
 from front.models import PeopleSurveyRelation
 from assessment.tasks import send_survey_active_codes
+from django.db import connection,transaction,connections
+from django.conf import settings
+from survey.models import Survey
 
 #retrieve logger entry for workspace app
 logger = get_logger("workspace")
@@ -70,7 +75,7 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
 
         #check account_name not duplicated
         if account_name:
-            if AuthUser.objects.filter(organization_id=organization_id,
+            if AuthUser.objects.filter(organization__enterprise_id=enterprise_id,
                                        is_active=True,
                                        account_name=account_name,
                                        organization__is_active=True).exists():  
@@ -83,7 +88,7 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
                 return general_json_response(status.HTTP_200_OK,
                                              ErrorCode.USER_PHONE_REGUL_ERROR,
                                              {'msg': u'新增用户失败，手机格式有误'})
-            if AuthUser.objects.filter(organization_id=organization_id,
+            if AuthUser.objects.filter(organization__enterprise_id=enterprise_id,
                                        is_active=True,
                                        phone=phone,
                                        organization__is_active=True).exists():                       
@@ -96,7 +101,7 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
                 return general_json_response(status.HTTP_200_OK,
                                              ErrorCode.USER_EMAIL_REGUL_ERROR,
                                              {'msg': u'新增用户失败，邮箱格式有误'})
-            if AuthUser.objects.filter(organization_id=organization_id,
+            if AuthUser.objects.filter(organization__enterprise_id=enterprise_id,
                                        is_active=True,
                                        email=email,
                                        organization__is_active=True).exists():  
@@ -131,15 +136,15 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
                                            phone=phone,
                                            email=email)
             #create enterprise-account object
-            EnterpriseAccount.objects.create(user_id=id,
+            EnterpriseAccount.objects.create(user_id=user.id,
                                              people_id=people.id,
                                              account_name=account_name,
                                              enterprise_id=enterprise_id)
 
             return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {'msg': u'成功'})
         except Exception, e:
-            logger.error("新增用户失败 %s" % e)
-            return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, {'msg': u'新增用户失败'})
+            logger.error("新增用户失败 %s" % e.message)
+            return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, {'msg': u'新增用户失败:%s' % e.message})
 
     def get(self, request, *args, **kwargs):
         '''list users'''
@@ -287,10 +292,12 @@ class OrganizationImportExportView(AuthenticationExceptView):
         #todo
         """import organization file"""
 
-class AssessCreateView(AuthenticationExceptView, WdCreateAPIView):
+class AssessCreateView(AuthenticationExceptView, WdListCreateAPIView):
     '''create assess view'''
     model = AssessProject
     serializer_class = AssessSerializer
+
+    POST_CHECK_REQUEST_PARAMETER={"name","distribute_type","surveys"}
 
     SURVEY_DISC = 89
     SURVEY_OEI = 147
@@ -298,22 +305,21 @@ class AssessCreateView(AuthenticationExceptView, WdCreateAPIView):
     ASSESS_STA = 286
 
     def post(self, request, *args, **kwargs):
-        name = request.data.get('name', None)
-        distribute_type = request.data.get('distribute_type', None)
-        surveys = request.data.getlist('surveys')                
+        name = request.data.get('name')
+        distribute_type = request.data.get('distribute_type')
+        surveys = request.data.get('surveys').split(",")
         assess = AssessProject.objects.create(name=name,
                                               distribute_type=distribute_type)
 
         for survey in surveys:
             AssessSurveyRelation.objects.create(assess_id=assess.id,survey_id=survey)
-            if survey == SURVEY_OEI:
+            if int(survey) == self.SURVEY_OEI:
                 qs = AssessProjectSurveyConfig.objects.filter_active(survey_id=survey,
-                                                                     assess_id=ASSESS_STA)
-                qs_new = copy.copy(qs)
-                for x in qs_new:
+                                                                     assess_id=self.ASSESS_STA).all()
+                for x in qs:
                     x.id = None
                     x.assess_id=assess.id
-                AssessProjectSurveyConfig.objects.bulk_create(qs_new)
+                AssessProjectSurveyConfig.objects.bulk_create(qs)
 
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
@@ -328,18 +334,10 @@ class AssessDetailView(AuthenticationExceptView, WdCreateAPIView):
         assess.save()
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
-class AssessSurveyRelationDistributeView(WdListCreateAPIView):
-    u"""
-    项目与问卷的分发信息
-    @GET: 查看关联的问卷分发信息
-    @POST：分发按钮
+class AssessSurveyRelationDistributeView(AuthenticationExceptView,WdCreateAPIView):
 
-    @version: 20180725 分发
-    @GET：查看项目的分发信息
-    @POST: 分发按钮
-    """
     model = AssessSurveyRelation
-    POST_CHECK_REQUEST_PARAMETER = ("assess_id", )
+    POST_CHECK_REQUEST_PARAMETER = ("enterprise_id","user_id","org_ids" )
     GET_CHECK_REQUEST_PARAMETER = ("assess_id", )
 
     def get_all_survey_finish_people_count(self, finish_people_ids, assess_id):
@@ -371,204 +369,87 @@ class AssessSurveyRelationDistributeView(WdListCreateAPIView):
     def send_active_code(self, people_ids):
         send_survey_active_codes.delay(people_ids)
 
-    def distribute360(self):
-        role_surveys = AssessSurveyRelation.objects.filter_active(
-            assess_id=self.assess_id).values("role_type", "survey_id")
-        role_survey_map = dict()
-        for role_survey in role_surveys:
-            role_survey_map[role_survey["role_type"]] = role_survey["survey_id"]
-        assess_users = AssessUser.objects.filter_active(
-            assess_id=self.assess_id, role_type=AssessUser.ROLE_TYPE_SELF
-        )
-        new_distribute_people_ids = []
-        for assess_user in assess_users:
-            evaluated_people = People.objects.get(id=assess_user.people_id)
-            for role_types in AssessUser.ROLE_CHOICES:
-                role_type = role_types[0]
-                if role_type == AssessUser.ROLE_TYPE_NORMAL:
-                    continue
-                if role_type in role_survey_map:
-                    survey_id = role_survey_map[role_type]
-                else:
-                    return ErrorCode.PROJECT_SURVEY_RELATION_VALID
-                survey = Survey.objects.get(id=survey_id)
-                distribute_users = AssessSurveyUserDistribute.objects.filter_active(
-                    assess_id=self.assess_id, evaluated_people_id=evaluated_people.id,
-                    role_type=role_type, survey_id=survey_id
-                )
-                has_distribute = distribute_users.exists()
-                if has_distribute:
-                    distribute_user_ids = json.loads(
-                        distribute_users.values_list("people_ids", flat=True)[0])
-                else:
-                    distribute_user_ids = []
-                role_people_ids = AssessUser.objects.filter_active(
-                    assess_id=self.assess_id, people_id=evaluated_people.id, role_type=role_type
-                ).values_list("role_people_id", flat=True)
+    def distribute_normal(self,assess_id,enterprise_id,user_id,orgid_list):
 
-                people_survey_list = []
-                for people_id in role_people_ids:
-                    if people_id not in distribute_user_ids:
-                        survey_name = survey.title
-                        if role_type != AssessUser.ROLE_TYPE_SELF:
-                            survey_name = u"%s(评价%s)" %(survey.title, evaluated_people.username)
-                        people_survey_list.append(PeopleSurveyRelation(
-                            people_id=people_id,
-                            survey_id=survey_id,
-                            project_id=self.assess_id,
-                            survey_name=survey_name,
-                            role_type=role_type,
-                            evaluated_people_id=evaluated_people.id
+        #todo check no duplication of assess
 
-                        ))
-                        distribute_user_ids.append(people_id)
-                        if people_id not in new_distribute_people_ids:
-                            new_distribute_people_ids.append(people_id)
-                PeopleSurveyRelation.objects.bulk_create(people_survey_list)
-                if has_distribute:
-                    distribute_users.update(people_ids=json.dumps(distribute_user_ids))
-                else:
-                    AssessSurveyUserDistribute.objects.create(
-                        assess_id=self.assess_id, survey_id=survey_id,
-                        people_ids=json.dumps(distribute_user_ids),
-                        evaluated_people_id=evaluated_people.id,
-                        role_type=role_type
-                    )
-        self.send_active_code(new_distribute_people_ids)
-        return ErrorCode.SUCCESS
-
-    def distribute_normal(self):
-        def get_random_survey_distribute_info(assess_id, random_survey_qs):
-            random_survey_ids = random_survey_qs.values_list("survey_id", flat=True)
-            random_survey_total_ids = []
-            for random_survey_id in random_survey_ids:
-                asud_qs = AssessSurveyUserDistribute.objects.filter_active(
-                    assess_id=assess_id, survey_id=random_survey_id
-                )
-                if asud_qs.exists():
-                    d_user_ids = json.loads(asud_qs[0].people_ids)
-                    if type(d_user_ids) != list:
-                        d_user_ids = []
-                    random_survey_total_ids.extend(d_user_ids)
-            return random_survey_total_ids
-
-        def polling_survey(random_num, random_index, polling_list):
-            y = random_num * random_index % len(polling_list)
-            his_survey_list = polling_list[y:y + random_num]
-            if y + random_num > len(polling_list):
-                his_survey_list += polling_list[0: (random_num - (len(polling_list) - y))]
-            return his_survey_list, random_index + 1
-
-        assess_id = self.assess_id
-        people_ids = self.request.data.get("ids", None)
-        if not people_ids:
-            people_ids = AssessUser.objects.filter_active(assess_id=assess_id).values_list("people_id", flat=True).distinct()
-            if not people_ids:
-                return ErrorCode.ORG_PEOPLE_IN_ASSESS_ERROR 
-        new_distribute_ids = []
+        #retrieve assessment status
         assessment_obj = AssessProject.objects.get(id=assess_id)
-        status = PeopleSurveyRelation.STATUS_DOING if assessment_obj.project_status == AssessProject.STATUS_WORKING else PeopleSurveyRelation.STATUS_NOT_BEGIN
-        all_survey_qs = AssessSurveyRelation.objects.filter_active(assess_id=assess_id).distinct().order_by("-order_number")
-        if all_survey_qs.count() == 0:
-            return ErrorCode.PROJECT_SURVEY_RELATION_VALID
-        all_survey_ids = all_survey_qs.values_list("survey_id", flat=True)
-        survey_assess_distribute_dict = {}
-        for survey_id in all_survey_ids:
-            asud_qs = AssessSurveyUserDistribute.objects.filter_active(assess_id=assess_id, survey_id=survey_id)
-            if asud_qs.exists():
-                dist_people_ids = json.loads(asud_qs[0].people_ids)
-                if type(dist_people_ids) != list:
-                    dist_people_ids = []
-            else:
-                AssessSurveyUserDistribute.objects.create(assess_id=assess_id, survey_id=survey_id, people_ids=json.dumps([]))
-                dist_people_ids = []
-            survey_assess_distribute_dict[survey_id] = dist_people_ids
+        if assessment_obj.project_status == AssessProject.STATUS_WORKING:
+            status = PeopleSurveyRelation.STATUS_DOING
+        else:
+            status = PeopleSurveyRelation.STATUS_NOT_BEGIN
+        
+        sql_attach = 'insert into wduser_peopleorganization select null,now(), \
+                        true,now(),%s,%s, d.id,c.id \
+                        from wduser_authuser a, \
+		                wduser_baseorganization b, \
+		                wduser_organization c,\
+		                wduser_people d \
+	                    where b.id=c.baseorganization_id \
+		                and a.organization_id=b.id \
+		                and d.user_id=a.id \
+                        and a.is_active=true \
+                        and b.is_active=true \
+                        and c.is_active=true \
+                        and d.is_active=true'
+        sql_attach2 = 'insert into assessment_assessuser \
+	                   select null,now(),true,now(),%s,%s,%s,people_id,10,0 \
+                       from wduser_peopleorganization a \
+                       inner join wduser_organization b \
+                       on binary a.org_code= b.identification_code \
+                       where assess_id=%s \
+                       and a.is_active=true and b.is_active=true'
+        sql_attach3 = 'insert into '+ settings.FRONT_HOST +'.front_peoplesurveyrelation \
+                        (`id`,`create_time`,`is_active`,`update_time`,`creator_id`,`last_modify_user_id`,`people_id`,\
+                        `survey_id`,`project_id`,`role_type`,`evaluated_people_id`,`survey_name`,`status`,`begin_answer_time`,\
+                        `finish_time`,`is_overtime`,`report_status`,`report_url`,`model_score`,`dimension_score`,\
+                        `substandard_score`,`happy_score`,`en_survey_name`,`praise_score`,`facet_score`,`happy_ability_score`,\
+                        `happy_efficacy_score`,`uniformity_score`,`en_report_url`) \
+                        select null,now(),true,now(),\
+                        %s,%s,people_id,%s,%s,10,0,%s,10,null,null,0,0,null,0\
+                        ,null,null,0,null,0,null,0,0,null,null\
+                        from wduser_peopleorganization a \
+                        inner join wduser_organization b \
+                        on binary a.org_code=b.identification_code \
+                        where assess_id=%s \
+                        and a.is_active=true and b.is_active=true'
 
-        random_survey_qs = all_survey_qs.filter(survey_been_random=True)
-        normal_survey_qs = all_survey_qs.filter(survey_been_random=False)
+        #copy base organization into assess organization
+        with connection.cursor() as cursor:
+            ret = cursor.callproc("CopyOrganization", (enterprise_id,assess_id,user_id))                
 
-        normal_survey_ids = list(normal_survey_qs.values_list('survey_id', flat=True))
-        row_random_survey_ids = list(random_survey_qs.values_list('survey_id', flat=True))
-        random_distribute_people_info_out = get_random_survey_distribute_info(assess_id, random_survey_qs)
+        orgs = Organization.objects.filter(baseorganization_id__in=list(orgid_list),assess_id=assess_id)
+        orgs.update(is_active=True)
+        FullOrganization.objects.filter(organization_id__in=orgs.values_list("id",flat=True)).update(is_active=True)  
 
-        random_num = assessment_obj.survey_random_number
-        if random_num:
-            if len(random_survey_qs) < random_num:
-                random_num = len(random_survey_qs)
-        random_index = assessment_obj.survey_random_index
+        #attach user to assessment
+        with connection.cursor() as cursor:
+            cursor.execute(sql_attach, [user_id,user_id])
+            cursor.execute(sql_attach2, [user_id,user_id,assess_id,assess_id])
+            people_ids = map(int,list(AssessUser.objects.filter_active(assess_id=assess_id).values_list("people_id", flat=True).distinct().all()))
+            for survey in AssessSurveyRelation.objects.filter_active(assess_id=assess_id).values_list("survey_id", flat=True):
+                surveyname = Survey.objects.get(pk=survey).title
+                cursor.execute(sql_attach3, [user_id,user_id,survey,assess_id,surveyname,assess_id])                
+                AssessSurveyUserDistribute.objects.create(assess_id=assess_id, survey_id=survey, people_ids=people_ids)
 
-        people_survey_b_create_list = []
-        for people_id in people_ids:
-            if random_num and random_survey_qs.exists() and (people_id not in random_distribute_people_info_out):
-                random_survey_ids, random_index = polling_survey(random_num, random_index, row_random_survey_ids)
-            else:
-                random_survey_ids, random_index = [], random_index
-            person_survey_ids_list = [i for i in all_survey_ids if i in list(set(normal_survey_ids).union(set(random_survey_ids)))]
-            for survey_id in person_survey_ids_list:
-                survey = Survey.objects.get(id=survey_id)
-                distribute_users = survey_assess_distribute_dict[survey_id]
-                if people_id not in distribute_users:
-                    people_survey_b_create_list.append(PeopleSurveyRelation(
-                        people_id=people_id,
-                        survey_id=survey_id,
-                        project_id=assess_id,
-                        survey_name=survey.title,
-                        status=status
-                    ))
-                    survey_assess_distribute_dict[survey_id].append(people_id)
-                    if people_id not in new_distribute_ids:
-                        new_distribute_ids.append(people_id)
-            # 批量创建
-            if len(people_survey_b_create_list) > 2000:
-                PeopleSurveyRelation.objects.bulk_create(people_survey_b_create_list)
-                logger.info("people_b_create_survey")
-                people_survey_b_create_list = []
-        # 发送最后一批问卷
-        if people_survey_b_create_list:
-            logger.info("people_b_create_survey")
-            PeopleSurveyRelation.objects.bulk_create(people_survey_b_create_list)
-        # 发激活码
-        if new_distribute_ids:
-            self.send_active_code(new_distribute_ids)
-        # 保留发卷信息
-        for survey_id in survey_assess_distribute_dict:
-            AssessSurveyUserDistribute.objects.filter_active(assess_id=assess_id, survey_id=survey_id).update(people_ids=json.dumps(survey_assess_distribute_dict[survey_id]))
-        # 轮询标志位
-        assessment_obj.survey_random_index = random_index
-        assessment_obj.save()
+        #send sms information
+        self.send_active_code(people_ids)  
+
         return ErrorCode.SUCCESS
 
     def post(self, request, *args, **kwargs):
-        self.assessment = AssessProject.objects.get(id=self.assess_id)
-        if self.assessment.assess_type == AssessProject.TYPE_360:
-            rst_code = self.distribute360()
-        else:
-            rst_code = self.distribute_normal()
+        self.assessment = AssessProject.objects.get(id=self.kwargs.get('pk'))
+        assess_id = self.assessment.id
+        enterprise_id = self.request.data.get("enterprise_id")        
+        user_id = self.request.data.get("user_id")
+        orgid_list = map(int,self.request.data.get("org_ids").split(",") )       
+        rst_code = self.distribute_normal(assess_id,enterprise_id,user_id,orgid_list)
         return general_json_response(status.HTTP_200_OK, rst_code)
 
     def get_project_url(self):
-        # TODO: join-project interface
         project_id_bs64 = quote(base64.b64encode(str(self.assess_id)))
         return settings.CLIENT_HOST + '/people/join-project/?ba=%s&bs=0' % (project_id_bs64)
-
-    def get_open_project_user_statistics(self):
-
-        user_qs = PeopleSurveyRelation.objects.filter_active(project_id=self.assess_id)
-        all_count = user_qs.values_list("people_id", flat=True).distinct().count()
-        people_with_survey_ids = user_qs.values_list('people_id', flat=True).distinct()
-        wei_fen_fa = all_count - people_with_survey_ids.count()
-        yi_wan_cheng = self.get_all_survey_finish_people_count(people_with_survey_ids, self.assess_id)
-        yi_fen_fa = self.get_doing_survey_people_count(people_with_survey_ids, self.assess_id)
-        da_juan_zhong = people_with_survey_ids.count() - yi_wan_cheng - yi_fen_fa
-        distribute_count = 0
-        return {
-            "count": all_count,
-            "doing_count": da_juan_zhong,
-            "not_begin_count": yi_fen_fa,
-            "finish_count": yi_wan_cheng,
-            "not_started": wei_fen_fa,
-            "distribute_count": distribute_count
-        }
 
     def get_import_project_user_statistics(self):
         po_qs = AssessUser.objects.filter_active(assess_id=self.assess_id).values_list("people_id", flat=True).distinct()
@@ -591,16 +472,12 @@ class AssessSurveyRelationDistributeView(WdListCreateAPIView):
 
     def get_distribute_info(self):
         project = AssessProject.objects.get(id=self.assess_id)
-        if project.distribute_type == AssessProject.DISTRIBUTE_OPEN:
-            user_statistics = self.get_open_project_user_statistics()
-        else:
-            user_statistics = self.get_import_project_user_statistics()
+        user_statistics = self.get_import_project_user_statistics()
         org_ids = AssessOrganization.objects.filter_active(
             assess_id=self.assess_id).values_list("organization_id", flat=True)
         org_infos = Organization.objects.filter_active(id__in=org_ids).values("id", "name", "identification_code")
         return {
             "user_statistics": user_statistics,
-            "distribute_type": project.distribute_type,
             "org_infos": org_infos
         }
 
@@ -609,4 +486,78 @@ class AssessSurveyRelationDistributeView(WdListCreateAPIView):
             "url": self.get_project_url(),
             "distribute_info": self.get_distribute_info()
         }
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, data)
+
+class AssessProgressView(AuthenticationExceptView,APIView):
+
+    def get(self, request, *args, **kwargs):
+        orgid =  request.GET.get('organization')
+        survey =  request.GET.get('survey')
+        assess =  self.kwargs.get('pk')
+        depth = 1        
+
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT getdepth(%s) as depth", [orgid])
+            row = cursor.fetchone()
+            depth = row[0]
+            parent_field = "organization" + str(depth)
+            child_field = "organization" + str(depth+1)
+            sql_query = "select ifnull(" +child_field +",%s) as id,\
+                        max(d.name) as name, \
+                        count(c.people_id) total, max(a.is_active) valid,\
+                        sum(CASE c.status WHEN 20 THEN 1 ELSE 0 END) finished \
+                        from assessment_fullorganization a \
+                        inner join wduser_peopleorganization b \
+                        on a.organization_id=b.org_code \
+                        and b.is_active=true \
+                        left join " + settings.FRONT_HOST + ".front_peoplesurveyrelation c \
+                        on b.people_id=c.people_id \
+                        and c.is_active=true \
+                        and a.assess_id=c.project_id \
+                        inner join wduser_organization d \
+                        on a.organization_id=d.id \
+                        and d.is_active=true \
+                        where a.assess_id=%s \
+                        and a."+ parent_field + "=%s \
+                        and c.survey_id=%s \
+                        group by " +child_field + " order by id"            
+            cursor.execute(sql_query, [orgid,assess,orgid,survey])
+            columns = [column[0] for column in cursor.description]
+            results = []
+            for row in cursor.fetchall():
+                results.append(dict(zip(columns, row)))
+        data = {"progress" : results}
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, data)
+
+class AssessProgressTotalView(AuthenticationExceptView,APIView):
+
+    def get(self, request, *args, **kwargs):
+        survey =  request.GET.get('survey')
+        assess =  self.kwargs.get('pk')
+
+        organization = Organization.objects.filter(assess_id=assess,parent_id=0).first()
+
+        with connection.cursor() as cursor:
+            sql_query = "select %s  as id,max(d.name) as name, \
+                        count(c.people_id) total,max(a.is_active) valid,\
+                        sum(CASE c.status WHEN 20 THEN 1 ELSE 0 END) finished \
+                        from assessment_fullorganization a \
+                        inner join wduser_peopleorganization b \
+                        on a.organization_id=b.org_code \
+                        and b.is_active=true \
+                        left join "+ settings.FRONT_HOST + ".front_peoplesurveyrelation c \
+                        on b.people_id=c.people_id \
+                        and c.is_active=true \
+                        inner join wduser_organization d \
+                        on a.organization_id=d.id \
+                        and d.is_active=true \
+                        and a.assess_id=c.project_id \
+                        where a.assess_id=%s \
+                        and a.organization1=%s \
+                        and c.survey_id=%s "
+                        
+            cursor.execute(sql_query, [organization.id,assess,organization.id,survey])
+            columns = [column[0] for column in cursor.description]
+            result= dict(zip(columns, cursor.fetchone()))          
+        data = {"progress" : result}
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, data)

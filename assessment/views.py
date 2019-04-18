@@ -1105,7 +1105,14 @@ class AssessUserCreateView(WdCreateAPIView):
             if EnterpriseAccount.objects.filter(account_name=account_name, enterprise_id=assess_obj.enterprise_id).exists():
                 return general_json_response(status.HTTP_200_OK, ErrorCode.USER_ACCOUNT_NAME_ERROR, {'msg': u'账户在本企业已存在'})
         if not org_codes:
-            return general_json_response(status.HTTP_200_OK, ErrorCode.PROJECT_ORG_EMPTY_ERROR, {'msg': u'项目组织为空'})
+            return general_json_response(status.HTTP_200_OK, ErrorCode.PROJECT_ORG_EMPTY_ERROR, {'msg': u'项目组织为空'})        
+        for org_code in org_codes:            
+            org_obj = Organization.objects.filter_active(id=org_code["id"])
+            if not org_obj.exists():
+                return general_json_response(status.HTTP_200_OK, ErrorCode.PROJECT_ORG_INPUT_ERROR,
+                                             {'msg': u'项4m~[[34m~D34m~G34m~S4m~E34m~\~I误'})
+            else:
+                org_code["identification_code"] = org_obj[0].identification_code        
         org_check = check_org(org_codes)
         if org_check != ErrorCode.SUCCESS:
             return general_json_response(status.HTTP_200_OK, ErrorCode.PROJECT_ORG_INPUT_ERROR, {'msg': u'项目组织输入有误'})

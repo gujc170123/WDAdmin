@@ -4,6 +4,26 @@ from rest_framework import serializers
 from wduser.models import AuthUser, EnterpriseAccount, People, BaseOrganization
 from assessment.models import AssessProject
 import json
+from collections import OrderedDict
+
+class ChoicesField(serializers.Field):
+    """Custom ChoiceField serializer field."""
+
+    def __init__(self, choices, **kwargs):
+        """init."""
+        self._choices = OrderedDict(choices)
+        super(ChoicesField, self).__init__(**kwargs)
+
+    def to_representation(self, obj):
+        """Used while retrieving value for the field."""
+        return self._choices[obj]
+
+    def to_internal_value(self, data):
+        """Used while storing value for the field."""
+        for i in self._choices:
+            if self._choices[i] == data:
+                return i
+        raise serializers.ValidationError("Acceptable values are {0}.".format(list(self._choices.values()))) 
 
 class BaseOrganizationSerializer(serializers.ModelSerializer):
     """organization information serializer"""
@@ -32,11 +52,13 @@ class UserSerializer(serializers.ModelSerializer):
 
 class AssessSerializer(serializers.ModelSerializer):
     '''Assessment Serializer'''
-    distribute_type_name = serializers.ChoiceField(choices=AssessProject.DISTRIBUTE_CHOICES)
+    distribute_type = ChoicesField(choices=AssessProject.DISTRIBUTE_CHOICES)
+    assess_type =  ChoicesField(choices=AssessProject.TYPE_CHOICES)
+    finish_choices =  ChoicesField(choices=AssessProject.FINISH_CHOICES)
 
     class Meta:
         model = AssessProject
         fields = ('id', 'name', 'en_name', 'enterprise_id', 'begin_time', 'end_time', 'advert_url', 'assess_type',
                   'project_status', 'finish_choices', 'finish_redirect', 'finish_txt', 'assess_logo', 'org_infos',
                   "user_count", "distribute_type", "has_distributed", 'is_answer_survey_by_order', 'has_survey_random',
-                  'survey_random_number', 'show_people_info','distribute_type_name')
+                  'survey_random_number', 'show_people_info')

@@ -214,7 +214,7 @@ class Organization(BaseModel):
     en_name = models.CharField(u"英文名称", max_length=200, db_index=True, default=u'', null=True)
     identification_code = models.CharField(u"标识码", max_length=20, db_index=True)
     assess_id = models.BigIntegerField(u"项目ID", db_index=True, null=True)
-
+    baseorganization = models.ForeignKey(BaseOrganization,null=True)
 
 class UserAdminRole(BaseModel):
     u"""用户管理员角色"""
