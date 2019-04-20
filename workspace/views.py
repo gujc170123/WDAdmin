@@ -4,6 +4,7 @@ from rest_framework import status
 from utils.views import AuthenticationExceptView, WdCreateAPIView, WdRetrieveUpdateAPIView ,\
                         WdDestroyAPIView, WdListCreateAPIView
 from utils.response import general_json_response, ErrorCode
+from rest_framework.response import Response
 from wduser.user_utils import UserAccountUtils
 from utils.logger import get_logger
 from workspace.helper import OrganizationHelper
@@ -14,12 +15,15 @@ from wduser.models import AuthUser, BaseOrganization, People, EnterpriseAccount,
 from assessment.models import AssessProject, AssessSurveyRelation, AssessProjectSurveyConfig, \
                               AssessSurveyUserDistribute,AssessUser, AssessOrganization, \
                               FullOrganization
-from rest_framework.views import APIView                              
+from utils.cache.cache_utils import FileStatusCache                              
+from rest_framework.views import APIView
 from front.models import PeopleSurveyRelation
 from assessment.tasks import send_survey_active_codes
 from django.db import connection,transaction,connections
 from django.conf import settings
 from survey.models import Survey
+from rest_framework.parsers import MultiPartParser
+from tasks import userimport_task
 
 #retrieve logger entry for workspace app
 logger = get_logger("workspace")
@@ -246,6 +250,53 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
         user.is_active=False
         user.save()
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
+
+class UserImportExportView(AuthenticationExceptView):
+
+    POST_CHECK_REQUEST_PARAMETER = ("enterprise_id",)
+
+
+
+    """organization template import/export"""
+    def get_template(self):
+        #todo
+        """get template file"""
+
+    def post(self, request, *args, **kwargs):        
+        self.parser_classes = (MultiPartParser,)
+        filename = request.data["name"]
+        filetype = file.filename.split('.')[-1]
+        filecsv =request.FILES.get("file", None)
+        enterprise_id = self.enterprise_id
+
+        if not filecsv:             
+            return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, {
+            'data_index': -1,
+            "data_msg": u'未检测到任何上传文件'
+        })
+
+        if filetype!='csv':
+            return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, {
+            'data_index': -1,
+            "data_msg": u'请确认上传文件类型是否为csv'
+        })
+
+        userimport_task.delay(filecsv,filename,enterprise_id,6)
+  
+
+        key = 'assess_id_%s' % self.enterprise_id
+        FileStatusCache(key).set_verify_code(5)
+        error_code, msg, index, new_user, old_user = import_assess_user_task_0916(self.enterprise_id, file_path)
+        if error_code == ErrorCode.SUCCESS:
+            assess_people_create_in_sql_task.delay(old_user, new_user, self.assess_id)
+        else:
+            FileStatusCache(key).set_verify_code(100)
+        
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {
+            'err_code': error_code,
+            'data_index': index,
+            "data_msg": msg
+        })
 
 class OrganizationListCreateView(AuthenticationExceptView, WdCreateAPIView):
     """organization tree view"""

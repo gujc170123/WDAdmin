@@ -52,5 +52,7 @@ urlpatterns = [
     # workspace api
     ws_url(r'workspace/', include('workspace.urls')),
     # front api
-    client_url(r'front/', include('front.urls'))
+    client_url(r'front/', include('front.urls')),
+    client_url(r'social/', include('social_django.urls', namespace='social')),
+    ws_url(r'^celery-progress/', include('celery_progress.urls')),    
 ]

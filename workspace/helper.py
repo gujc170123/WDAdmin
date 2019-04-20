@@ -2,6 +2,47 @@
 from __future__ import unicode_literals
 from wduser.models import BaseOrganization
 from workspace.serializers import BaseOrganizationSerializer
+from WeiDuAdmin.settings import BASE_DIR
+import os, pandas,numpy
+
+def write_file(folder, file_data, file_name, assess_id,suffix):
+    download_path = os.path.join(BASE_DIR, "download")
+    assess_path = os.path.join(download_path, folder)        
+    file_path = os.path.join(assess_path, assess_id, suffix)
+    if not os.path.exists(file_path):
+        os.makedirs(file_path)
+    file_full_path = os.path.join(file_path, file_name)
+    f = open(file_full_path, "wb+")
+    if file_data.multiple_chunks():
+        for chunk in file_data.chunks():
+            f.write(chunk)
+    else:
+        f.write(file_data)
+    f.close()
+    return file_full_path
+
+def read_file(filepath,targetcols,mustcols,keycols,codedict):
+    data = pandas.read_csv(filepath,encoding='gbk')
+    #check header integration
+    if data.columns.values!=targetcols:
+        return False
+    #check mustinput data
+    data['indice'] = data.index+1
+    for col in mustcols:
+        nulldata = data[data[col].isnull()]['indice'].tolist(0)
+        if not nulldata:
+            return False
+    #check duplicated key value(skip empty)
+    for col in keycols:
+        duplicated = data[data[col].notnull() & data[col].duplicated(keep=False)]['indice'].tolist(0)
+        if not duplicated:
+            return False
+    #dict fields validation(skip empty)
+    for key in codedict:
+        invalid = data[data[key].notnull() & ~data.key.str.contains('|'.join(codedict[key]))]['indice'].tolist(0)
+        if not invalid:
+            return False    
+    return data
 
 class OrganizationHelper(object):
 

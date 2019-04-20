@@ -24,6 +24,8 @@ INSTALLED_APPS = [
     'service',
     'console',
     'workspace',
+    'social_django',
+    'celery_progress',
 ]
 DATABASE_ROUTERS = ['WeiDuAdmin.db_router.DbRouter']
 MIDDLEWARE_CLASSES = [
@@ -41,6 +43,14 @@ MIDDLEWARE_CLASSES = [
 ROOT_URLCONF = 'WeiDuAdmin.urls'
 
 WSGI_APPLICATION = 'WeiDuAdmin.wsgi.application'
+
+# settings.py
+AUTHENTICATION_BACKENDS = (
+    'social_core.backends.weibo.WeiboOAuth2',
+    'social_core.backends.qq.QQOAuth2',
+    'social_core.backends.weixin.WeixinOAuth2',
+    'django.contrib.auth.backends.ModelBackend',
+)
 
 TEMPLATES = [
     {
@@ -73,7 +83,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'zh-hans'
 
 TIME_ZONE = 'Asia/Shanghai'
 
@@ -136,6 +146,14 @@ REST_FRAMEWORK = {
         'WeiDuAdmin.authentication.WdSessionAuthentication'
 
     ),
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle'
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/day',
+        'user': '1000/day'
+    },    
     'DEFAULT_PERMISSION_CLASSES': (
         # 'rest_framework.permissions.DjangoModelPermissions',
     ),
@@ -149,6 +167,9 @@ REST_FRAMEWORK = {
     'FILTER_BACKEND': 'rest_framework.filters.DjangoFilterBackend',
     'DATETIME_FORMAT': ("%Y-%m-%d %H:%M:%S"),
 }
+
+SOCIAL_AUTH_WEIXIN_KEY = 'foobar'
+SOCIAL_AUTH_WEIXIN_SECRET = 'bazqux'
 
 LOGDEDUG = True
 
