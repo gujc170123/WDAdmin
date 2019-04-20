@@ -9,6 +9,7 @@ from workspace.models import FactOEI, WDIndex
 from wduser.models import BaseOrganization
 from .helper import OrganizationHelper
 from django.db.models import Avg
+from assessment.models import FullOrganization, AssessSurveyRelation
 
 logger = get_logger("workspace")
 
@@ -575,7 +576,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
 
     def get_organization(self, org):
         organization = (
-            'organization1', 'organization2', 'organization3', 'organization4', 'organization5', 'organization6'
+            'AssessID', 'organization1', 'organization2', 'organization3', 'organization4', 'organization5', 'organization6'
         )
         org_list = org.split('.')
         query_dict = dict(zip(organization, org_list))
@@ -624,6 +625,20 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             logger.error("get report data error, msg: %s " % e)
             return res, ErrorCode.INTERNAL_ERROR
 
+    def get_org_siblings(self, org_id, assess_id):
+        org = FullOrganization.objects.filter(organization=org_id, assess_id=assess_id).values_list(
+            "assess_id", "organization1", "organization2", "organization3", "organization4", "organization5", "organization6"
+        )
+        org = list(org)
+        if len(org) == 1 and len(org[0]) > 1:
+            org = [unicode(i) for i in org[0] if i]
+        return '.'.join(org)
+
+    def get_assess_id(self, survey_id):
+        assess_obj = AssessSurveyRelation.objects.filter(survey_id=survey_id).order_by("-survey_id").first()
+        assess_id = assess_obj.assess_id
+        return assess_id
+
     def post(self, request, *args, **kwargs):
         api_id = self.request.data.get("api", None)
         org_id = self.request.data.get("org", None)
@@ -632,7 +647,11 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         population_id = self.request.data.get("population", None)
         scale_id = self.request.data.get("scale", None)
         select_id = self.request.data.get("select", None)
+
         try:
+            self.assess_id = self.get_assess_id(147)
+            if org_id:
+                org_id = self.get_org_siblings(org_id, self.assess_id)
             # retrieve chart's data
             data, err_code = eval(self.api_mapping[api_id])(org_id=org_id,
                                                             profile_id=profile_id,
