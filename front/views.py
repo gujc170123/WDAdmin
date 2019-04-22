@@ -1364,7 +1364,8 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
         # 工作价值观
         "WorkValueQuestionnaire": 'self.get_work_value',
         # 职业个性
-        "DISC_NEW": 'self.get_professional_value',
+        "DISC": 'self.get_professional_value',
+        "DISC_NEW": 'self.get_professional_value_new',
         # 心理资本
         "PsychologicalCapital": 'self.get_psychological_capital_value',
         # 幸福能力
@@ -1686,6 +1687,37 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             logger.error("get report data error, msg: %s " % e)
             return default_data, ErrorCode.INVALID_INPUT
         return default_data, ErrorCode.SUCCESS
+
+    def get_professional_value_new(self, personal_result_id):
+        from front.util.disc import test_job, test_statement
+        res = self.get_professional_value(personal_result_id)[0]
+        origin_msg = res["msg"]
+        disc = res["disc"] = {
+            "ChartWorkMask_Indicator": "",
+            "ChartBR_UnderStress_Indicator": "",
+            "ChartSelfImage_Indicator": "",
+        }
+        for title in ["ChartWorkMask_Indicator", "ChartBR_UnderStress_Indicator", "ChartSelfImage_Indicator"]:
+            work_mask = origin_msg[title]
+
+            for dic in work_mask:
+                name = dic["name"]
+                score = dic["score"]
+                finally_score = test_job[title][name][score]
+                dic["finally"] = finally_score
+                if finally_score > 14:
+                    res["disc"][title] += name
+
+        for item in disc:
+            statement_key = disc.get(item)
+            if not statement_key:
+                statement_key = u'下移位'
+            if statement_key == "DISC":
+                statement_key = u'上移位'
+            statement = test_statement[statement_key]
+            disc[item] = [statement_key, statement]
+
+        return res, ErrorCode.SUCCESS
 
     def get_psychological_capital_value(self, personal_result_id):
         u"""心理资本算法"""

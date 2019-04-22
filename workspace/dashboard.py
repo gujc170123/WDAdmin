@@ -576,7 +576,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
 
     def get_organization(self, org):
         organization = (
-            'AssessID', 'organization1', 'organization2', 'organization3', 'organization4', 'organization5', 'organization6'
+            'AssessKey', 'organization1', 'organization2', 'organization3', 'organization4', 'organization5', 'organization6'
         )
         org_list = org.split('.')
         query_dict = dict(zip(organization, org_list))
