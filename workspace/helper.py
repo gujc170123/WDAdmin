@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from wduser.models import BaseOrganization
 from workspace.serializers import BaseOrganizationSerializer
 from WeiDuAdmin.settings import BASE_DIR
-import os, pandas,numpy
+import os, pandas,numpy,time
 
 def write_file(folder, file_data, file_name, assess_id,suffix):
     download_path = os.path.join(BASE_DIR, "download")
@@ -13,36 +13,56 @@ def write_file(folder, file_data, file_name, assess_id,suffix):
         os.makedirs(file_path)
     file_full_path = os.path.join(file_path, file_name)
     f = open(file_full_path, "wb+")
-    if file_data.multiple_chunks():
-        for chunk in file_data.chunks():
-            f.write(chunk)
-    else:
-        f.write(file_data)
+    for chunk in file_data.chunks():
+        f.write(chunk)
     f.close()
     return file_full_path
 
-def read_file(filepath,targetcols,mustcols,keycols,codedict):
-    data = pandas.read_csv(filepath,encoding='gbk')
+def read_file(filepath,targetcols,typedict,mustcolsset,mustcols,keycols,codedict):
+    data = pandas.read_csv(filepath,encoding='utf-8',dtype = typedict)
     #check header integration
-    if data.columns.values!=targetcols:
-        return False
-    #check mustinput data
+    if list(data.columns.values)!=targetcols:
+        return False,[]
     data['indice'] = data.index+1
+
+    #check mustinput data    
     for col in mustcols:
-        nulldata = data[data[col].isnull()]['indice'].tolist(0)
-        if not nulldata:
-            return False
+        nulldata = data[data[col].isnull()]['indice'].tolist()
+        if len(nulldata):
+            return False,[]
+    nullset = set(data['indice'].tolist())
+    for col in mustcolsset:
+        nulldata = data[data[col].isnull()]['indice'].tolist()
+        nullset = set(nulldata) & nullset
+    if nullset!=set():
+        return False,[]
     #check duplicated key value(skip empty)
     for col in keycols:
-        duplicated = data[data[col].notnull() & data[col].duplicated(keep=False)]['indice'].tolist(0)
-        if not duplicated:
-            return False
+        duplicated = data[data[col].notnull() & data[col].duplicated(keep=False)]['indice'].tolist()
+        if len(duplicated):
+            return False,[]
     #dict fields validation(skip empty)
     for key in codedict:
-        invalid = data[data[key].notnull() & ~data.key.str.contains('|'.join(codedict[key]))]['indice'].tolist(0)
-        if not invalid:
-            return False    
-    return data
+        if data[key].isnull().sum() == len(data[key]):
+            continue
+        invalid = data[data[key].notnull() & ~data[key].str.contains('|'.join(codedict[key]), na=False)]['indice'].tolist()
+        if len(invalid):
+            return False,[]
+    return True,data
+
+def is_valid_date(str):
+  try:
+    time.strptime(str, "%Y-%m-%d")
+    return True
+  except:
+    return False
+
+def convertna2none(obj):
+    if obj:
+        if pandas.isnull(obj):
+            return None
+        else:
+            return obj
 
 class OrganizationHelper(object):
 

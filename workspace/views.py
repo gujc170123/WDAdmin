@@ -22,8 +22,8 @@ from assessment.tasks import send_survey_active_codes
 from django.db import connection,transaction,connections
 from django.conf import settings
 from survey.models import Survey
-from rest_framework.parsers import MultiPartParser
-from tasks import userimport_task
+from rest_framework.parsers import FileUploadParser
+from tasks import userimport_task,CreateNewUser
 
 #retrieve logger entry for workspace app
 logger = get_logger("workspace")
@@ -54,7 +54,7 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
     """list/create person"""
     model = AuthUser
     serializer_class = UserSerializer
-
+    
     def post(self, request, *args, **kwargs):
         pwd = request.data.get('password', None)
         phone = request.data.get('phone', None)
@@ -114,36 +114,9 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
                                              {'msg': u'新增用户失败，邮箱已被使用'})
 
         try:
-            #create user object
-            user = AuthUser.objects.create(
-                username=username,
-                account_name=account_name,
-                nickname=nickname,
-                password=get_mima(pwd),
-                phone=phone,
-                email=email,
-                is_superuser=is_superuser,
-                role_type=role_type,
-                is_staff=is_staff,
-                sequence_id=sequence,
-                gender_id=gender,
-                birthday=birthday,
-                rank_id=rank,
-                hiredate=hiredate,
-                marriage_id=marriage,
-                organization_id=organization.id
-            )
-
-            #create people object
-            people = People.objects.create(user_id=user.id, 
-                                           username=account_name, 
-                                           phone=phone,
-                                           email=email)
-            #create enterprise-account object
-            EnterpriseAccount.objects.create(user_id=user.id,
-                                             people_id=people.id,
-                                             account_name=account_name,
-                                             enterprise_id=enterprise_id)
+            CreateNewUser(username,account_name,nickname,pwd,phone,email,is_superuser,
+                          role_type,is_staff,sequence,gender,birthday,rank,hiredate,marriage,
+                          organization.id)
 
             return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {'msg': u'成功'})
         except Exception, e:
@@ -220,7 +193,7 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
                                        organization__is_active=True).exists(): 
                     return general_json_response(status.HTTP_200_OK, ErrorCode.USER_PHONE_USED_ERROR,
                                              {'msg': u'邮箱已被使用'})
-        #user entity          
+        #user entity
         user.account_name = account_name
         user.nickname = nickname
         user.phone = phone
@@ -251,11 +224,9 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
         user.save()
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
-class UserImportExportView(AuthenticationExceptView):
+class UserImportExportView(AuthenticationExceptView,WdCreateAPIView):
 
     POST_CHECK_REQUEST_PARAMETER = ("enterprise_id",)
-
-
 
     """organization template import/export"""
     def get_template(self):
@@ -263,9 +234,9 @@ class UserImportExportView(AuthenticationExceptView):
         """get template file"""
 
     def post(self, request, *args, **kwargs):        
-        self.parser_classes = (MultiPartParser,)
+        self.parser_classes = (FileUploadParser,)
         filename = request.data["name"]
-        filetype = file.filename.split('.')[-1]
+        filetype = filename.split('.')[-1]
         filecsv =request.FILES.get("file", None)
         enterprise_id = self.enterprise_id
 
@@ -281,22 +252,14 @@ class UserImportExportView(AuthenticationExceptView):
             "data_msg": u'请确认上传文件类型是否为csv'
         })
 
-        userimport_task.delay(filecsv,filename,enterprise_id,6)
-  
-
-        key = 'assess_id_%s' % self.enterprise_id
-        FileStatusCache(key).set_verify_code(5)
-        error_code, msg, index, new_user, old_user = import_assess_user_task_0916(self.enterprise_id, file_path)
-        if error_code == ErrorCode.SUCCESS:
-            assess_people_create_in_sql_task.delay(old_user, new_user, self.assess_id)
-        else:
-            FileStatusCache(key).set_verify_code(100)
+        result = userimport_task(filecsv,filename,enterprise_id,4,',')
         
-        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {
-            'err_code': error_code,
-            'data_index': index,
-            "data_msg": msg
-        })
+        if result:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {})
+        else:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, {
+                'err_code': result
+            })            
 
 class OrganizationListCreateView(AuthenticationExceptView, WdCreateAPIView):
     """organization tree view"""

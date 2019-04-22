@@ -117,6 +117,6 @@ class FactOEI(models.Model):
     quota54 = models.DecimalField(max_digits=5, decimal_places=2, verbose_name="灵活变通")
 
     class Meta:
-        unique_together = ("DW_Person_ID", "AssessKey")
+        unique_together = ("DW_Person_ID", "AssessID")
 
 

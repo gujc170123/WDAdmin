@@ -3,7 +3,7 @@ from django.conf.urls import url, include
 from workspace.views import UserLoginView,OrganizationlRetrieveUpdateDestroyView,\
                             OrganizationListCreateView, UserListCreateView, UserDetailView,\
                             AssessCreateView,AssessDetailView,AssessSurveyRelationDistributeView,\
-                            AssessProgressView,AssessProgressTotalView
+                            AssessProgressView,AssessProgressTotalView,UserImportExportView
 from workspace.dashboard import Dashboard
 
 urlpatterns = [
@@ -17,6 +17,8 @@ urlpatterns = [
     url(r"^bi/$", Dashboard.as_view(),name="bi"),
     #create/list user
     url(r"^user/$", UserListCreateView.as_view(),name="user-list-create"),
+    #import user
+    url(r"^userimport/$", UserImportExportView.as_view(),name="user-import"),    
     #put/get/del user
     url(r"^user/(?P<pk>\d+)/$", UserDetailView.as_view(),name='user-detail'),
     #create/list assessment
