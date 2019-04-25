@@ -31,6 +31,9 @@ logger = get_logger("workspace")
 class UserLoginView(AuthenticationExceptView, WdCreateAPIView):
     """Login API for Workspace"""
 
+    model = AuthUser
+    serializer_class = UserSerializer
+
     def post(self, request, *args, **kwargs):
         """get account,pwd field from request's data"""
         account = request.data.get('account', None)
@@ -46,9 +49,12 @@ class UserLoginView(AuthenticationExceptView, WdCreateAPIView):
         user, err_code = UserAccountUtils.user_login_web(request, user, pwd)
         if err_code != ErrorCode.SUCCESS:
             return general_json_response(status.HTTP_200_OK, err_code)
+        #retire unless user is enterprise admin
+        if user.roletype < AuthUser.ROLE_ENTERPRISE:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.USER_ACCOUNT_NOT_FOUND)
         #retrieve UserInfo Serialization
         user_info = UserSerializer(instance=user, context=self.get_serializer_context())
-        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, user_info)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, user_info.data)
 
 class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
     """list/create person"""
@@ -269,7 +275,7 @@ class OrganizationListCreateView(AuthenticationExceptView, WdCreateAPIView):
 
     def get(self, request, *args, **kwargs):
         """get organization tree of current user"""
-        tree_orgs = OrganizationHelper.get_tree_orgs(self.organization_id)
+        tree_orgs = OrganizationHelper.get_tree_orgs(self.organization_id,2)
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"data": tree_orgs})
 
 class OrganizationlRetrieveUpdateDestroyView(AuthenticationExceptView,

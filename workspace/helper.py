@@ -67,22 +67,23 @@ def convertna2none(obj):
 class OrganizationHelper(object):
 
     @classmethod
-    def get_child_orgs(self, parent):
+    def get_child_orgs(self, parent, maxlength, depth):
 
-        result_data = []
-
+        result_data = []        
         organizations = BaseOrganization.objects.filter_active(parent_id=parent)
 
         for organization in organizations:
-            child_org_data = OrganizationHelper.get_child_orgs(organization.id)
-            org_info = BaseOrganizationSerializer(instance=organization).data
-            org_info["children"] = child_org_data
+            org_info = BaseOrganizationSerializer(instance=organization).data            
+            if depth<maxlength:
+                child_org_data = OrganizationHelper.get_child_orgs(organization.id,maxlength,depth+1) 
+                if child_org_data:
+                    org_info["children"] = child_org_data
             result_data.append(org_info)
 
         return result_data
 
     @classmethod
-    def get_tree_orgs(self, org):
+    def get_tree_orgs(self,org, maxlength=99):
 
         result_data={}
 
@@ -91,9 +92,11 @@ class OrganizationHelper(object):
             return result_data
         result_data = BaseOrganizationSerializer(instance=organization).data
         result_data["parent_id"] = 0
-        result_data["children"] = OrganizationHelper.get_child_orgs(org)
+        result_data["children"] = OrganizationHelper.get_child_orgs(org,maxlength,2)
 
         return result_data
+
+
 
     @classmethod
     def get_child_ids(self, parent):
@@ -101,7 +104,7 @@ class OrganizationHelper(object):
         result_data = []
 
         organizations = BaseOrganization.objects.filter_active(parent_id=parent)
-        
+
         for organization in organizations:
             result_data.append(organization.id)
             child_org_data = OrganizationHelper.get_child_ids(organization.id)

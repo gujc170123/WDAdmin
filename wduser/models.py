@@ -6,6 +6,7 @@ from django.db import models
 from django.utils.translation import ugettext_lazy as _
 # Create your models here.
 from utils.models import BaseModel
+from closuretree.models import ClosureModel
 
 
 class EnterpriseInfo(BaseModel):
@@ -27,7 +28,7 @@ class BaseOrganization(BaseModel):
     """base organization object"""
 
     name = models.CharField(max_length=40)
-    parent_id = models.BigIntegerField(db_index=True, default=0)
+    parent = models.ForeignKey('self', related_name='children', null=True)   
     enterprise = models.ForeignKey(EnterpriseInfo,on_delete=models.CASCADE)
 
 class Dim_Sequence(models.Model):

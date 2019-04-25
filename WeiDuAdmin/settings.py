@@ -24,8 +24,7 @@ INSTALLED_APPS = [
     'service',
     'console',
     'workspace',
-    'social_django',
-    'celery_progress',
+    'closuretree',
 ]
 DATABASE_ROUTERS = ['WeiDuAdmin.db_router.DbRouter']
 MIDDLEWARE_CLASSES = [

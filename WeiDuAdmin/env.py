@@ -48,25 +48,6 @@ CORS_ALLOW_HEADERS = (
 # Database
 # database settings
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': 'wdadmin',
-#         'USER': 'ad_wd',
-#         'PASSWORD': 'Admin@Weidu2018',
-#         'HOST': 'rm-bp1i2yah9e5d27k26bo.mysql.rds.aliyuncs.com',
-#         'PORT': '3306',
-#     },
-#     'front': {
-#         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': 'wdfront',
-#         'USER': 'ad_wd',
-#         'PASSWORD': 'Admin@Weidu2018',
-#         'HOST': 'rm-bp1i2yah9e5d27k26bo.mysql.rds.aliyuncs.com',
-#         'PORT': '3306',
-#     },
-    
-# }
 
 DATABASES = {
     'default': {
@@ -88,6 +69,42 @@ DATABASES = {
         'OPTIONS': {'charset':'utf8mb4'},
     },
 }
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'wdadmin',
+#         'USER': 'ad_wd',
+#         'PASSWORD': 'Admin@Weidu2018',
+#         'HOST': 'rm-bp1i2yah9e5d27k26bo.mysql.rds.aliyuncs.com',
+#         'PORT': '3306',
+#     },
+#     'front': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'wdfront',
+#         'USER': 'ad_wd',
+#         'PASSWORD': 'Admin@Weidu2018',
+#         'HOST': 'rm-bp1i2yah9e5d27k26bo.mysql.rds.aliyuncs.com',
+#         'PORT': '3306',
+#     }
+# }
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'wdadmin_uat',
+#         'USER': 'appserver',
+#         'PASSWORD': 'AS@wdadmin',
+#         'HOST': 'rm-bp1i2yah9e5d27k26bo.mysql.rds.aliyuncs.com',
+#         'PORT': '3306',
+#     },
+#     'front': {
+#          'ENGINE': 'django.db.backends.mysql',
+#          'NAME': 'wdfront_uat',
+#          'USER': 'appserver',
+#          'PASSWORD': 'AS@wdadmin',
+#          'HOST': 'rm-bp1i2yah9e5d27k26bo.mysql.rds.aliyuncs.com',
+#          'PORT': '3306',
+#      },
+# }
 
 #
 # CLIENT_HOST = 'http://wd-user.exuetech.com'
