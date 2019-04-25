@@ -1636,6 +1636,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                 "Name": "默认数据",
                 "Sex": "男",
                 "Age": "39",
+                "CompleteTime": None,
                 "ChartSelfImage_Indicator": [
                     {"name": "D", "score": 0},
                     {"name": "I", "score": 0},
@@ -1668,6 +1669,12 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             default_data["msg"]["Sex"] = people.get_info_value(u"性别", u"未知")
             default_data["msg"]["Age"] = people.get_info_value(u"年龄", u"未知")
             substandard_score_map = people_result.substandard_score_map
+
+            if people_result.finish_time:
+                default_data["msg"]["CompleteTime"] = time_format4(people_result.finish_time)
+            else:
+                default_data["msg"]["CompleteTime"] = time_format4(datetime.datetime.now())
+
             # difference
             for info in default_data["msg"]["ChartSelfImage_Indicator"]:
                 if "difference" in substandard_score_map and info["name"] in substandard_score_map["difference"]:
@@ -1705,7 +1712,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                 score = dic["score"]
                 finally_score = test_job[title][name][score]
                 dic["finally"] = finally_score
-                if finally_score > 14:
+                if finally_score >= 14.5:
                     res["disc"][title] += name
 
         for item in disc:
