@@ -1,5 +1,6 @@
 # -*- coding:utf-8 -*-
 from __future__ import unicode_literals
+from django.db.models import F
 from rest_framework import status
 from utils.views import AuthenticationExceptView, WdCreateAPIView, WdRetrieveUpdateAPIView ,\
                         WdDestroyAPIView, WdListCreateAPIView
@@ -11,7 +12,8 @@ from workspace.helper import OrganizationHelper
 from workspace.serializers import UserSerializer,BaseOrganizationSerializer,AssessSerializer
 from utils.regular import RegularUtils
 from assessment.views import get_mima, get_random_char, get_active_code
-from wduser.models import AuthUser, BaseOrganization, People, EnterpriseAccount, Organization
+from wduser.models import AuthUser, BaseOrganization, People, EnterpriseAccount, Organization, \
+                          BaseOrganizationPaths
 from assessment.models import AssessProject, AssessSurveyRelation, AssessProjectSurveyConfig, \
                               AssessSurveyUserDistribute,AssessUser, AssessOrganization, \
                               FullOrganization
@@ -50,7 +52,7 @@ class UserLoginView(AuthenticationExceptView, WdCreateAPIView):
         if err_code != ErrorCode.SUCCESS:
             return general_json_response(status.HTTP_200_OK, err_code)
         #retire unless user is enterprise admin
-        if user.roletype < AuthUser.ROLE_ENTERPRISE:
+        if user.role_type < AuthUser.ROLE_ENTERPRISE:
             return general_json_response(status.HTTP_200_OK, ErrorCode.USER_ACCOUNT_NOT_FOUND)
         #retrieve UserInfo Serialization
         user_info = UserSerializer(instance=user, context=self.get_serializer_context())
@@ -60,7 +62,9 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
     """list/create person"""
     model = AuthUser
     serializer_class = UserSerializer
-    
+    SEARCH_FIELDS = ("username", "phone", "email", "account_name", "rank","sequence","gender")
+    GET_CHECK_REQUEST_PARAMETER = ("organization_id",)
+
     def post(self, request, *args, **kwargs):
         pwd = request.data.get('password', None)
         phone = request.data.get('phone', None)
@@ -129,16 +133,29 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
             logger.error("新增用户失败 %s" % e.message)
             return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, {'msg': u'新增用户失败:%s' % e.message})
 
+
     def get(self, request, *args, **kwargs):
         '''list users'''
         
-        tree_ids = [request.GET.get('organization_id')] + OrganizationHelper.get_child_ids(request.GET.get('organization_id'))
-        if tree_ids:
-            users = UserSerializer(AuthUser.objects.filter(is_active=True,
-                                                           baseorganization__in=tree_ids,
-                                                           baseorganization__is_active=True),
-                                   many=True)
-            return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"data": users.data})
+        curPage = int(request.data.get('curPage', '1'))       
+        pagesize = int(request.data.get('pagesize', 20))
+        pageType = str(request.GET.get('pageType', ''))
+        org = request.GET.get('organization_id')
+        
+        if pageType == 'pageDown':
+            curPage += 1
+        elif pageType == 'pageUp':
+            curPage -= 1
+
+        startPos = (curPage - 1) * pagesize
+        endPos = startPos + pagesize
+       
+        alluser = AuthUser.objects.filter(is_active=True,organization__childorg__parent_id=org,organization__is_active=True).order_by('organization__id').all()
+        allUserCounts =alluser.count()
+        if allUserCounts>0:
+            users = UserSerializer(alluser[startPos:endPos],many=True)
+            allPage = (allUserCounts+pagesize-1) / pagesize            
+            return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"allPage":allPage, "curPage":curPage,"data":users.data })
         else:
             return general_json_response(status.HTTP_200_OK,
                                              ErrorCode.NOT_EXISTED)  
@@ -272,11 +289,24 @@ class OrganizationListCreateView(AuthenticationExceptView, WdCreateAPIView):
     model = BaseOrganization
     serializer_class = BaseOrganizationSerializer
     GET_CHECK_REQUEST_PARAMETER = {"organization_id"}
+    
 
     def get(self, request, *args, **kwargs):
         """get organization tree of current user"""
-        tree_orgs = OrganizationHelper.get_tree_orgs(self.organization_id,2)
-        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"data": tree_orgs})
+        # tree_orgs = OrganizationHelper.get_tree_orgs(self.organization_id,2)
+        organizations = BaseOrganization.objects.filter_active(childorg__parent_id=self.organization_id).order_by('childorg__depth').\
+                                                                values('id','name','parent_id').all()
+                                                            
+        nodes = {}
+        for record in organizations:
+            nodes[record['id']] = {'id':record['id'],'name':record['name'],'papa':record['parent_id']}
+            nodes[record['id']]['children']=[]
+        for record in organizations:
+            if record['parent_id'] in nodes:
+                nodes[record['parent_id']]['children'].append(nodes[record['id']])
+            else:
+                top = nodes[record['id']]
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"data": top})
 
 class OrganizationlRetrieveUpdateDestroyView(AuthenticationExceptView,
                                              WdRetrieveUpdateAPIView, WdDestroyAPIView):
@@ -287,20 +317,16 @@ class OrganizationlRetrieveUpdateDestroyView(AuthenticationExceptView,
     def delete(self, request, *args, **kwargs):
         
         org = self.get_id()
-        org_ids = [org] + OrganizationHelper.get_child_ids(org)
 
-             
         #delete all organizations only when no active member exists
-        if BaseOrganization.objects.filter_active(pk__in=org_ids,
-                                                  users__is_active=True).exists():
-            return general_json_response(status.HTTP_200_OK, ErrorCode.WORKSPACE_ORG_MEMBEREXISTS)
-        else:
-            for org in BaseOrganization.objects.filter(id__in=org_ids):
-                org.users.clear()   
-            BaseOrganization.objects.filter(id__in=org_ids).update(is_active=False)
-            
-            logger.info('user_id %s want delete orgs %s' % (self.request.user.id,org_ids))
+        alluser = AuthUser.objects.filter(is_active=True,organization__childorg__parent_id=org,organization__is_active=True).first()
+        if alluser is None:
+            BaseOrganization.objects.filter_active(childorg__parent_id=org).update(is_active=False)
+            BaseOrganization.objects.get(pk=org)._closure_deletelink()
+            logger.info('user_id %s want delete organization %s' % (self.request.user.id,org))
             return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
+        else:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.WORKSPACE_ORG_MEMBEREXISTS)
 
 class OrganizationImportExportView(AuthenticationExceptView):
     """organization template import/export"""

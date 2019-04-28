@@ -104,7 +104,7 @@ class OrganizationHelper(object):
         result_data = []
 
         organizations = BaseOrganization.objects.filter_active(parent_id=parent)
-
+        print organizations
         for organization in organizations:
             result_data.append(organization.id)
             child_org_data = OrganizationHelper.get_child_ids(organization.id)

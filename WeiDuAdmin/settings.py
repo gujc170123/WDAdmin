@@ -24,7 +24,6 @@ INSTALLED_APPS = [
     'service',
     'console',
     'workspace',
-    'closuretree',
 ]
 DATABASE_ROUTERS = ['WeiDuAdmin.db_router.DbRouter']
 MIDDLEWARE_CLASSES = [
@@ -160,7 +159,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'utils.pagination.WdPageNumberPagination',
     'PAGINATE_SIZE_PARAM': 'page_size_count',
     'PAGEPARAM_NAME': 'page',
-    'PAGE_SIZE': 8,
+    'PAGE_SIZE': 40,
     #
     'ORDER_BY_NAME': 'order_by',
     'FILTER_BACKEND': 'rest_framework.filters.DjangoFilterBackend',

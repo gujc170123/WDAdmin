@@ -7,7 +7,8 @@ from django.utils.translation import ugettext_lazy as _
 # Create your models here.
 from utils.models import BaseModel
 from closuretree.models import ClosureModel
-
+from django.dispatch import receiver
+from django.db.models.signals import post_save, pre_delete
 
 class EnterpriseInfo(BaseModel):
     u"""企业的基本信息表
@@ -28,8 +29,51 @@ class BaseOrganization(BaseModel):
     """base organization object"""
 
     name = models.CharField(max_length=40)
-    parent = models.ForeignKey('self', related_name='children', null=True)   
+    parent_id = models.IntegerField(db_index=True, blank=True, null=True) 
     enterprise = models.ForeignKey(EnterpriseInfo,on_delete=models.CASCADE)
+
+    def _closure_deletelink(self):
+        """Remove incorrect links from the closure tree."""
+        childen = BaseOrganizationPaths.objects.filter(parent_id=self.pk).values_list('child_id', flat=True)
+        BaseOrganizationPaths.objects.filter(
+            child_id__in= childen
+        ).delete()
+
+    def _closure_createlink(self):
+        """Create a link in the closure tree."""
+        linkparents = BaseOrganizationPaths.objects.filter(
+            child_id=self.parent_id
+        ).values("parent", "depth")
+        newlinks = [BaseOrganizationPaths(
+            parent_id=p['parent'],
+            child_id=self.pk,
+            depth=p['depth']+1
+        ) for p in linkparents]
+        BaseOrganizationPaths.objects.bulk_create(newlinks)
+
+@receiver(post_save, sender=BaseOrganization,dispatch_uid='baseorganization-save')
+def baseorganization_save(sender, **kwargs):
+    instance = kwargs['instance']
+    create = kwargs['created']
+    if create:
+        closure_instance = BaseOrganizationPaths(
+            parent=instance,
+            child=instance,
+            depth=0
+        )
+        closure_instance.save()
+        instance._closure_createlink()
+
+@receiver(pre_delete, sender=BaseOrganization,dispatch_uid='baseorganization-delete')
+def baseorganization_delete(sender, instance, **kwargs):
+    instance = kwargs['instance']
+    instance._closure_deletelink()
+
+class BaseOrganizationPaths(models.Model):
+    """tree path close"""
+    parent = models.ForeignKey(BaseOrganization,related_name='parentorg', on_delete=models.CASCADE, null=True)
+    child = models.ForeignKey(BaseOrganization,related_name='childorg',on_delete=models.CASCADE, null=True)
+    depth = models.IntegerField(default=0)
 
 class Dim_Sequence(models.Model):
     value = models.CharField(max_length=50)
