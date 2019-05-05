@@ -49,26 +49,26 @@ CORS_ALLOW_HEADERS = (
 # database settings
 
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': 'backend',
-#         'USER': 'root',
-#         'PASSWORD': '123456',
-#         'HOST': 'localhost',
-#         'PORT': '3306',
-#         'OPTIONS': {'charset':'utf8mb4'},
-#     },
-#     'front': {
-#         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': 'front',
-#         'USER': 'root',
-#         'PASSWORD': '123456',
-#         'HOST': 'localhost',
-#         'PORT': '3306',
-#         'OPTIONS': {'charset':'utf8mb4'},
-#     },
-# }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'backend',
+        'USER': 'root',
+        'PASSWORD': '123456',
+        'HOST': 'localhost',
+        'PORT': '3306',
+        'OPTIONS': {'charset':'utf8mb4'},
+    },
+    'front': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'front',
+        'USER': 'root',
+        'PASSWORD': '123456',
+        'HOST': 'localhost',
+        'PORT': '3306',
+        'OPTIONS': {'charset':'utf8mb4'},
+    },
+}
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.mysql',
@@ -87,24 +87,24 @@ CORS_ALLOW_HEADERS = (
 #         'PORT': '3306',
 #     }
 # }
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'wdadmin_uat',
-        'USER': 'appserver',
-        'PASSWORD': 'AS@wdadmin',
-        'HOST': 'rm-bp1i2yah9e5d27k26bo.mysql.rds.aliyuncs.com',
-        'PORT': '3306',
-    },
-    'front': {
-         'ENGINE': 'django.db.backends.mysql',
-         'NAME': 'wdfront_uat',
-         'USER': 'appserver',
-         'PASSWORD': 'AS@wdadmin',
-         'HOST': 'rm-bp1i2yah9e5d27k26bo.mysql.rds.aliyuncs.com',
-         'PORT': '3306',
-     },
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'wdadmin_uat',
+#         'USER': 'appserver',
+#         'PASSWORD': 'AS@wdadmin',
+#         'HOST': 'rm-bp1i2yah9e5d27k26bo.mysql.rds.aliyuncs.com',
+#         'PORT': '3306',
+#     },
+#     'front': {
+#          'ENGINE': 'django.db.backends.mysql',
+#          'NAME': 'wdfront_uat',
+#          'USER': 'appserver',
+#          'PASSWORD': 'AS@wdadmin',
+#          'HOST': 'rm-bp1i2yah9e5d27k26bo.mysql.rds.aliyuncs.com',
+#          'PORT': '3306',
+#      },
+# }
 
 #
 # CLIENT_HOST = 'http://wd-user.exuetech.com'
@@ -112,7 +112,8 @@ CLIENT_HOST = 'http://yx.iwedoing.com'
 REPORT_HOST = 'http://172.16.124.92'
 REPORT_HOSTS = ['http://172.16.124.92']
 CUSTOM_HOSTS = ['http://172.16.124.92']
-FRONT_HOST ='front'
+FRONT_HOST ='wdfront_uat'
+ROOT_HOST='http://admin.yx.iwedoing.com/#/'
 
 # redis config
 CACHE = {

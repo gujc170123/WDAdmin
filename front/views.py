@@ -42,6 +42,8 @@ from wduser.models import AuthUser, People, PeopleOrganization, Organization, En
 from wduser.serializers import UserBasicSerializer, OrganizationBasicSerializer
 from wduser.user_utils import UserAccountUtils
 from utils.math_utils import normsdist
+from django.db import connection
+import numpy as np
 
 logger = get_logger("front")
 
@@ -1080,12 +1082,12 @@ class PeopleBlockQuestionListView(WdListAPIView):
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"questions": data})
 
 
-class UserAnswerQuestionView(WdListCreateAPIView):
+class UserAnswerQuestionView(WdCreateAPIView):
     u"""用户回答"""
 
     model = UserQuestionAnswerInfo
-    serializer_class = None
-    # serializer_class = UserQuestionInfoSerializer
+    #serializer_class = None
+    serializer_class = UserQuestionInfoSerializer
 
     POST_CHECK_REQUEST_PARAMETER = ('questions', 'survey_id', 'project_id', 'answer_count_time', 'block_id')
 
@@ -1387,8 +1389,94 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
         # Personal EOI
         "PEOI": "self.get_peoi_value",
         # 行为风格修改
-        "NewBehavioralStyle": "self.get_xxwfg_value"
+        "NewBehavioralStyle": "self.get_xxwfg_value",
+        # maanshan能力测评
+        "PECMAANSHAN": 'self.get_pec_maanshan',     
     }
+
+    def get_pec_maanshan(self, personal_result_id):
+
+        dictquota_desc = {u"敬业尽责":u"按角色职责和规范要求工作并致力于与更高目标的达成",
+                          u"积极进取":u"主动面对问题和挑战并承担解决，持续的努力投入",
+                          u"合理认知":u"能以客观现实、全面的视角来看待事物并合理解释",
+                          u"自我悦纳":u"客观评价自己，接纳肯定自己并对现实满意",
+                          u"乐观自信":u"从客观、正面的角度积极看待问题，并相信自己有能力解决问题",
+                          u"亲和利他":u"主动理解和关心他人并提供支持和帮助",
+                          u"容纳差异":u"信任他人，能包容不足和差异并积极相处",
+                          u"适应变化":u"接纳变化与多样，能灵活调整来融入环境和把握机会",}
+
+        dictquota_score = {}                  
+
+        default_data = {
+            "report_type": "",
+            "msg": {
+                "Name": "",
+                "Gender": "",
+                "TestTime": "",
+                "Age":"",
+                "Adv": [
+                ],
+                "Dis": [
+                ],
+            }}
+        
+        sql_query = "select b.tag_value ,a.score from\
+                    (select question_id,LEAST(sum(answer_score),4) score\
+                    from " + settings.FRONT_HOST + ".front_peoplesurveyrelation a,\
+                    " + settings.FRONT_HOST + ".front_userquestionanswerinfo b\
+                    where  a.id=%s and a.survey_id=b.survey_id and a.people_id=b.people_id\
+                    and a.project_id=b.project_id and a.is_active=true and b.is_active=true\
+                    group by b.question_id) a,research_questiontagrelation b\
+                    where a.question_id=b.object_id and b.tag_id=54\
+                    and b.is_active=True"
+        try:
+
+            people_result = PeopleSurveyRelation.objects.get(id=personal_result_id)
+            if people_result.status != PeopleSurveyRelation.STATUS_FINISH:
+                return default_data, ErrorCode.INVALID_INPUT
+            if not people_result.report_url:
+                people_result.report_url= settings.ROOT_HOST+'maanshan/'+personal_result_id
+                people_result.report_status=PeopleSurveyRelation.STATUS_FINISH
+                people_result.save()
+            people = People.objects.get(id=people_result.people_id)
+            default_data["msg"]["Name"] = people.display_name
+            default_data["msg"]["Gender"] = people.get_info_value(u"性别", u"未知")
+            default_data["msg"]["Age"] = people.get_info_value(u"年龄", u"未知")
+            if people_result.finish_time:
+                default_data["msg"]["TestTime"] = time_format4(people_result.finish_time)
+            else:
+                default_data["msg"]["TestTime"] = time_format4(datetime.datetime.now())
+
+            with connection.cursor() as cursor:
+                cursor.execute(sql_query, [personal_result_id])
+                columns = [col[0] for col in cursor.description]
+                dictscore = {}
+                for row in cursor.fetchall():
+                    dictscore[row[0]]=row[1]
+            
+            weight = 25
+            dictquota_score[u"敬业尽责"] = round(np.mean([dictscore['NM1'],dictscore['NM2']]) * weight,2)
+            dictquota_score[u"积极进取"] = round(np.mean([dictscore['NM3'],dictscore['NM4']]) * weight,2)
+            dictquota_score[u"合理认知"] = round(np.mean([dictscore['NM5'],dictscore['NM6']]) * weight,2)
+            dictquota_score[u"自我悦纳"] = round(np.mean([dictscore['NM7'],dictscore['NM8']]) * weight,2)
+            dictquota_score[u"乐观自信"] = round(np.mean([dictscore['NM9'],dictscore['NM10']]) * weight,2)
+            dictquota_score[u"亲和利他"] = round(np.mean([dictscore['NM11'],dictscore['NM12']]) * weight,2)
+            dictquota_score[u"容纳差异"] = round(np.mean([dictscore['NM13'],dictscore['NM14']]) * weight,2)
+            dictquota_score[u"适应变化"] = round(np.mean([dictscore['NM15'],dictscore['NM16']]) * weight,2)
+            sortedlist= sorted(dictquota_score.items(), key=lambda d:d[1], reverse = True)
+
+            default_data["msg"]["Adv"].append({sortedlist[0][0]:dictquota_desc[sortedlist[0][0]]})
+            default_data["msg"]["Adv"].append({sortedlist[1][0]:dictquota_desc[sortedlist[1][0]]})
+            default_data["msg"]["Adv"].append({sortedlist[2][0]:dictquota_desc[sortedlist[2][0]]})
+
+            default_data["msg"]["Dis"].append({sortedlist[-1][0]:dictquota_desc[sortedlist[-1][0]]})
+            default_data["msg"]["Dis"].append({sortedlist[-2][0]:dictquota_desc[sortedlist[-2][0]]})
+            default_data["msg"]["Dis"].append({sortedlist[-3][0]:dictquota_desc[sortedlist[-3][0]]})
+
+        except Exception, e:
+            logger.error("get report data error, msg: %s" % e)
+            return default_data, ErrorCode.INVALID_INPUT
+        return default_data, ErrorCode.SUCCESS        
 
     def get_ygzwts_value(self, personal_result_id):
         u"""员工自我提升算法"""
@@ -2791,7 +2879,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
 
             #exit when not completed
             if people_result.status != PeopleSurveyRelation.STATUS_FINISH:
-                return default_data, ErrorCode.INVALID_INPUT
+                return data, ErrorCode.INVALID_INPUT
 
             #calculate peoi when calculation not ready
             if not people_result.dimension_score or not people_result.substandard_score:

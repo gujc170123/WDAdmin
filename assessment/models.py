@@ -11,7 +11,6 @@ from WeiDuAdmin import settings
 from utils.models import BaseModel
 from wduser.models import Organization, BaseOrganization, AuthUser
 
-
 class AssessProject(BaseModel):
 
     enterprise_id = models.BigIntegerField(u"企业ID", db_index=True, default=0)
@@ -84,12 +83,21 @@ class AssessProject(BaseModel):
         else:
             return self.finish_redirect
 
-
 class AssessOrganization(BaseModel):
     u"""测评归属组织, 包括父组织和所有子组织"""
     assess_id = models.BigIntegerField(u"测评项目ID", db_index=True, default=0)
     organization_id = models.BigIntegerField(u"组织ID", db_index=True, default=0)
     organization_code = models.CharField(u"组织标识码", max_length=20, db_index=True, null=True)
+
+class AssessJoinedOrganization(models.Model):
+    assess = models.ForeignKey(AssessProject)
+    organization = models.ForeignKey(BaseOrganization)
+
+class AssessOrganizationPathsSnapshots(models.Model):
+    assess = models.ForeignKey(AssessProject)
+    parent = models.ForeignKey(BaseOrganization,related_name='snapparentorg', on_delete=models.CASCADE)
+    child = models.ForeignKey(BaseOrganization,related_name='snapchildorg',on_delete=models.CASCADE)
+    depth = models.IntegerField(default=0)
 
 class AssessSurveyOrganization(BaseModel):
     u"""测评问卷组织关联

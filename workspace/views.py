@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 from __future__ import unicode_literals
 from django.db.models import F
+from django.contrib.auth import logout
 from rest_framework import status
 from utils.views import AuthenticationExceptView, WdCreateAPIView, WdRetrieveUpdateAPIView ,\
                         WdDestroyAPIView, WdListCreateAPIView
@@ -17,7 +18,7 @@ from wduser.models import AuthUser, BaseOrganization, People, EnterpriseAccount,
 from assessment.models import AssessProject, AssessSurveyRelation, AssessProjectSurveyConfig, \
                               AssessSurveyUserDistribute,AssessUser, AssessOrganization, \
                               FullOrganization
-from utils.cache.cache_utils import FileStatusCache                              
+from utils.cache.cache_utils import FileStatusCache
 from rest_framework.views import APIView
 from front.models import PeopleSurveyRelation
 from assessment.tasks import send_survey_active_codes
@@ -53,6 +54,7 @@ class UserLoginView(AuthenticationExceptView, WdCreateAPIView):
             return general_json_response(status.HTTP_200_OK, err_code)
         #retire unless user is enterprise admin
         if user.role_type < AuthUser.ROLE_ENTERPRISE:
+            logout(request)
             return general_json_response(status.HTTP_200_OK, ErrorCode.USER_ACCOUNT_NOT_FOUND)
         #retrieve UserInfo Serialization
         user_info = UserSerializer(instance=user, context=self.get_serializer_context())
@@ -343,7 +345,7 @@ class AssessCreateView(AuthenticationExceptView, WdListCreateAPIView):
     model = AssessProject
     serializer_class = AssessSerializer
 
-    POST_CHECK_REQUEST_PARAMETER={"name","distribute_type","surveys"}
+    POST_CHECK_REQUEST_PARAMETER={"name","distribute_type","surveys","begin","end"}
 
     SURVEY_DISC = 89
     SURVEY_OEI = 147
@@ -353,6 +355,8 @@ class AssessCreateView(AuthenticationExceptView, WdListCreateAPIView):
     def post(self, request, *args, **kwargs):
         name = request.data.get('name')
         distribute_type = request.data.get('distribute_type')
+        begin_time = request.data.get('begin')
+        end_time = request.data.get('end')
         surveys = request.data.get('surveys').split(",")
         assess = AssessProject.objects.create(name=name,
                                               distribute_type=distribute_type)
@@ -365,6 +369,8 @@ class AssessCreateView(AuthenticationExceptView, WdListCreateAPIView):
                 for x in qs:
                     x.id = None
                     x.assess_id=assess.id
+                    x.begin_time = begin_time
+                    x.end_time = end_time
                 AssessProjectSurveyConfig.objects.bulk_create(qs)
 
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
@@ -463,7 +469,7 @@ class AssessSurveyRelationDistributeView(AuthenticationExceptView,WdCreateAPIVie
 
         #copy base organization into assess organization
         with connection.cursor() as cursor:
-            ret = cursor.callproc("CopyOrganization", (enterprise_id,assess_id,user_id))                
+            ret = cursor.callproc("DistributeAssess", (enterprise_id,assess_id,user_id,orgid_list))                
 
         orgs = Organization.objects.filter(baseorganization_id__in=list(orgid_list),assess_id=assess_id)
         orgs.update(is_active=True)
@@ -492,47 +498,6 @@ class AssessSurveyRelationDistributeView(AuthenticationExceptView,WdCreateAPIVie
         orgid_list = map(int,self.request.data.get("org_ids").split(",") )       
         rst_code = self.distribute_normal(assess_id,enterprise_id,user_id,orgid_list)
         return general_json_response(status.HTTP_200_OK, rst_code)
-
-    def get_project_url(self):
-        project_id_bs64 = quote(base64.b64encode(str(self.assess_id)))
-        return settings.CLIENT_HOST + '/people/join-project/?ba=%s&bs=0' % (project_id_bs64)
-
-    def get_import_project_user_statistics(self):
-        po_qs = AssessUser.objects.filter_active(assess_id=self.assess_id).values_list("people_id", flat=True).distinct()
-        all_count = po_qs.count()
-        user_qs = PeopleSurveyRelation.objects.filter_active(project_id=self.assess_id)
-        people_ids = user_qs.values_list('people_id', flat=True).distinct()
-        wei_fen_fa = all_count - people_ids.count() 
-        yi_wan_cheng = self.get_all_survey_finish_people_count(list(people_ids), self.assess_id)
-        yi_fen_fa = self.get_doing_survey_people_count(list(people_ids), self.assess_id)
-        da_juan_zhong = people_ids.count() - yi_wan_cheng - yi_fen_fa
-        distribute_count = people_ids.count()
-        return {
-            "count": all_count,
-            "doing_count": da_juan_zhong,
-            "not_begin_count": yi_fen_fa,
-            "finish_count": yi_wan_cheng,
-            "not_started": wei_fen_fa,
-            "distribute_count": distribute_count 
-        }
-
-    def get_distribute_info(self):
-        project = AssessProject.objects.get(id=self.assess_id)
-        user_statistics = self.get_import_project_user_statistics()
-        org_ids = AssessOrganization.objects.filter_active(
-            assess_id=self.assess_id).values_list("organization_id", flat=True)
-        org_infos = Organization.objects.filter_active(id__in=org_ids).values("id", "name", "identification_code")
-        return {
-            "user_statistics": user_statistics,
-            "org_infos": org_infos
-        }
-
-    def get(self, request, *args, **kwargs):
-        data = {
-            "url": self.get_project_url(),
-            "distribute_info": self.get_distribute_info()
-        }
-        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, data)
 
 class AssessProgressView(AuthenticationExceptView,APIView):
 
