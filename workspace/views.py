@@ -111,7 +111,7 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
                 return general_json_response(status.HTTP_200_OK,
                                              ErrorCode.USER_PHONE_USED_ERROR,
                                              {'msg': u'新增用户失败，手机已被使用'})
-        #retrieve email                                
+        #retrieve email
         if email:
             if not RegularUtils.email_check(email):
                 return general_json_response(status.HTTP_200_OK,
@@ -390,103 +390,12 @@ class AssessSurveyRelationDistributeView(AuthenticationExceptView,WdCreateAPIVie
 
     model = AssessSurveyRelation
     POST_CHECK_REQUEST_PARAMETER = ("enterprise_id","user_id","org_ids" )
-    GET_CHECK_REQUEST_PARAMETER = ("assess_id", )
-
-    def get_all_survey_finish_people_count(self, finish_people_ids, assess_id):
-        not_finish_count = PeopleSurveyRelation.objects.filter_active(project_id=assess_id,
-                                                                      people_id__in=finish_people_ids,
-                                                                      status__in=[
-                                                                          PeopleSurveyRelation.STATUS_NOT_BEGIN,
-                                                                          PeopleSurveyRelation.STATUS_DOING,
-                                                                          PeopleSurveyRelation.STATUS_DOING_PART,
-                                                                          PeopleSurveyRelation.STATUS_EXPIRED
-                                                                      ]
-                                                                      ).values_list(
-            "people_id", flat=True).distinct().count()
-        f_count = len(finish_people_ids) - not_finish_count
-        return f_count
-
-    def get_doing_survey_people_count(self, people_ids, assess_id):
-        beign_count = PeopleSurveyRelation.objects.filter_active(project_id=assess_id,
-                                                                      people_id__in=people_ids,
-                                                                      status__in=[
-                                                                          PeopleSurveyRelation.STATUS_FINISH,
-                                                                          PeopleSurveyRelation.STATUS_DOING_PART
-                                                                      ]
-                                                                      ).values_list(
-            "people_id", flat=True).distinct().count()
-        not_count = len(people_ids) - beign_count
-        return not_count
-
-    def send_active_code(self, people_ids):
-        send_survey_active_codes.delay(people_ids)
 
     def distribute_normal(self,assess_id,enterprise_id,user_id,orgid_list):
 
-        #todo check no duplication of assess
-
-        #retrieve assessment status
-        assessment_obj = AssessProject.objects.get(id=assess_id)
-        if assessment_obj.project_status == AssessProject.STATUS_WORKING:
-            status = PeopleSurveyRelation.STATUS_DOING
-        else:
-            status = PeopleSurveyRelation.STATUS_NOT_BEGIN
-        
-        sql_attach = 'insert into wduser_peopleorganization select null,now(), \
-                        true,now(),%s,%s, d.id,c.id \
-                        from wduser_authuser a, \
-		                wduser_baseorganization b, \
-		                wduser_organization c,\
-		                wduser_people d \
-	                    where b.id=c.baseorganization_id \
-		                and a.organization_id=b.id \
-		                and d.user_id=a.id \
-                        and a.is_active=true \
-                        and b.is_active=true \
-                        and c.is_active=true \
-                        and d.is_active=true'
-        sql_attach2 = 'insert into assessment_assessuser \
-	                   select null,now(),true,now(),%s,%s,%s,people_id,10,0 \
-                       from wduser_peopleorganization a \
-                       inner join wduser_organization b \
-                       on binary a.org_code= b.identification_code \
-                       where assess_id=%s \
-                       and a.is_active=true and b.is_active=true'
-        sql_attach3 = 'insert into '+ settings.FRONT_HOST +'.front_peoplesurveyrelation \
-                        (`id`,`create_time`,`is_active`,`update_time`,`creator_id`,`last_modify_user_id`,`people_id`,\
-                        `survey_id`,`project_id`,`role_type`,`evaluated_people_id`,`survey_name`,`status`,`begin_answer_time`,\
-                        `finish_time`,`is_overtime`,`report_status`,`report_url`,`model_score`,`dimension_score`,\
-                        `substandard_score`,`happy_score`,`en_survey_name`,`praise_score`,`facet_score`,`happy_ability_score`,\
-                        `happy_efficacy_score`,`uniformity_score`,`en_report_url`) \
-                        select null,now(),true,now(),\
-                        %s,%s,people_id,%s,%s,10,0,%s,10,null,null,0,0,null,0\
-                        ,null,null,0,null,0,null,0,0,null,null\
-                        from wduser_peopleorganization a \
-                        inner join wduser_organization b \
-                        on binary a.org_code=b.identification_code \
-                        where assess_id=%s \
-                        and a.is_active=true and b.is_active=true'
-
         #copy base organization into assess organization
         with connection.cursor() as cursor:
-            ret = cursor.callproc("DistributeAssess", (enterprise_id,assess_id,user_id,orgid_list))                
-
-        orgs = Organization.objects.filter(baseorganization_id__in=list(orgid_list),assess_id=assess_id)
-        orgs.update(is_active=True)
-        FullOrganization.objects.filter(organization_id__in=orgs.values_list("id",flat=True)).update(is_active=True)  
-
-        #attach user to assessment
-        with connection.cursor() as cursor:
-            cursor.execute(sql_attach, [user_id,user_id])
-            cursor.execute(sql_attach2, [user_id,user_id,assess_id,assess_id])
-            people_ids = map(int,list(AssessUser.objects.filter_active(assess_id=assess_id).values_list("people_id", flat=True).distinct().all()))
-            for survey in AssessSurveyRelation.objects.filter_active(assess_id=assess_id).values_list("survey_id", flat=True):
-                surveyname = Survey.objects.get(pk=survey).title
-                cursor.execute(sql_attach3, [user_id,user_id,survey,assess_id,surveyname,assess_id])                
-                AssessSurveyUserDistribute.objects.create(assess_id=assess_id, survey_id=survey, people_ids=people_ids)
-
-        #send sms information
-        self.send_active_code(people_ids)  
+            ret = cursor.callproc("DistributeAssess", (enterprise_id,assess_id,user_id,orgid_list))      
 
         return ErrorCode.SUCCESS
 
