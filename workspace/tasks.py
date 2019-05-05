@@ -1,6 +1,5 @@
 # -*- coding:utf-8 -*-
 from celery import shared_task
-from celery_progress.backend import ProgressRecorder
 from workspace.helper import write_file,read_file,is_valid_date,convertna2none
 from django.db import connection
 from wduser.models import AuthUser,People,EnterpriseAccount

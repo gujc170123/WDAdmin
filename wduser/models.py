@@ -6,7 +6,6 @@ from django.db import models
 from django.utils.translation import ugettext_lazy as _
 # Create your models here.
 from utils.models import BaseModel
-from closuretree.models import ClosureModel
 from django.dispatch import receiver
 from django.db.models.signals import post_save, pre_delete
 
