@@ -44,9 +44,6 @@ WSGI_APPLICATION = 'WeiDuAdmin.wsgi.application'
 
 # settings.py
 AUTHENTICATION_BACKENDS = (
-    'social_core.backends.weibo.WeiboOAuth2',
-    'social_core.backends.qq.QQOAuth2',
-    'social_core.backends.weixin.WeixinOAuth2',
     'django.contrib.auth.backends.ModelBackend',
 )
 

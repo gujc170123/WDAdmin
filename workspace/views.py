@@ -160,7 +160,7 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
             return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"allPage":allPage, "curPage":curPage,"data":users.data })
         else:
             return general_json_response(status.HTTP_200_OK,
-                                             ErrorCode.NOT_EXISTED)  
+                                             ErrorCode.NOT_EXISTED)
         
 class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyAPIView):
     '''person detail management'''
@@ -359,7 +359,9 @@ class AssessCreateView(AuthenticationExceptView, WdListCreateAPIView):
         end_time = request.data.get('end')
         surveys = request.data.get('surveys').split(",")
         assess = AssessProject.objects.create(name=name,
-                                              distribute_type=distribute_type)
+                                              distribute_type=distribute_type,
+                                              begin_time = begin_time,
+                                              end_time = end_time)
 
         for survey in surveys:
             AssessSurveyRelation.objects.create(assess_id=assess.id,survey_id=survey)
@@ -369,8 +371,6 @@ class AssessCreateView(AuthenticationExceptView, WdListCreateAPIView):
                 for x in qs:
                     x.id = None
                     x.assess_id=assess.id
-                    x.begin_time = begin_time
-                    x.end_time = end_time
                 AssessProjectSurveyConfig.objects.bulk_create(qs)
 
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)

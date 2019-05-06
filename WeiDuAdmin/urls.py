@@ -52,4 +52,5 @@ urlpatterns = [
     # workspace api
     ws_url(r'workspace/', include('workspace.urls')),
     # front api 
+    client_url(r'front/', include('front.urls')),
 ]
