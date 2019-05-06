@@ -139,10 +139,10 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
     def get(self, request, *args, **kwargs):
         '''list users'''
         
-        curPage = int(request.data.get('curPage', '1'))       
-        pagesize = int(request.data.get('pagesize', 20))
-        pageType = str(request.GET.get('pageType', ''))
-        org = request.GET.get('organization_id')
+        curPage = int(request.query_params.get('curPage', '1'))
+        pagesize = int(request.query_params.get('pagesize', 20))
+        pageType = str(request.query_params.get('pageType', ''))
+        org = request.query_params.get('organization_id')
         
         if pageType == 'pageDown':
             curPage += 1
