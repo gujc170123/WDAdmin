@@ -1244,8 +1244,9 @@ class UserAnswerQuestionView(WdCreateAPIView):
                 report_status=PeopleSurveyRelation.REPORT_GENERATING,
                 finish_time=datetime.datetime.now()
             )
-            for o in qs:
-                algorithm_task.delay(o.id)
+            if self.survey_id!=164:                
+                for o in qs:
+                    algorithm_task.delay(o.id)
         else:
             survey_info_qs = SurveyInfo.objects.filter_active(survey_id=self.survey_id, project_id=self.project_id)
             if survey_info_qs.exists():
@@ -1282,8 +1283,9 @@ class UserAnswerQuestionView(WdCreateAPIView):
                         report_status=PeopleSurveyRelation.REPORT_GENERATING,
                         finish_time=datetime.datetime.now()
                     )
-                    for o in qs:
-                        algorithm_task.delay(o.id)
+                    if self.survey_id!=164:
+                        for o in qs:
+                            algorithm_task.delay(o.id)
         # 判断该用户的该项目中的问卷是不是已经全部做完，返回项目跳转链接
         people_survey_list = PeopleSurveyRelation.objects.filter_active(project_id=self.project_id, people_id=people.id)
         for people_survey in people_survey_list:

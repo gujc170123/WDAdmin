@@ -136,3 +136,4 @@ def CreateNewUser(username,account_name,nickname,pwd,phone,email,is_superuser,
                                         account_name=account_name,
                                         enterprise_id=organization_id)
 
+    return user

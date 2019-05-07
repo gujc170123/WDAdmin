@@ -62,3 +62,10 @@ class AssessSerializer(serializers.ModelSerializer):
                   'project_status', 'finish_choices', 'finish_redirect', 'finish_txt', 'assess_logo', 'org_infos',
                   "user_count", "distribute_type", "has_distributed", 'is_answer_survey_by_order', 'has_survey_random',
                   'survey_random_number', 'show_people_info')
+
+class AssessListSerializer(serializers.ModelSerializer):
+    '''Assessment List Serializer'''
+
+    class Meta:
+        model = AssessProject
+        fields = ('id', 'name', 'en_name', 'begin_time', 'end_time', 'project_status')                  

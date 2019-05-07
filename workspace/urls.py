@@ -3,7 +3,8 @@ from django.conf.urls import url, include
 from workspace.views import UserLoginView,OrganizationlRetrieveUpdateDestroyView,\
                             OrganizationListCreateView, UserListCreateView, UserDetailView,\
                             AssessCreateView,AssessDetailView,AssessSurveyRelationDistributeView,\
-                            AssessProgressView,AssessProgressTotalView,UserImportExportView
+                            AssessProgressView,AssessProgressTotalView,UserImportExportView,\
+                            AssessOrganizationView,OrganizationlUsersDestroyView
 from workspace.dashboard import Dashboard
 
 urlpatterns = [
@@ -13,6 +14,8 @@ urlpatterns = [
     url(r"^listorg/$", OrganizationListCreateView.as_view(), name="org-list"),
     #manage organizations
     url(r"^updateorg/(?P<pk>\d+)/$", OrganizationlRetrieveUpdateDestroyView.as_view(), name="org-manage"),
+    #clear organization staff
+    url(r"^cleareorg/(?P<pk>\d+)/$",OrganizationlUsersDestroyView.as_view(), name="org-clearstaff"),
     #bi show
     url(r"^bi/$", Dashboard.as_view(),name="bi"),
     #create/list user
@@ -30,6 +33,8 @@ urlpatterns = [
     #assess detail info progress(close mode)
     url(r"^assess/closedist/progressdetail/(?P<pk>\d+)/$", AssessProgressView.as_view(),name='closedist-progress-detail'),
     #assess total info progress(close mode)
-    url(r"^assess/closedist/progresstotal/(?P<pk>\d+)/$", AssessProgressTotalView.as_view(),name='closedist-progress-total'),        
+    url(r"^assess/closedist/progresstotal/(?P<pk>\d+)/$", AssessProgressTotalView.as_view(),name='closedist-progress-total'), 
+    #assess organization view
+    url(r"^listassessorg/$",AssessOrganizationView.as_view(),name='assessorg-list'),
 
 ]

@@ -10,7 +10,8 @@ from rest_framework.response import Response
 from wduser.user_utils import UserAccountUtils
 from utils.logger import get_logger
 from workspace.helper import OrganizationHelper
-from workspace.serializers import UserSerializer,BaseOrganizationSerializer,AssessSerializer
+from workspace.serializers import UserSerializer,BaseOrganizationSerializer,AssessSerializer,\
+                                  AssessListSerializer
 from utils.regular import RegularUtils
 from assessment.views import get_mima, get_random_char, get_active_code
 from wduser.models import AuthUser, BaseOrganization, People, EnterpriseAccount, Organization, \
@@ -94,7 +95,7 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
             if AuthUser.objects.filter(organization__enterprise_id=enterprise_id,
                                        is_active=True,
                                        account_name=account_name,
-                                       organization__is_active=True).exists():  
+                                       organization__is_active=True).exists():
                 return general_json_response(status.HTTP_200_OK,
                                              ErrorCode.USER_ACCOUNT_NAME_ERROR,
                                              {'msg': u'账户在本企业已存在'})
@@ -126,11 +127,11 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
                                              {'msg': u'新增用户失败，邮箱已被使用'})
 
         try:
-            CreateNewUser(username,account_name,nickname,pwd,phone,email,is_superuser,
+            user = CreateNewUser(username,account_name,nickname,pwd,phone,email,is_superuser,
                           role_type,is_staff,sequence,gender,birthday,rank,hiredate,marriage,
                           organization.id)
 
-            return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {'msg': u'成功'})
+            return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {'id':user.id})
         except Exception, e:
             logger.error("新增用户失败 %s" % e.message)
             return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, {'msg': u'新增用户失败:%s' % e.message})
@@ -258,14 +259,14 @@ class UserImportExportView(AuthenticationExceptView,WdCreateAPIView):
         #todo
         """get template file"""
 
-    def post(self, request, *args, **kwargs):        
+    def post(self, request, *args, **kwargs):
         self.parser_classes = (FileUploadParser,)
         filename = request.data["name"]
         filetype = filename.split('.')[-1]
         filecsv =request.FILES.get("file", None)
         enterprise_id = self.enterprise_id
 
-        if not filecsv:             
+        if not filecsv:
             return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, {
             'data_index': -1,
             "data_msg": u'未检测到任何上传文件'
@@ -284,18 +285,17 @@ class UserImportExportView(AuthenticationExceptView,WdCreateAPIView):
         else:
             return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, {
                 'err_code': result
-            })            
+            })
 
 class OrganizationListCreateView(AuthenticationExceptView, WdCreateAPIView):
     """organization tree view"""
     model = BaseOrganization
     serializer_class = BaseOrganizationSerializer
     GET_CHECK_REQUEST_PARAMETER = {"organization_id"}
+    POST_DATA_ID_RESPONSE=True
     
-
     def get(self, request, *args, **kwargs):
         """get organization tree of current user"""
-        # tree_orgs = OrganizationHelper.get_tree_orgs(self.organization_id,2)
         organizations = BaseOrganization.objects.filter_active(childorg__parent_id=self.organization_id).order_by('childorg__depth').\
                                                                 values('id','name','parent_id').all()
                                                             
@@ -308,6 +308,9 @@ class OrganizationListCreateView(AuthenticationExceptView, WdCreateAPIView):
                 nodes[record['parent_id']]['children'].append(nodes[record['id']])
             else:
                 top = nodes[record['id']]
+        for record in organizations:
+            if len(nodes[record['id']]['children'])==0:
+                nodes[record['id']].pop('children')
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"data": top})
 
 class OrganizationlRetrieveUpdateDestroyView(AuthenticationExceptView,
@@ -320,6 +323,9 @@ class OrganizationlRetrieveUpdateDestroyView(AuthenticationExceptView,
         
         org = self.get_id()
 
+        if not BaseOrganization.objects.filter_active(id=org).first():
+            return general_json_response(status.HTTP_200_OK, ErrorCode.NOT_EXISTED)
+
         #delete all organizations only when no active member exists
         alluser = AuthUser.objects.filter(is_active=True,organization__childorg__parent_id=org,organization__is_active=True).first()
         if alluser is None:
@@ -329,6 +335,23 @@ class OrganizationlRetrieveUpdateDestroyView(AuthenticationExceptView,
             return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
         else:
             return general_json_response(status.HTTP_200_OK, ErrorCode.WORKSPACE_ORG_MEMBEREXISTS)
+
+class OrganizationlUsersDestroyView(AuthenticationExceptView,WdDestroyAPIView):
+    """organization management"""
+    model = None
+    serializer_class = None
+
+    def delete(self, request, *args, **kwargs):
+        
+        org = self.get_id()
+
+        if not BaseOrganization.objects.filter_active(id=org).first():
+            return general_json_response(status.HTTP_200_OK, ErrorCode.NOT_EXISTED)
+
+        #delete all organizations only when no active member exists
+        alluser = AuthUser.objects.filter(is_active=True,organization__childorg__parent_id=org,organization__is_active=True)
+        alluser.update(is_active=False)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
 class OrganizationImportExportView(AuthenticationExceptView):
     """organization template import/export"""
@@ -345,7 +368,8 @@ class AssessCreateView(AuthenticationExceptView, WdListCreateAPIView):
     model = AssessProject
     serializer_class = AssessSerializer
 
-    POST_CHECK_REQUEST_PARAMETER={"name","distribute_type","surveys","begin","end"}
+    POST_CHECK_REQUEST_PARAMETER={"name","distribute_type","surveys","begin","end","enterprise"}
+    GET_CHECK_REQUEST_PARAMETER={"enterprise"}
 
     SURVEY_DISC = 89
     SURVEY_OEI = 147
@@ -357,11 +381,13 @@ class AssessCreateView(AuthenticationExceptView, WdListCreateAPIView):
         distribute_type = request.data.get('distribute_type')
         begin_time = request.data.get('begin')
         end_time = request.data.get('end')
+        enterprise = request.data.get('enterprise')
         surveys = request.data.get('surveys').split(",")
         assess = AssessProject.objects.create(name=name,
                                               distribute_type=distribute_type,
                                               begin_time = begin_time,
-                                              end_time = end_time)
+                                              end_time = end_time,
+                                              enterprise_id=enterprise)
 
         for survey in surveys:
             AssessSurveyRelation.objects.create(assess_id=assess.id,survey_id=survey)
@@ -373,7 +399,11 @@ class AssessCreateView(AuthenticationExceptView, WdListCreateAPIView):
                     x.assess_id=assess.id
                 AssessProjectSurveyConfig.objects.bulk_create(qs)
 
-        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,{'id':assess.id})
+    
+    def get(self, request, *args, **kwargs):
+        assesses = AssessProject.objects.filter_active(enterprise_id=self.enterprise)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,AssessListSerializer(assesses,many=True).data)
 
 class AssessDetailView(AuthenticationExceptView, WdCreateAPIView):
     '''update/delete assess view'''
@@ -395,53 +425,80 @@ class AssessSurveyRelationDistributeView(AuthenticationExceptView,WdCreateAPIVie
 
         #copy base organization into assess organization
         with connection.cursor() as cursor:
-            ret = cursor.callproc("DistributeAssess", (enterprise_id,assess_id,user_id,orgid_list))      
+            ret = cursor.callproc("DistributeAssess", (enterprise_id,assess_id,user_id,orgid_list,))
 
         return ErrorCode.SUCCESS
 
     def post(self, request, *args, **kwargs):
         self.assessment = AssessProject.objects.get(id=self.kwargs.get('pk'))
         assess_id = self.assessment.id
-        enterprise_id = self.request.data.get("enterprise_id")        
+        enterprise_id = self.request.data.get("enterprise_id")
         user_id = self.request.data.get("user_id")
-        orgid_list = map(int,self.request.data.get("org_ids").split(",") )       
+        orgid_list = self.request.data.get("org_ids")
         rst_code = self.distribute_normal(assess_id,enterprise_id,user_id,orgid_list)
         return general_json_response(status.HTTP_200_OK, rst_code)
 
-class AssessProgressView(AuthenticationExceptView,APIView):
+class AssessOrganizationView(AuthenticationExceptView,WdCreateAPIView):
+    """assess organization tree view"""
+    model = BaseOrganization
+    serializer_class = BaseOrganizationSerializer
+    GET_CHECK_REQUEST_PARAMETER = {"assess","organization_id"}
+    
+    def get(self, request, *args, **kwargs):
+        """get organization tree of current user"""
+        assess =  request.GET.get('assess')
+        org =  request.GET.get('org')
+        organizations = BaseOrganization.objects.raw("SELECT a.id,a.parent_id,a.name,if(c.id is null,False,True) is_active FROM wduser_baseorganization a\
+                                                      INNER JOIN assessment_assessorganizationpathssnapshots b\
+                                                      ON b.child_id=a.id\
+                                                      LEFT JOIN assessment_assessjoinedorganization c\
+                                                      ON a.id=c.id and c.assess_id=b.assess_id\
+                                                      WHERE b.assess_id=%s AND b.parent_id=%s",[self.assess,self.organization_id])
+
+        if not list(organizations):
+            return general_json_response(status.HTTP_200_OK, ErrorCode.NOT_EXISTED)
+        nodes = {}
+        for record in organizations:
+            nodes[record.id] = {'id':record.id,'name':record.name,'papa':record.parent_id,'enable':record.is_active}
+            nodes[record.id]['children']=[]
+        for record in organizations:
+            if record.parent_id in nodes:
+                nodes[record.parent_id]['children'].append(nodes[record.id])
+            else:
+                top = nodes[record.id]
+        for record in organizations:
+            if len(nodes[record.id]['children'])==0:
+                nodes[record.id].pop('children')
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"data": top})
+
+
+class AssessProgressView(AuthenticationExceptView,WdCreateAPIView):
+
+    model = None
+    serializer_class = None
 
     def get(self, request, *args, **kwargs):
         orgid =  request.GET.get('organization')
         survey =  request.GET.get('survey')
         assess =  self.kwargs.get('pk')
-        depth = 1        
 
+        frontname = settings.DATABASES['front']['NAME']
         with connection.cursor() as cursor:
-            cursor.execute("SELECT getdepth(%s) as depth", [orgid])
-            row = cursor.fetchone()
-            depth = row[0]
-            parent_field = "organization" + str(depth)
-            child_field = "organization" + str(depth+1)
-            sql_query = "select ifnull(" +child_field +",%s) as id,\
-                        max(d.name) as name, \
-                        count(c.people_id) total, max(a.is_active) valid,\
-                        sum(CASE c.status WHEN 20 THEN 1 ELSE 0 END) finished \
-                        from assessment_fullorganization a \
-                        inner join wduser_peopleorganization b \
-                        on a.organization_id=b.org_code \
-                        and b.is_active=true \
-                        left join " + settings.FRONT_HOST + ".front_peoplesurveyrelation c \
-                        on b.people_id=c.people_id \
-                        and c.is_active=true \
-                        and a.assess_id=c.project_id \
-                        inner join wduser_organization d \
-                        on a.organization_id=d.id \
-                        and d.is_active=true \
-                        where a.assess_id=%s \
-                        and a."+ parent_field + "=%s \
-                        and c.survey_id=%s \
-                        group by " +child_field + " order by id"            
-            cursor.execute(sql_query, [orgid,assess,orgid,survey])
+            sql_query = "SELECT b.*,a.name FROM wduser_baseorganization a,\
+                            (SELECT b.child_id id,count(f.people_id) staff,count(if(f.status=20,true,null)) completed\
+                            From assessment_assessorganizationpathssnapshots b\
+                            INNER JOIN assessment_assessorganizationpathssnapshots c\
+                            on c.parent_id=b.child_id\
+                            LEFT JOIN wduser_organization d\
+                            on c.child_id=d.baseorganization_id and c.assess_id=b.assess_id\
+                            LEFT JOIN wduser_peopleorganization e\
+                            on d.identification_code=e.org_code and d.assess_id=b.assess_id\
+                            LEFT JOIN " + frontname + ".front_peoplesurveyrelation f\
+                            on e.people_id=f.people_id and f.project_id=b.assess_id and f.survey_id=%s\
+                            WHERE b.parent_id=%s and b.depth=1 and\
+                            b.assess_id=%s \
+                            group by b.child_id) b WHERE a.id=b.id"
+            cursor.execute(sql_query, [survey,orgid,assess,])
             columns = [column[0] for column in cursor.description]
             results = []
             for row in cursor.fetchall():
@@ -452,32 +509,27 @@ class AssessProgressView(AuthenticationExceptView,APIView):
 class AssessProgressTotalView(AuthenticationExceptView,APIView):
 
     def get(self, request, *args, **kwargs):
+        orgid =  request.GET.get('organization')
         survey =  request.GET.get('survey')
         assess =  self.kwargs.get('pk')
 
-        organization = Organization.objects.filter(assess_id=assess,parent_id=0).first()
+        frontname = settings.DATABASES['front']['NAME']
 
         with connection.cursor() as cursor:
-            sql_query = "select %s  as id,max(d.name) as name, \
-                        count(c.people_id) total,max(a.is_active) valid,\
-                        sum(CASE c.status WHEN 20 THEN 1 ELSE 0 END) finished \
-                        from assessment_fullorganization a \
-                        inner join wduser_peopleorganization b \
-                        on a.organization_id=b.org_code \
-                        and b.is_active=true \
-                        left join "+ settings.FRONT_HOST + ".front_peoplesurveyrelation c \
-                        on b.people_id=c.people_id \
-                        and c.is_active=true \
-                        inner join wduser_organization d \
-                        on a.organization_id=d.id \
-                        and d.is_active=true \
-                        and a.assess_id=c.project_id \
-                        where a.assess_id=%s \
-                        and a.organization1=%s \
-                        and c.survey_id=%s "
-                        
-            cursor.execute(sql_query, [organization.id,assess,organization.id,survey])
+            sql_query = "SELECT b.*,a.name FROM wduser_baseorganization a,\
+                            (SELECT b.parent_id id,count(f.people_id) staff,count(if(f.status=20,true,null)) completed\
+                            From assessment_assessorganizationpathssnapshots b\
+                            LEFT JOIN wduser_organization d\
+                            on b.child_id=d.baseorganization_id and b.assess_id=b.assess_id\
+                            LEFT JOIN wduser_peopleorganization e\
+                            on d.identification_code=e.org_code and d.assess_id=b.assess_id\
+                            LEFT JOIN " + frontname + ".front_peoplesurveyrelation f\
+                            on e.people_id=f.people_id and f.project_id=b.assess_id and f.survey_id=%s\
+                            WHERE b.parent_id=%s and b.assess_id=%s \
+                            group by b.parent_id) b WHERE a.id=b.id"
+
+            cursor.execute(sql_query, [survey,orgid,assess,])
             columns = [column[0] for column in cursor.description]
-            result= dict(zip(columns, cursor.fetchone()))          
+            result= dict(zip(columns, cursor.fetchone()))
         data = {"progress" : result}
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, data)
