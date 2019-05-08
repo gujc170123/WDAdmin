@@ -4,7 +4,7 @@ from workspace.views import UserLoginView,OrganizationlRetrieveUpdateDestroyView
                             OrganizationListCreateView, UserListCreateView, UserDetailView,\
                             AssessCreateView,AssessDetailView,AssessSurveyRelationDistributeView,\
                             AssessProgressView,AssessProgressTotalView,UserImportExportView,\
-                            AssessOrganizationView,OrganizationlUsersDestroyView
+                            AssessOrganizationView,OrganizationlUsersDestroyView,SurveyListView
 from workspace.dashboard import Dashboard
 
 urlpatterns = [
@@ -36,5 +36,7 @@ urlpatterns = [
     url(r"^assess/closedist/progresstotal/(?P<pk>\d+)/$", AssessProgressTotalView.as_view(),name='closedist-progress-total'), 
     #assess organization view
     url(r"^listassessorg/$",AssessOrganizationView.as_view(),name='assessorg-list'),
+    #assess survey list view
+    url(r"^listassesssurvey/$",SurveyListView.as_view(),name='assesssurvey-list'),
 
 ]

@@ -11,7 +11,7 @@ from wduser.user_utils import UserAccountUtils
 from utils.logger import get_logger
 from workspace.helper import OrganizationHelper
 from workspace.serializers import UserSerializer,BaseOrganizationSerializer,AssessSerializer,\
-                                  AssessListSerializer
+                                  AssessListSerializer,SurveyListSerializer
 from utils.regular import RegularUtils
 from assessment.views import get_mima, get_random_char, get_active_code
 from wduser.models import AuthUser, BaseOrganization, People, EnterpriseAccount, Organization, \
@@ -19,6 +19,7 @@ from wduser.models import AuthUser, BaseOrganization, People, EnterpriseAccount,
 from assessment.models import AssessProject, AssessSurveyRelation, AssessProjectSurveyConfig, \
                               AssessSurveyUserDistribute,AssessUser, AssessOrganization, \
                               FullOrganization
+from survey.models import Survey
 from utils.cache.cache_utils import FileStatusCache
 from rest_framework.views import APIView
 from front.models import PeopleSurveyRelation
@@ -404,6 +405,18 @@ class AssessCreateView(AuthenticationExceptView, WdListCreateAPIView):
     def get(self, request, *args, **kwargs):
         assesses = AssessProject.objects.filter_active(enterprise_id=self.enterprise)
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,AssessListSerializer(assesses,many=True).data)
+
+class SurveyListView(AuthenticationExceptView, WdListCreateAPIView):
+    '''list survey view'''
+    model = Survey
+    serializer_class = SurveyListSerializer
+    GET_CHECK_REQUEST_PARAMETER={"assess"}
+
+    def get(self, request, *args, **kwargs):
+        surveys = Survey.objects.filter_active(id__in=AssessSurveyRelation.objects.filter_active(assess_id=self.assess).values_list('survey_id'))
+        surveyinfo = SurveyListSerializer(instance=surveys, many=True).data
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,surveyinfo)    
+
 
 class AssessDetailView(AuthenticationExceptView, WdCreateAPIView):
     '''update/delete assess view'''

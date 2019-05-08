@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from rest_framework import serializers
 from wduser.models import AuthUser, EnterpriseAccount, People, BaseOrganization
 from assessment.models import AssessProject
+from survey.models import Survey
 import json
 from collections import OrderedDict
 
@@ -69,3 +70,10 @@ class AssessListSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssessProject
         fields = ('id', 'name', 'en_name', 'begin_time', 'end_time', 'project_status')                  
+
+class SurveyListSerializer(serializers.ModelSerializer):
+    '''Assessment List Serializer'''
+
+    class Meta:
+        model = Survey
+        fields = ('id', 'title')   
