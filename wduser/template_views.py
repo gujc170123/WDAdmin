@@ -17,13 +17,10 @@ from front.serializers import PeopleSurveyResultSimpleSerializer
 from front.tasks import algorithm_task
 from front.views import people_login
 from survey.models import Survey
-from utils.logger import get_logger
 from utils.response import ErrorCode
 from utils.views import WdTemplateView, AuthenticationExceptView
 from wduser.models import People, AuthUser
 from wduser.user_utils import UserAccountUtils
-
-logger = get_logger("operation")
 
 
 class SurveyAnswerCheckView(AuthenticationExceptView, WdTemplateView):

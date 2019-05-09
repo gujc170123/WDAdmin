@@ -12,10 +12,8 @@ from research.models import ResearchSubstandard, ResearchDimension, ResearchMode
 from research.serializers import ResearchModelDetailSerializer
 from survey.models import SurveyQuestionRelation, SurveyModelFacetRelation, Survey
 from utils.cache.obj_cache import BaseObjCache
-from utils.logger import get_logger
+from utils.logger import debug_logger
 from utils.math_utils import normsdist
-
-logger = get_logger("front_utils")
 
 
 class SurveyAlgorithm(object):
@@ -43,7 +41,7 @@ class SurveyAlgorithm(object):
     def get_question_basic_info(cls, question_id):
         question_info = BaseObjCache(Question, question_id, 'questionBasicInfo').get_obj()
         if not question_info:
-            logger.debug("get_question_basic_info from db not from cache")
+            debug_logger.debug("get_question_basic_info from db not from cache")
             question = Question.objects.get(id=question_id)
             question_info = QuestionBasicSerializer(instance=question).data
             BaseObjCache(Question, question_id, 'questionBasicInfo').set_obj(question_info)
@@ -88,7 +86,7 @@ class SurveyAlgorithm(object):
     def get_model_detail_info(cls, research_model):
         model_info = BaseObjCache(ResearchModel, research_model.id, 'detailSerializer').get_obj()
         if not model_info:
-            logger.debug("get model info from db not from cache")
+            debug_logger.debug("get model info from db not from cache")
             model_info = ResearchModelDetailSerializer(instance=research_model).data
             BaseObjCache(ResearchModel, research_model.id, 'detailSerializer').set_obj(model_info)
         return model_info
@@ -98,7 +96,7 @@ class SurveyAlgorithm(object):
         u""""""
         facet_id_map = BaseObjCache(Survey, substandard["id"], 'substandardQuestionRelation').get_obj()
         if not facet_id_map:
-            logger.debug("get_substandard_facet_map from db not from cache")
+            debug_logger.debug("get_substandard_facet_map from db not from cache")
             relation_qs = SurveyAlgorithm.get_relation_qs(survey.id, survey.model_id, substandard)
             if not relation_qs:
                 return None
@@ -131,7 +129,7 @@ class SurveyAlgorithm(object):
     def get_dimension_facet_map(cls, dimension, survey):
         facet_id_map = BaseObjCache(Survey, dimension["id"], 'dimensionQuestionRelation').get_obj()
         if not facet_id_map:
-            logger.debug("get_dimension_facet_map from db not from cache")
+            debug_logger.debug("get_dimension_facet_map from db not from cache")
             relation_qs = SurveyModelFacetRelation.objects.filter_active(
                 survey_id=survey.id,
                 model_id=survey.model_id,
@@ -185,7 +183,7 @@ class SurveyAlgorithm(object):
                    praise_score=0, uniformity_score=None, facet_score=None,
                    happy_score=0, happy_ability_score=0, happy_efficacy_score=0):
         u"""题目分值保存"""
-        logger.debug("begin save_score of people_survey_result_id of %s, model_score: %s" % (people_survey_result_id, model_score))
+        debug_logger.debug("begin save_score of people_survey_result_id of %s, model_score: %s" % (people_survey_result_id, model_score))
         if uniformity_score:
             uniformity_score = json.dumps(uniformity_score)
         if facet_score:
@@ -215,12 +213,12 @@ class SurveyAlgorithm(object):
             result.happy_ability_score = happy_ability_score
             result.happy_efficacy_score = happy_efficacy_score
             result.save()
-        logger.debug("end save_score of people_survey_result_id of %s, model_score: %s" % (people_survey_result_id, model_score))
+        debug_logger.debug("end save_score of people_survey_result_id of %s, model_score: %s" % (people_survey_result_id, model_score))
 
     @classmethod
     def get_question_answer(cls, people_id, survey_id, project_id, role_type, evaluated_people_id):
         u"""获取题目答案"""
-        logger.debug("SurveyAlgorithm->get_question_answer: %s, %s, %s, %s, %s" % (
+        debug_logger.debug("SurveyAlgorithm->get_question_answer: %s, %s, %s, %s, %s" % (
             people_id, survey_id, project_id, role_type, evaluated_people_id))
         question_answers = UserQuestionAnswerInfo.objects.filter_active(
             people_id=people_id,
@@ -256,10 +254,10 @@ class SurveyAlgorithm(object):
                     all_child_count += 1
                     all_child_score += substandard_score[child_substandard["id"]]["score"]
                 substandard_score[substandard["id"]]["score"] = (all_child_score*1.00/all_child_count)*substandard["weight"]
-                logger.debug("process_substandard_score --> process substandard of %s, %s, %s" % (
+                debug_logger.debug("process_substandard_score --> process substandard of %s, %s, %s" % (
                 substandard["id"], substandard["name"], substandard_score[substandard["id"]]["score"]))
             else:
-                logger.debug("begin process_substandard_score --> process substandard of %s, %s" % (
+                debug_logger.debug("begin process_substandard_score --> process substandard of %s, %s" % (
                     substandard["id"], substandard["name"]))
                 facet_id_map = cls.get_substandard_facet_map(substandard, survey)
                 question_ids = []
@@ -296,7 +294,7 @@ class SurveyAlgorithm(object):
                     substandard_score[substandard["id"]]["score"] = (question_substandard_score*1.00 / question_count*1.00) * substandard["weight"]
                 else:
                     substandard_score[substandard["id"]]["score"] = 0
-                logger.debug("process_substandard_score --> process substandard of %s, %s, %s, %s, %s, %s" % (
+                debug_logger.debug("process_substandard_score --> process substandard of %s, %s, %s, %s, %s, %s" % (
                     substandard["id"], substandard["name"], substandard_score[substandard["id"]]["score"],
                     question_substandard_score, question_count, substandard["weight"]))
 
@@ -304,7 +302,7 @@ class SurveyAlgorithm(object):
         substandard_score = {}
         dimension_score = {}
         model_score = 0  # 总分
-        logger.debug("algorithm_average_weight --> people_survey_result_id is %s" % people_survey_result_id)
+        debug_logger.debug("algorithm_average_weight --> people_survey_result_id is %s" % people_survey_result_id)
         people_survey_result = PeopleSurveyRelation.objects.get(id=people_survey_result_id)
         survey = Survey.objects.get(id=people_survey_result.survey_id)
         research_model = ResearchModel.objects.get(id=survey.model_id)
@@ -421,11 +419,11 @@ class SurveyAlgorithm(object):
                 survey_id=people_survey_result.survey_id,
                 question_id=question_id
             )
-            logger.debug("SurveyAlgorithm->algorithm_sum_app_up: %s, %s" % (question_id, score))
+            debug_logger.debug("SurveyAlgorithm->algorithm_sum_app_up: %s, %s" % (question_id, score))
             if model_question_relation_qs.exists():
                 relation_id = model_question_relation_qs[0].model_facet_relation_id
                 relation_obj = SurveyModelFacetRelation.objects.get(id=relation_id)
-                # logger.debug("SurveyAlgorithm->algorithm_sum_app_up: %s, %s" % (
+                # debug_logger.debug("SurveyAlgorithm->algorithm_sum_app_up: %s, %s" % (
                 # relation_obj.related_obj_type, relation_obj.related_obj_id))
                 if relation_obj.related_obj_type == SurveyModelFacetRelation.RELATED_SUBSTANDARD:
                     substandard_id = relation_obj.related_obj_id
@@ -448,7 +446,7 @@ class SurveyAlgorithm(object):
                         }
                     if dismension.name.find(cls.PRAISE_PATTERN) > 0:
                         praise_score += dimension_score[dismension.id]["score"]
-                    logger.debug("SurveyAlgorithm->algorithm_sum_app_up:%s, %s-%s, %s, %s-%s" % (
+                    debug_logger.debug("SurveyAlgorithm->algorithm_sum_app_up:%s, %s-%s, %s, %s-%s" % (
                         score, substandard.id, substandard.name, score, dismension.id, dismension.name
                     ))
                     model_score += score
@@ -470,7 +468,7 @@ class SurveyAlgorithm(object):
                         }
                     if dismension.name.find(cls.PRAISE_PATTERN) > 0:
                         praise_score += dimension_score[dismension.id]["score"]
-                    logger.debug("SurveyAlgorithm->algorithm_sum_app_up:%s, %s-%s, %s, %s-%s" % (
+                    debug_logger.debug("SurveyAlgorithm->algorithm_sum_app_up:%s, %s-%s, %s, %s-%s" % (
                         score, substandard.id, substandard.name, score, dismension.id, dismension.name
                     ))
                     model_score += score
@@ -524,11 +522,11 @@ class SurveyAlgorithm(object):
             )
             if int(score) != 1:
                 score = 0
-            logger.debug("SurveyAlgorithm->algorithm_swqn: %s, %s, %s" % (people_survey_result_id, question_id, score))
+            debug_logger.debug("SurveyAlgorithm->algorithm_swqn: %s, %s, %s" % (people_survey_result_id, question_id, score))
             if model_question_relation_qs.exists():
                 relation_id = model_question_relation_qs[0].model_facet_relation_id
                 relation_obj = SurveyModelFacetRelation.objects.get(id=relation_id)
-                # logger.debug("SurveyAlgorithm->algorithm_swqn: %s, %s" % (
+                # debug_logger.debug("SurveyAlgorithm->algorithm_swqn: %s, %s" % (
                 #     relation_obj.related_obj_type, relation_obj.related_obj_id))
                 if question_id in single_question_ids:
                     continue
@@ -578,7 +576,7 @@ class SurveyAlgorithm(object):
                             "name": dismension.name,
                             "count": question_count
                         }
-                    # logger.debug("SurveyAlgorithm->algorithm_swqn:%s, %s-%s, %s, %s-%s" % (
+                    # debug_logger.debug("SurveyAlgorithm->algorithm_swqn:%s, %s-%s, %s, %s-%s" % (
                     #     score, substandard.id, substandard.name, score, dismension.id, dismension.name
                     # ))
                     model_score += score
@@ -602,7 +600,7 @@ class SurveyAlgorithm(object):
                             "name": dismension.name,
                             "count": question_count
                         }
-                    # logger.debug("SurveyAlgorithm->algorithm_sum_app_up:%s, %s-%s, %s, %s-%s" % (
+                    # debug_logger.debug("SurveyAlgorithm->algorithm_sum_app_up:%s, %s-%s, %s, %s-%s" % (
                     #     score, substandard.id, substandard.name, score, dismension.id, dismension.name
                     # ))
                     model_score += score
@@ -851,7 +849,7 @@ class SurveyAlgorithm(object):
         def get_model_detail_info():
             model_info = BaseObjCache(ResearchModel, research_model.id, 'detailSerializer').get_obj()
             if not model_info:
-                logger.debug("algorithm_xfzs --> get model info from db not from cache")
+                debug_logger.debug("algorithm_xfzs --> get model info from db not from cache")
                 model_info = ResearchModelDetailSerializer(instance=research_model).data
                 BaseObjCache(ResearchModel, research_model.id, 'detailSerializer').set_obj(model_info)
             return model_info
@@ -859,7 +857,7 @@ class SurveyAlgorithm(object):
         def get_substandard_facet_map(substandard):
             facet_id_map = BaseObjCache(Survey, substandard["id"], 'substandardQuestionRelation').get_obj()
             if not facet_id_map:
-                logger.debug("algorithm_xfzs --> get_substandard_facet_map from db not from cache")
+                debug_logger.debug("algorithm_xfzs --> get_substandard_facet_map from db not from cache")
                 relation_qs = SurveyAlgorithm.get_relation_qs(survey.id, survey.model_id, substandard)
                 if not relation_qs:
                     return None
@@ -888,7 +886,7 @@ class SurveyAlgorithm(object):
         def get_dimension_facet_map(dimension):
             facet_id_map = BaseObjCache(Survey, dimension["id"], 'dimensionQuestionRelation').get_obj()
             if not facet_id_map:
-                logger.debug("algorithm_xfzs --> get_dimension_facet_map from db not from cache")
+                debug_logger.debug("algorithm_xfzs --> get_dimension_facet_map from db not from cache")
                 relation_qs = SurveyModelFacetRelation.objects.filter_active(
                     survey_id=survey.id,
                     model_id=survey.model_id,
@@ -918,13 +916,13 @@ class SurveyAlgorithm(object):
         def get_question_basic_info(question_id):
             question_info = BaseObjCache(Question, question_id, 'questionBasicInfo').get_obj()
             if not question_info:
-                logger.debug("algorithm_xfzs --> get_question_basic_info from db not from cache")
+                debug_logger.debug("algorithm_xfzs --> get_question_basic_info from db not from cache")
                 question = Question.objects.get(id=question_id)
                 question_info = QuestionBasicSerializer(instance=question).data
                 BaseObjCache(Question, question_id, 'questionBasicInfo').set_obj(question_info)
             return question_info
 
-        logger.debug("algorithm_xfzs --> people_survey_result_id is %s" % people_survey_result_id)
+        debug_logger.debug("algorithm_xfzs --> people_survey_result_id is %s" % people_survey_result_id)
         people_survey_result = PeopleSurveyRelation.objects.get(id=people_survey_result_id)
         survey = Survey.objects.get(id=people_survey_result.survey_id)
         research_model = ResearchModel.objects.get(id=survey.model_id)
@@ -949,7 +947,7 @@ class SurveyAlgorithm(object):
                 pass
             else:
                 for substandard in substandards:
-                    logger.debug("algorithm_xfzs --> process substandard of %s" % substandard["id"])
+                    debug_logger.debug("algorithm_xfzs --> process substandard of %s" % substandard["id"])
                     substandard_score[substandard["id"]] = {
                         "score": 0,
                         "name": substandard["name"],
@@ -1209,7 +1207,7 @@ class SurveyAlgorithm(object):
         # def get_model_detail_info():
         #     model_info = BaseObjCache(ResearchModel, research_model.id, 'detailSerializer').get_obj()
         #     if not model_info:
-        #         logger.debug("algorithm_xfzs --> get model info from db not from cache")
+        #         debug_logger.debug("algorithm_xfzs --> get model info from db not from cache")
         #         model_info = ResearchModelDetailSerializer(instance=research_model).data
         #         BaseObjCache(ResearchModel, research_model.id, 'detailSerializer').set_obj(model_info)
         #     return model_info
@@ -1217,7 +1215,7 @@ class SurveyAlgorithm(object):
         # def get_substandard_facet_map(substandard):
         #     facet_id_map = BaseObjCache(Survey, substandard["id"], 'substandardQuestionRelation').get_obj()
         #     if not facet_id_map:
-        #         logger.debug("algorithm_xfzs --> get_substandard_facet_map from db not from cache")
+        #         debug_logger.debug("algorithm_xfzs --> get_substandard_facet_map from db not from cache")
         #         relation_qs = SurveyAlgorithm.get_relation_qs(survey.id, survey.model_id, substandard)
         #         if not relation_qs:
         #             return None
@@ -1246,7 +1244,7 @@ class SurveyAlgorithm(object):
         # def get_dimension_facet_map(dimension):
         #     facet_id_map = BaseObjCache(Survey, dimension["id"], 'dimensionQuestionRelation').get_obj()
         #     if not facet_id_map:
-        #         logger.debug("algorithm_xfzs --> get_dimension_facet_map from db not from cache")
+        #         debug_logger.debug("algorithm_xfzs --> get_dimension_facet_map from db not from cache")
         #         relation_qs = SurveyModelFacetRelation.objects.filter_active(
         #             survey_id=survey.id,
         #             model_id=survey.model_id,
@@ -1276,13 +1274,13 @@ class SurveyAlgorithm(object):
         # def get_question_basic_info(question_id):
         #     question_info = BaseObjCache(Question, question_id, 'questionBasicInfo').get_obj()
         #     if not question_info:
-        #         logger.debug("algorithm_xfzs --> get_question_basic_info from db not from cache")
+        #         debug_logger.debug("algorithm_xfzs --> get_question_basic_info from db not from cache")
         #         question = Question.objects.get(id=question_id)
         #         question_info = QuestionBasicSerializer(instance=question).data
         #         BaseObjCache(Question, question_id, 'questionBasicInfo').set_obj(question_info)
         #     return question_info
         #
-        # logger.debug("algorithm_xfzs --> people_survey_result_id is %s" % people_survey_result_id)
+        # debug_logger.debug("algorithm_xfzs --> people_survey_result_id is %s" % people_survey_result_id)
         # people_survey_result = PeopleSurveyRelation.objects.get(id=people_survey_result_id)
         # survey = Survey.objects.get(id=people_survey_result.survey_id)
         # research_model = ResearchModel.objects.get(id=survey.model_id)
@@ -1351,7 +1349,7 @@ class SurveyAlgorithm(object):
         #         #                                                      facet_id_map[facet_id]["weight"] / 100, 2)
         #     else:
         #         for substandard in substandards:
-        #             logger.debug("algorithm_xfzs --> process substandard of %s" % substandard["id"])
+        #             debug_logger.debug("algorithm_xfzs --> process substandard of %s" % substandard["id"])
         #             substandard_score[substandard["id"]] = {
         #                 "score": 0,
         #                 "name": substandard["name"],
@@ -1471,7 +1469,7 @@ class SurveyAlgorithm(object):
             u"""获取模型基本信息"""
             model_info = BaseObjCache(ResearchModel, research_model.id, 'detailSerializer').get_obj()
             if not model_info:
-                logger.debug("algorithm_xfxq --> get model info from db not from cache")
+                debug_logger.debug("algorithm_xfxq --> get model info from db not from cache")
                 model_info = ResearchModelDetailSerializer(instance=research_model).data
                 BaseObjCache(ResearchModel, research_model.id, 'detailSerializer').set_obj(model_info)
             return model_info
@@ -1628,10 +1626,10 @@ class SurveyAlgorithm(object):
                     all_child_count += 1
                     all_child_score += substandard_score[child_substandard["id"]]["score"]
                 substandard_score[substandard["id"]]["score"] = all_child_score
-                logger.debug("process_substandard_score --> process substandard of %s, %s, %s" % (
+                debug_logger.debug("process_substandard_score --> process substandard of %s, %s, %s" % (
                 substandard["id"], substandard["name"], substandard_score[substandard["id"]]["score"]))
             else:
-                logger.debug("begin process_substandard_score --> process substandard of %s, %s" % (
+                debug_logger.debug("begin process_substandard_score --> process substandard of %s, %s" % (
                     substandard["id"], substandard["name"]))
                 facet_id_map = cls.get_substandard_facet_map(substandard, survey)
                 question_ids = []
@@ -1670,7 +1668,7 @@ class SurveyAlgorithm(object):
                     substandard_score[substandard["id"]]["score"] = question_substandard_score
                 else:
                     substandard_score[substandard["id"]]["score"] = 0
-                logger.debug("process_substandard_score --> process substandard of %s, %s, %s, %s, %s, %s" % (
+                debug_logger.debug("process_substandard_score --> process substandard of %s, %s, %s, %s, %s, %s" % (
                     substandard["id"], substandard["name"], substandard_score[substandard["id"]]["score"],
                     question_substandard_score, question_count, substandard["weight"]))
 
@@ -1678,7 +1676,7 @@ class SurveyAlgorithm(object):
         substandard_score = {}
         dimension_score = {}
         model_score = 0  # 总分
-        logger.debug("algorithm_average_weight --> people_survey_result_id is %s" % people_survey_result_id)
+        debug_logger.debug("algorithm_average_weight --> people_survey_result_id is %s" % people_survey_result_id)
         people_survey_result = PeopleSurveyRelation.objects.get(id=people_survey_result_id)
         survey = Survey.objects.get(id=people_survey_result.survey_id)
         research_model = ResearchModel.objects.get(id=survey.model_id)
@@ -1803,10 +1801,10 @@ class SurveyAlgorithm(object):
                     all_child_count += 1
                     all_child_score += substandard_score[child_substandard["id"]]["score"]
                 substandard_score[substandard["id"]]["score"] = all_child_score
-                logger.debug("process_substandard_score --> process substandard of %s, %s, %s" % (
+                debug_logger.debug("process_substandard_score --> process substandard of %s, %s, %s" % (
                 substandard["id"], substandard["name"], substandard_score[substandard["id"]]["score"]))
             else:
-                logger.debug("begin process_substandard_score --> process substandard of %s, %s" % (
+                debug_logger.debug("begin process_substandard_score --> process substandard of %s, %s" % (
                     substandard["id"], substandard["name"]))
                 facet_id_map = cls.get_substandard_facet_map(substandard, survey)
                 question_ids = []
@@ -1840,7 +1838,7 @@ class SurveyAlgorithm(object):
                     substandard_score[substandard["id"]]["score"] = question_substandard_score
                 else:
                     substandard_score[substandard["id"]]["score"] = 0
-                logger.debug("process_substandard_score --> process substandard of %s, %s, %s, %s, %s, %s" % (
+                debug_logger.debug("process_substandard_score --> process substandard of %s, %s, %s, %s, %s, %s" % (
                     substandard["id"], substandard["name"], substandard_score[substandard["id"]]["score"],
                     question_substandard_score, question_count, substandard["weight"]))
 
@@ -1848,7 +1846,7 @@ class SurveyAlgorithm(object):
         substandard_score = {}
         dimension_score = {}
         model_score = 0  # 总分
-        logger.debug("algorithm_average_weight --> people_survey_result_id is %s" % people_survey_result_id)
+        debug_logger.debug("algorithm_average_weight --> people_survey_result_id is %s" % people_survey_result_id)
         people_survey_result = PeopleSurveyRelation.objects.get(id=people_survey_result_id)
         survey = Survey.objects.get(id=people_survey_result.survey_id)
         research_model = ResearchModel.objects.get(id=survey.model_id)

@@ -7,9 +7,7 @@ from django.db import transaction
 
 from front.models import PeopleSurveyRelation
 from front.tasks import algorithm_task
-from utils.logger import get_logger
-
-logger = get_logger("ops_survey_result")
+from utils.logger import debug_logger, info_logger
 
 
 def ops_survey_result(project_id, survey_id, from_num, end_num, report_create):
@@ -19,7 +17,7 @@ def ops_survey_result(project_id, survey_id, from_num, end_num, report_create):
         status=PeopleSurveyRelation.STATUS_FINISH
     ).values_list("id", flat=True)[from_num:end_num]
     for result_id in pqs:
-        logger.debug("process result_id %s" % result_id)
+        debug_logger.debug("process result_id %s" % result_id)
         if report_create:
             algorithm_task.delay(result_id, True, True)
         else:
@@ -49,5 +47,5 @@ class Command(BaseCommand):
         from_num = options.get("from_num", 0)
         end_num = options.get("end_num", 1000000)
         report_create = int(options.get("report_create", 0))
-        logger.info("ops_survey_result process %s %s" % (project_id, survey_id))
+        info_logger.info("ops_survey_result process %s %s" % (project_id, survey_id))
         ops_survey_result(project_id, survey_id, from_num, end_num, report_create)

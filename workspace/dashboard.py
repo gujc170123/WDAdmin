@@ -4,14 +4,12 @@ from __future__ import division
 from utils.views import AuthenticationExceptView, WdListCreateAPIView
 from utils.response import general_json_response, ErrorCode
 from rest_framework import status
-from utils.logger import get_logger
+from utils.logger import err_logger
 from workspace.models import FactOEI, WDIndex
 from wduser.models import BaseOrganization
 from .helper import OrganizationHelper
 from django.db.models import Avg
 from assessment.models import FullOrganization, AssessSurveyRelation
-
-logger = get_logger("workspace")
 
 
 class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
@@ -52,7 +50,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             else:
                 return res, ErrorCode.NOT_EXISTED
         except Exception, e:
-            logger.error("get report data error, msg: %s " % e)
+            err_logger.error("get report data error, msg: %s " % e)
             return res, ErrorCode.INTERNAL_ERROR
 
     def get_feature(self, **kwargs):
@@ -80,7 +78,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             else:
                 return res, ErrorCode.NOT_EXISTED
         except Exception, e:
-            logger.error("get report data error, msg: %s " % e)
+            err_logger.error("get report data error, msg: %s " % e)
             return res, ErrorCode.INTERNAL_ERROR
 
     def get_distribution(self, **kwargs):
@@ -123,7 +121,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             else:
                 return res, ErrorCode.NOT_EXISTED
         except Exception, e:
-            logger.error("get report data error, msg: %s " % e)
+            err_logger.error("get report data error, msg: %s " % e)
             return res, ErrorCode.INTERNAL_ERROR
 
     def get_dedication_res(self, scale, model, res):
@@ -400,7 +398,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                 return res, ErrorCode.NOT_EXISTED
 
         except Exception, e:
-            logger.error("get report data error, msg: %s " % e)
+            err_logger.error("get report data error, msg: %s " % e)
             return res, ErrorCode.INTERNAL_ERROR
 
     def get_focus_group(self, **kwargs):
@@ -622,7 +620,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             else:
                 return res, ErrorCode.NOT_EXISTED
         except Exception, e:
-            logger.error("get report data error, msg: %s " % e)
+            err_logger.error("get report data error, msg: %s " % e)
             return res, ErrorCode.INTERNAL_ERROR
 
     def get_org_siblings(self, org_id, assess_id):
@@ -664,5 +662,5 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             else:
                 return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"data": data})
         except Exception, e:
-            logger.error("dashboard error, msg is %s" % e)
+            err_logger.error("dashboard error, msg is %s" % e)
             return general_json_response(status.HTTP_200_OK, ErrorCode.INTERNAL_ERROR, {"msg": "%s" % e})

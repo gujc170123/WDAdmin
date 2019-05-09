@@ -14,13 +14,11 @@ from django.contrib.auth.hashers import make_password
 from WeiDuAdmin.settings import BASE_DIR
 from utils import get_random_char, get_random_int
 from utils.excel import ExcelUtils
-from utils.logger import get_logger
+from utils.logger import err_logger
 from utils.pyfirstchar import get_first_char
 from utils.regular import RegularUtils
 from utils.response import ErrorCode
 from wduser.models import AuthUser, Organization
-
-logger = get_logger('user')
 
 
 class UserAccountUtils(object):
@@ -124,7 +122,7 @@ class UserAccountUtils(object):
             user = AuthUser.objects.create(
                 username=username, password=pwd, phone=phone, email=email, role_type=role_type, nickname=nickname)
         except Exception, e:
-            logger.error("user register error(%s, %s, %s), msg(%s)" % (username, phone, email, e))
+            err_logger.error("user register error(%s, %s, %s), msg(%s)" % (username, phone, email, e))
             return None, ErrorCode.INTERNAL_ERROR
         return user, ErrorCode.SUCCESS
 
@@ -213,7 +211,7 @@ class OrganizationUtils(object):
             try:
                 org_name = org_name.encode("utf-8")
             except Exception, e:
-                logger.error("org name encode utf8 error, msg: %s" % e)
+                err_logger.error("org name encode utf8 error, msg: %s" % e)
         code = '%s%s%s' % (get_first_char(org_name, 4), assess_id, get_random_int(4))
         return code
 

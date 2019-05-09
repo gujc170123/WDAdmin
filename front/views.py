@@ -31,7 +31,7 @@ from research.models import ResearchModel, ResearchSubstandard, ResearchDimensio
 from survey.models import Survey
 from utils import time_format3, time_format4, time_format5, get_random_int, get_random_char
 from utils.cache.cache_utils import VerifyCodeExpireCache
-from utils.logger import get_logger
+from utils.logger import info_logger, err_logger, debug_logger
 from utils.rpc_service.report_service import ReportService
 from utils.regular import RegularUtils
 from utils.response import ErrorCode, general_json_response
@@ -44,8 +44,6 @@ from wduser.user_utils import UserAccountUtils
 from utils.math_utils import normsdist
 from django.db import connection
 import numpy as np
-
-logger = get_logger("front")
 
 
 def str_check(str_obj):
@@ -117,7 +115,7 @@ class PeopleLoginView(AuthenticationExceptView, WdCreateAPIView):
                 user_obj = AuthUser.objects.get(id=user_id)
                 return ErrorCode.SUCCESS, user_obj
             except:
-                logger.info("peopke_id can not find people user obj")
+                info_logger.info("peopke_id can not find people user obj")
                 pass
         return ErrorCode.FAILURE, None
 
@@ -228,7 +226,7 @@ class PeopleLogoutView(WdCreateAPIView):
         try:
             logout(request)
         except Exception, e:
-            logger.error("web logout error, msg(%s)" % e)
+            err_logger.error("web logout error, msg(%s)" % e)
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
 
@@ -250,10 +248,10 @@ class PeopleRegisterView(AuthenticationExceptView, WdCreateAPIView):
         try:
             project = AssessProject.objects.get(id=assess_id)
         except:
-            logger.error("project not found: %s" % assess_id)
+            err_logger.error("project not found: %s" % assess_id)
             return ErrorCode.INVALID_INPUT
         if project.distribute_type != AssessProject.DISTRIBUTE_OPEN:
-            logger.error("project is not open: %s" % project.id)
+            err_logger.error("project is not open: %s" % project.id)
             return ErrorCode.INVALID_INPUT
         if RegularUtils.phone_check(account):
             people_qs = People.objects.filter_active(phone=account)
@@ -275,7 +273,7 @@ class PeopleRegisterView(AuthenticationExceptView, WdCreateAPIView):
         try:
             send_one_user_survey(project.id, people.id)
         except Exception, e:
-            logger.error("people survey relation error, msg: %s" %e)
+            err_logger.error("people survey relation error, msg: %s" %e)
         return ErrorCode.SUCCESS, user
 
     def org_code_register(self, account, pwd, org_code):
@@ -363,7 +361,7 @@ class PeopleRegisterView(AuthenticationExceptView, WdCreateAPIView):
             user_info = people_login(request, user, self.get_serializer_context())
         # except:
         except Exception, e:
-            logger.error("Register_FOR_Login error, msg is %s" % e)
+            err_logger.error("Register_FOR_Login error, msg is %s" % e)
             user_info = None
         return general_json_response(status.HTTP_200_OK, rst_code, {"is_login": err_code, "user_info": user_info})
 
@@ -971,22 +969,22 @@ class PeopleQuestionListView(WdListAPIView):
         #     data = self.get_random_question(people)
         # 检查是不是按照维度顺序答题
         # 获得所有的块信息
-        logger.debug("survey_info.test_type is %s" % survey_info.test_type)
+        debug_logger.debug("survey_info.test_type is %s" % survey_info.test_type)
         if survey_info.test_type != SurveyInfo.TEST_TYPE_BY_QUESTION:
             block_info = json.loads(survey_info.block_info)
             if block_info:
                 # 如果有块信息
-                # logger.info("all_%s" % block_info)
+                # info_logger.info("all_%s" % block_info)
                 this_block = {}
                 for block in block_info:
-                    # logger.info("%s_%s" % (str_check(self.block_id), str_check(block.get("id", 0))))
+                    # info_logger.info("%s_%s" % (str_check(self.block_id), str_check(block.get("id", 0))))
                     if str(self.block_id) == str(block.get("id", 0)):
                         this_block = block
                         break
                 # 判断当前块是不是顺序答题
-                logger.debug("this_block.order_number is %s" % this_block.get("order_number", 0))
+                debug_logger.debug("this_block.order_number is %s" % this_block.get("order_number", 0))
                 if this_block.get("order_number", 0):
-                    # logger.info("t_%s" % this_block)
+                    # info_logger.info("t_%s" % this_block)
                     for block_i in block_info:
                         # 比这小的块有没有答
                         if this_block.get("order_number", 0) > block_i.get("order_number", 0):
@@ -999,7 +997,7 @@ class PeopleQuestionListView(WdListAPIView):
                                     if usbs_qs[0].is_finish:
                                         return ErrorCode.SUCCESS
                                 return ErrorCode.FAILURE
-                            logger.debug("block_id, survey_id, project_id, people_id is %s, %s, %s, %s" %(
+                            debug_logger.debug("block_id, survey_id, project_id, people_id is %s, %s, %s, %s" %(
                                 block_i.get("id"), self.survey_id, self.project_id, people.id))
                             if check_survey_block_finish(block_i.get("id"), self.survey_id, self.project_id, people.id) != ErrorCode.SUCCESS:
                                 # 提示， 请按照设定的维度顺序依次答题  报错码暂时待修改
@@ -1476,7 +1474,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             default_data["msg"]["Dis"].append({sortedlist[-3][0]:dictquota_desc[sortedlist[-3][0]]})
 
         except Exception, e:
-            logger.error("get report data error, msg: %s" % e)
+            err_logger.error("get report data error, msg: %s" % e)
             return default_data, ErrorCode.INVALID_INPUT
         return default_data, ErrorCode.SUCCESS        
 
@@ -1536,7 +1534,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                             info["score"] = round(facet_score_map[facet_id]["score"], 2)
                             break
         except Exception, e:
-            logger.error("get report data error, msg: %s" % e)
+            err_logger.error("get report data error, msg: %s" % e)
             return default_data, ErrorCode.INVALID_INPUT
         return default_data, ErrorCode.SUCCESS
 
@@ -1592,7 +1590,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                         info["score"] = dimension_score_map[dimension_id]["score"]
                         break
         except Exception, e:
-            logger.error("get report data error, msg: %s " % e)
+            err_logger.error("get report data error, msg: %s " % e)
             return default_data, ErrorCode.INVALID_INPUT
         return default_data, ErrorCode.SUCCESS
 
@@ -1648,7 +1646,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                         info["score"] = dimension_score_map[dimension_id]["score"]
                         break
         except Exception, e:
-            logger.error("get report data error, msg: %s " % e)
+            err_logger.error("get report data error, msg: %s " % e)
             return default_data, ErrorCode.INVALID_INPUT
         return default_data, ErrorCode.SUCCESS
 
@@ -1714,7 +1712,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             default_data["msg"]["ChartDataModel"] = substandard_scores
             default_data["msg"]["char"] = dismension_info
         except Exception, e:
-            logger.error("get report data error, msg: %s " % e)
+            err_logger.error("get report data error, msg: %s " % e)
             return default_data, ErrorCode.INVALID_INPUT
         return default_data, ErrorCode.SUCCESS
 
@@ -1780,7 +1778,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                 if "not_like" in substandard_score_map and info["name"] in substandard_score_map["not_like"]:
                     info["score"] = substandard_score_map["not_like"][info["name"]]
         except Exception, e:
-            logger.error("get report data error, msg: %s " % e)
+            err_logger.error("get report data error, msg: %s " % e)
             return default_data, ErrorCode.INVALID_INPUT
         return default_data, ErrorCode.SUCCESS
 
@@ -1873,7 +1871,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                         info["score"] = round(substandard_score_map[substandard_id]["normsdist_score"], 2)
                         break
         except Exception, e:
-            logger.error("get report data error, msg: %s " % e)
+            err_logger.error("get report data error, msg: %s " % e)
             return default_data, ErrorCode.INVALID_INPUT
         return default_data, ErrorCode.SUCCESS
 
@@ -1940,7 +1938,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                                     break
                         break
         except Exception, e:
-            logger.error("get report data error, msg: %s " % e)
+            err_logger.error("get report data error, msg: %s " % e)
             return default_data, ErrorCode.INVALID_INPUT
         return default_data, ErrorCode.SUCCESS
 
@@ -2007,7 +2005,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                                     break
                         break
         except Exception, e:
-            logger.error("get report data error, msg: %s " % e)
+            err_logger.error("get report data error, msg: %s " % e)
             return default_data, ErrorCode.INVALID_INPUT
         return default_data, ErrorCode.SUCCESS
 
@@ -2174,7 +2172,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             default_data["msg"]["chart2"].sort(lambda x, y: cmp(x['score'], y['score']), reverse=True)
             default_data["msg"]["chart3"].sort(lambda x, y: cmp(x['score'], y['score']), reverse=True)
         except Exception, e:
-            logger.error("get report data error, msg: %s " % e)
+            err_logger.error("get report data error, msg: %s " % e)
             return default_data, ErrorCode.INVALID_INPUT
         return default_data, ErrorCode.SUCCESS
 
@@ -2228,7 +2226,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                         info["score"] = round(substandard_score_map[substandard_id]["score"], 2)
                         break
         except Exception, e:
-            logger.error("get report data error, msg: %s" % e)
+            err_logger.error("get report data error, msg: %s" % e)
             return default_data, ErrorCode.INVALID_INPUT
         return default_data, ErrorCode.SUCCESS
 
@@ -2279,7 +2277,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                         info["score"] = round(substandard_score_map[substandard_id]["score"], 2)
                         break
         except Exception, e:
-            logger.error("get report data error, msg: %s" % e)
+            err_logger.error("get report data error, msg: %s" % e)
             return default_data, ErrorCode.INVALID_INPUT
         return default_data, ErrorCode.SUCCESS
 
@@ -2328,7 +2326,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                         info["score"] = round(substandard_score_map[substandard_id]["score"], 2)
                         break
         except Exception, e:
-            logger.error("get report data error, msg: %s" % e)
+            err_logger.error("get report data error, msg: %s" % e)
             return default_data, ErrorCode.INVALID_INPUT
         return default_data, ErrorCode.SUCCESS
 
@@ -2398,7 +2396,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                         info["score"] = int(round(100 - abs(dimension_score_map[dimension_id]["percente_score"])))
                         break
         except Exception, e:
-            logger.error("get report data error, msg: %s" % e)
+            err_logger.error("get report data error, msg: %s" % e)
             return default_data, ErrorCode.INVALID_INPUT
         return default_data, ErrorCode.SUCCESS
 
@@ -2741,7 +2739,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             default_data["msg"]["style"] = character_result
             default_data["msg"]["score"] = ret_score
         except Exception, e:
-            logger.error("get report data error, msg: %s" % e)
+            err_logger.error("get report data error, msg: %s" % e)
             return default_data, ErrorCode.INVALID_INPUT
         return default_data, ErrorCode.SUCCESS
 
@@ -2794,7 +2792,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                         info["score"] = dimension_score_map[dimension_id]["score"]
                         break
         except Exception, e:
-            logger.error("get report data error, msg: %s" % e)
+            err_logger.error("get report data error, msg: %s" % e)
             return default_data, ErrorCode.INVALID_INPUT
         return default_data, ErrorCode.SUCCESS
 
@@ -2983,7 +2981,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                 data["msg"]["comment3"].append(comment[random.randint(0,len(comment)-1)])
 
         except Exception, e:
-            logger.error("get report data error, msg: %s " % e)
+            err_logger.error("get report data error, msg: %s " % e)
             return data, ErrorCode.INVALID_INPUT
         return data, ErrorCode.SUCCESS
 
@@ -3014,7 +3012,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                 "report_data": data
             })
         except Exception, e:
-            logger.error("ReportDataView error, msg is %s" % e)
+            err_logger.error("ReportDataView error, msg is %s" % e)
             return general_json_response(status.HTTP_200_OK, ErrorCode.INVALID_INPUT, {"msg": "%s" %e})
 
 
@@ -3027,7 +3025,7 @@ class FinishTxTView(WdRetrieveAPIView):
     #     try:
     #         obj = AssessProject.objects.get(id=self.assess_id)
     #     except:
-    #         logger.error("assessproject not exists error %s" % e)
+    #         err_logger.error("assessproject not exists error %s" % e)
     #         return general_json_response(status.HTTP_200_OK, ErrorCode.INVALID_INPUT, {"msg": "project found"})
     #     return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"finish_txt": obj.finish_txt})
     def get_object(self):
@@ -3041,7 +3039,7 @@ class ReportFinishCallback(AuthenticationExceptView, WdCreateAPIView):
         report_status = self.request.data.get("report_status", None) # 0 ing, 1 success, 2 failed
         report_url = self.request.data.get("report_url", None)
         en_report_url = self.request.data.get("en_report_url", None)
-        logger.debug("report callback of %s, %s" %(personal_result_id, report_status))
+        debug_logger.debug("report callback of %s, %s" %(personal_result_id, report_status))
         if report_status is None or personal_result_id is None:
             return general_json_response(status.HTTP_200_OK, ErrorCode.INVALID_INPUT)
         report_status = int(report_status)

@@ -19,11 +19,9 @@ from survey.models import Survey, SurveyModelFacetRelation, SurveyQuestionRelati
 from survey.serializers import SurveyBasicSerializer, SurveyForceQuestionResultSerializer
 from survey.survey_utils import SurveyUtils
 from survey.tasks import statistics_question_count, survey_used_count
-from utils.logger import get_logger
+from utils.logger import info_logger
 from utils.response import ErrorCode, general_json_response
 from utils.views import WdListCreateAPIView, WdDestroyAPIView, WdRetrieveUpdateAPIView, WdCreateAPIView, WdListAPIView
-
-logger = get_logger("survey")
 
 
 class OrgSurveyListCreateView(WdListCreateAPIView):
@@ -113,7 +111,7 @@ class OrgSurveyDetailView(WdDestroyAPIView, WdRetrieveUpdateAPIView):
         obj = self.get_object()
         if obj.use_count > 0:
             return ErrorCode.SURVEY_USED_DELETE_MODIFY_FORBID
-        logger.info('user_id %s want delete survey_id %s' % (self.request.user.id, obj.id))
+        info_logger.info('user_id %s want delete survey_id %s' % (self.request.user.id, obj.id))
         return super(OrgSurveyDetailView, self).delete_check_parameter(kwargs)
 
     def perform_update(self, serializer):
@@ -493,7 +491,7 @@ class SurveyModelFacetOptionRelationOpsView(WdListCreateAPIView, WdDestroyAPIVie
                         weidu_question_map[weidu_id].append(list(all_questions))
                     else:
                         weidu_question_map[weidu_id] = list(all_questions)
-            logger.info('%s' % weidu_question_map)
+            info_logger.info('%s' % weidu_question_map)
             return weidu_question_map
         now_s_m_f_r_qs = SurveyModelFacetRelation.objects.filter_active(survey_id=self.survey_id, model_id=self.model_id)
         old_other_question = []

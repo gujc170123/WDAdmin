@@ -8,26 +8,27 @@ import traceback
 from django.conf import settings
 import logging.config
 
-log_root_path = '/var/log/wdadmin/'
-if platform.system() == 'Windows':
-    log_root_path = u'c:\\log\\wdadmin\\'
-
-if not os.path.exists(log_root_path):
-    os.makedirs(log_root_path)
+log_root_path = settings.WD_LOG_PATH
+# log_root_path = '/var/log/wdadmin/'
+# if platform.system() == 'Windows':
+#     log_root_path = u'c:\\log\\wdadmin\\'
+#
+# if not os.path.exists(log_root_path):
+#     os.makedirs(log_root_path)
 
 
 def add_logger(logging, name):
     logging['handlers'][name] = {
-        'level': 'DEBUG',
+        'level': 'INFO',
         'class': 'logging.handlers.RotatingFileHandler',
-        'filename': log_root_path + name + '.log',
+        'filename': '%s/%s.log' % (log_root_path, name),
         'maxBytes': 1024 * 1024 * 5,
         'backupCount': 100,
         'formatter': 'verbose',
     }
     logging['loggers'][name] = {
         'handlers': ['console', name],
-        'level': 'DEBUG',
+        'level': 'INFO',
     }
 
 
@@ -53,3 +54,8 @@ def get_logger(name=None):
     except Exception, e:
         traceback.print_exc()
         return logging.getLogger(settings.MAIN_LOG_NAME)
+
+
+err_logger = get_logger("error")
+info_logger = get_logger("info")
+debug_logger = get_logger("debug")

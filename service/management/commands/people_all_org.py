@@ -4,10 +4,8 @@ from __future__ import unicode_literals
 from django.core.management import BaseCommand
 from django.db import transaction
 
-from utils.logger import get_logger
+from utils.logger import info_logger, err_logger
 from wduser.models import AuthUser, People, PeopleOrganization, Organization
-
-logger = get_logger("people_all_org")
 
 
 def people_all_org(auth_obj, num):
@@ -36,11 +34,11 @@ def people_all_org(auth_obj, num):
                 try:
                     may_new_obj = Organization.objects.get(id=org_obj.parent_id, assess_id=org_obj.assess_id)
                 except:
-                    logger.error('org_get_ERROR id %s assess_id %s' % (org_obj.parent_id, org_obj.assess_id))
+                    err_logger.error('org_get_ERROR id %s assess_id %s' % (org_obj.parent_id, org_obj.assess_id))
                     break
                 if may_new_obj.identification_code not in old_codes:
                     PeopleOrganization.objects.create(people_id=peo_obj.id, org_code=may_new_obj.identification_code)
-                    logger.info('CREATE org_id %s org_name %s people_id %s' % (may_new_obj.id, may_new_obj.name, peo_obj.id))
+                    info_logger.info('CREATE org_id %s org_name %s people_id %s' % (may_new_obj.id, may_new_obj.name, peo_obj.id))
                     old_codes.append(may_new_obj.identification_code)
                 org_obj = may_new_obj
     return None

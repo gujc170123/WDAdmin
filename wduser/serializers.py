@@ -15,7 +15,8 @@ from utils import get_random_int
 from utils.serializers import WdTagListSerializer
 from wduser.models import AuthUser, EnterpriseInfo, Organization, UserAdminRole, RoleBusinessPermission, \
     BusinessPermission, RoleUser, RoleUserBusiness, People, PeopleOrganization, PeopleAccount
-from wduser.user_utils import OrganizationUtils, logger
+from wduser.user_utils import OrganizationUtils
+from utils.logger import err_logger
 
 
 class UserBasicSerializer(serializers.ModelSerializer):
@@ -107,7 +108,7 @@ class PeopleSerializer(serializers.ModelSerializer):
         for identification_code in identification_codes:
             org_qs = Organization.objects.filter_active(identification_code=identification_code)
             if org_qs.count() > 1:
-                logger.error('identificationn org has org,error %s ' % identification_code)
+                err_logger.error('identificationn org has org,error %s ' % identification_code)
                 return []
             if org_qs.exists():
                 org_obj = org_qs[0]
@@ -117,7 +118,7 @@ class PeopleSerializer(serializers.ModelSerializer):
                 #         try:
                 #             org_obj = Organization.objects.get(id=org_obj.parent_id)
                 #         except Exception, e:
-                #             logger.error('org has two parent org,error %s '% e)
+                #             err_logger.error('org has two parent org,error %s '% e)
                 #             return []
                 #         org_info_list.append(get_infos(org_obj))
                 #     else:
@@ -149,7 +150,7 @@ class PeopleSerializer(serializers.ModelSerializer):
             account_name = AuthUser.objects.get(id=user_id).account_name
             return account_name
         except Exception, e:
-            logger.error("people has no user error,%s, people - %s" % (e, obj.id))
+            err_logger.error("people has no user error,%s, people - %s" % (e, obj.id))
             return None
 
 
@@ -418,7 +419,7 @@ class PeopleSerializer360(serializers.ModelSerializer):
         for identification_code in identification_codes:
             org_qs = Organization.objects.filter_active(identification_code=identification_code)
             if org_qs.count() > 1:
-                logger.error('identificationn org has org,error %s ' % identification_code)
+                err_logger.error('identificationn org has org,error %s ' % identification_code)
                 return []
             if org_qs.exists():
                 org_obj = org_qs[0]
@@ -428,7 +429,7 @@ class PeopleSerializer360(serializers.ModelSerializer):
                 #         try:
                 #             org_obj = Organization.objects.get(id=org_obj.parent_id)
                 #         except Exception, e:
-                #             logger.error('org has two parent org,error %s '% e)
+                #             err_logger.error('org has two parent org,error %s '% e)
                 #             return []
                 #         org_info_list.append(get_infos(org_obj))
                 #     else:
@@ -457,7 +458,7 @@ class PeopleSerializer360(serializers.ModelSerializer):
             account_name = AuthUser.objects.get(id=user_id).account_name
             return account_name
         except Exception, e:
-            logger.error("people has no user error,%s, people - %s" % (e, obj.id))
+            err_logger.error("people has no user error,%s, people - %s" % (e, obj.id))
             return None
 
     def get_people_role(self, obj):

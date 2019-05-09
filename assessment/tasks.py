@@ -32,13 +32,12 @@ from utils.aliyun.email import EmailUtils
 from utils.aliyun.oss import AliyunOss
 from utils.aliyun.sms.newsms import Sms
 from utils.excel import ExcelUtils
-from utils.logger import get_logger
+from utils.logger import err_logger, info_logger,debug_logger
 from utils.regular import RegularUtils
 from utils.rpc_service.clientservice import ClientService
 from utils.response import ErrorCode
 from wduser.models import People, PeopleOrganization, AuthUser, Organization, EnterpriseAccount, PeopleAccount
 
-logger = get_logger("assessment")
 
 DINGZHI_4_TYPE_ACCOUNT = ['4', '5', '1', '-1']  # 模板那边,导出这里,手动新增 共3处
 # 联合办公账号OA 1
@@ -139,7 +138,7 @@ def do_old_authuser(old_authuser_obj_info_list):
         finish_authuser = []
         for i, old_authuser_obj_info in enumerate(old_authuser_obj_info_list):
             if i % 2000 == 0:
-                logger.info("old_au_change")
+                info_logger.info("old_au_change")
             old_authuser_id = old_authuser_obj_info[0]
             old_authuser_obj = AuthUser.objects.get(id=old_authuser_id)
             old_authuser_info = old_authuser_obj_info[1]
@@ -169,7 +168,7 @@ def do_old_authuser(old_authuser_obj_info_list):
             finish_authuser.append((old_authuser_obj, old_authuser_info))
         return ErrorCode.SUCCESS, finish_authuser
     except Exception, e:
-        logger.error("do_old_authuser, msg(%s)" % e)
+        err_logger.error("do_old_authuser, msg(%s)" % e)
         return ErrorCode.FAILURE, None, u'修改的人员不合法'
 
 
@@ -212,7 +211,7 @@ def do_new_authusers(new_authusers):
             )
             if i % 2000 == 1:
                 AuthUser.objects.bulk_create(au_b_create_list)
-                logger.info("au_b_create")
+                info_logger.info("au_b_create")
                 au_b_create_list = []
         #  人数太多会出现 所以 拆分 'MySQL server has gone away'
         if au_b_create_list:
@@ -232,19 +231,19 @@ def do_new_authusers(new_authusers):
 
         return ErrorCode.SUCCESS, finish_authusers
     except Exception, e:
-        logger.error("do_new_authuser, msg(%s)" % e)
+        err_logger.error("do_new_authuser, msg(%s)" % e)
         return ErrorCode.FAILURE, None, u"新增的人员名字不合法"
 
 
 def check_data_is_error(nickname, account, phone, email, org_names, index, project_id):
     if not nickname:
-        logger.error("import data not find nickname: %s" % index)
+        err_logger.error("import data not find nickname: %s" % index)
         return ErrorCode.PROJECT_SURVEY_USER_IMPORT_ERROR, index, u"姓名为必填"
     if not phone and not email and not account:
-        logger.error("import data not find phone email account: %s" % index)
+        err_logger.error("import data not find phone email account: %s" % index)
         return ErrorCode.PROJECT_SURVEY_USER_IMPORT_ERROR, index, u"帐号/手机/邮箱为必填一个字段"
     if not org_names:
-        logger.error("import data not find orgs: %s" % index)
+        err_logger.error("import data not find orgs: %s" % index)
         return ErrorCode.PROJECT_SURVEY_USER_IMPORT_ERROR, index, u"项目组织为必填字段"
     try:
         org = get_org(org_names, project_id)
@@ -290,13 +289,13 @@ def do_people(finish_authusers):
                 finish_peoples.append((user_id, info_dict))
             if i % 2000 == 1:
                 People.objects.bulk_create(po_b_create_list)
-                logger.info("po_b_create")
+                info_logger.info("po_b_create")
                 po_b_create_list = []
         if po_b_create_list:
             People.objects.bulk_create(po_b_create_list)
         return ErrorCode.SUCCESS, finish_peoples
     except Exception, e:
-        logger.error("do_people, msg(%s)" % e)
+        err_logger.error("do_people, msg(%s)" % e)
         return ErrorCode.FAILURE, None, u"用户参与测评失败"
 
 
@@ -321,13 +320,13 @@ def do_assessuser(finish_peoples, assess_id):
                 )
             if i % 2000 == 1:
                 AssessUser.objects.bulk_create(au_b_create_list)
-                logger.info("au_b_create")
+                info_logger.info("au_b_create")
                 au_b_create_list = []
         if au_b_create_list:
             AssessUser.objects.bulk_create(au_b_create_list)
         return ErrorCode.SUCCESS, None
     except Exception, e:
-        logger.error("do_assessuser, msg(%s)" % e)
+        err_logger.error("do_assessuser, msg(%s)" % e)
         return ErrorCode.FAILURE, None, u'用户参与项目失败'
 
 
@@ -353,17 +352,17 @@ def do_enterprise(finish_peoples, assess_id):
                 elif ea_qs.count() == 1:
                     ea_qs.update(account_name=infos["account"])
                 else:
-                    logger.error("user_id %s 在企业 %s 下有2个账户 " % (str(people_obj.user_id), str(enterprise_id)))
+                    err_logger.error("user_id %s 在企业 %s 下有2个账户 " % (str(people_obj.user_id), str(enterprise_id)))
                     return ErrorCode.FAILURE, None, u"用户在企业下有2和账户"
             if i % 2000 == 1:
                 EnterpriseAccount.objects.bulk_create(ea_b_create_list)
-                logger.info("ea_b_create")
+                info_logger.info("ea_b_create")
                 ea_b_create_list = []
         if ea_b_create_list:
             EnterpriseAccount.objects.bulk_create(ea_b_create_list)
         return ErrorCode.SUCCESS, None
     except Exception, e:
-        logger.error("do_enterprise, msg(%s)" % e)
+        err_logger.error("do_enterprise, msg(%s)" % e)
         return ErrorCode.FAILURE, None, u'用户参与企业失败'
 
 
@@ -383,13 +382,13 @@ def do_people_account(finish_peoples, assess_id):
                     )
             if len(pa_b_create_list) > 2000:
                 PeopleAccount.objects.bulk_create(pa_b_create_list)
-                logger.info("pa_b_create")
+                info_logger.info("pa_b_create")
                 pa_b_create_list = []
         if pa_b_create_list:
             PeopleAccount.objects.bulk_create(pa_b_create_list)
         return ErrorCode.SUCCESS, None
     except Exception, e:
-        logger.error("do_people_account error, msg(%s)" % e)
+        err_logger.error("do_people_account error, msg(%s)" % e)
         return ErrorCode.FAILURE, None, u'用户创建账户失败'
 
 
@@ -413,13 +412,13 @@ def do_org(finish_peoples):
                     )
                 if i % 2000 == 1:
                     PeopleOrganization.objects.bulk_create(people_org_list)
-                    logger.info("p_org_b_create")
+                    info_logger.info("p_org_b_create")
                     people_org_list = []
         if people_org_list:
             PeopleOrganization.objects.bulk_create(people_org_list)
         return ErrorCode.SUCCESS, None
     except Exception, e:
-        logger.error("do_org, msg(%s)" % e)
+        err_logger.error("do_org, msg(%s)" % e)
         return ErrorCode.FAILURE, None, u'组织修改失败'
 
 
@@ -436,7 +435,7 @@ def do_dedicated_link(authusers):
                 authuser_obj.save()
         return ErrorCode.SUCCESS, None
     except Exception, e:
-        logger.error("do_dedicated_link, msg(%s)" % e)
+        err_logger.error("do_dedicated_link, msg(%s)" % e)
         return ErrorCode.FAILURE, None, u'专属链接生成失败'
 
 
@@ -485,7 +484,7 @@ def delete_obj(authuser_obj, assess_id, org_codes):
         PeopleSurveyRelation.objects.filter_active(project_id=assess_id, people_id__in=people_ids).update(is_active=False)
         delete_assesssurveyuserdistribute(assess_id, people_ids)
     except Exception, e:
-        logger.error("delete_people error, 没有可删除的对象, msg(%s)" % e)
+        err_logger.error("delete_people error, 没有可删除的对象, msg(%s)" % e)
         return ErrorCode.FAILURE, None, u"用户参与测评失败"
 
 
@@ -531,7 +530,7 @@ def statistics_project_survey_user_count(project_id):
                 project_survey.user_count = count
                 project_survey.save()
     except Exception, e:
-        logger.error("statistics_project_survey_user_count error, msg: %s" % e)
+        err_logger.error("statistics_project_survey_user_count error, msg: %s" % e)
 
 
 @shared_task
@@ -543,7 +542,7 @@ def statistics_user_count(enterprise_id):
             projects = AssessProject.objects.filter_active(enterprise_id=enterprise_id)
         except:
             return
-    logger.debug("statistics_user_count of enterprise: %s" % enterprise_id)
+    debug_logger.debug("statistics_user_count of enterprise: %s" % enterprise_id)
     for project in projects:
         all_count = PeopleSurveyRelation.objects.filter_active(project_id=project.id).values_list(
             "people_id", flat=True
@@ -554,7 +553,7 @@ def statistics_user_count(enterprise_id):
         ).distinct().count()
         test_count = all_count - unfinish_count
         if project.user_count != test_count:
-            logger.debug("update project user count: %s" % project.id)
+            debug_logger.debug("update project user count: %s" % project.id)
             project.user_count = test_count
             project.save()
 
@@ -572,15 +571,15 @@ def distribute_project(enterprise_id=None, distribute_project_id=None):
             projects = AssessProject.objects.filter_active(enterprise_id=enterprise_id, begin_time__lt=now)
         else:
             projects = AssessProject.objects.filter_active(begin_time__lt=now)
-        logger.debug("distribute_project of enterprise: %s" % enterprise_id)
+        debug_logger.debug("distribute_project of enterprise: %s" % enterprise_id)
     else:
         projects = AssessProject.objects.filter_active(id=distribute_project_id)
-        logger.debug("distribute_project of enterprise project: %s" % distribute_project_id)
+        debug_logger.debug("distribute_project of enterprise project: %s" % distribute_project_id)
     # 发布过的项目，可能有新添加的问卷
     projects.filter(has_distributed=False).update(has_distributed=True)
     for project in projects:
         project_id = project.id
-        logger.debug("distribute_project of enterprise: %s, project id: %s" %(enterprise_id, project_id))
+        debug_logger.debug("distribute_project of enterprise: %s, project id: %s" %(enterprise_id, project_id))
         survey_ids = AssessSurveyRelation.objects.filter_active(assess_id=project_id).values_list("survey_id", flat=True)
         for survey_id in survey_ids:
             survey_infos = SurveyInfo.objects.filter_active(survey_id=survey_id, project_id=project_id)
@@ -615,7 +614,7 @@ def file_task(authuser_obj_id, authuser_obj_email, people_ids, project_id):
 
     def down_data_to_file(url, file_name, file_path):
         import urllib2
-        logger.debug("download report url is %s" % url)
+        debug_logger.debug("download report url is %s" % url)
         req = urllib2.Request(url.encode("utf-8"))
         rst = urllib2.urlopen(req)
         fdata = rst.read()
@@ -625,7 +624,7 @@ def file_task(authuser_obj_id, authuser_obj_email, people_ids, project_id):
 
     def get_file(authuser_obj_id, people_ids, project_id):
         people_ids = [str(id) for id in people_ids]
-        logger.debug("%s download report people ids is %s" % (str(authuser_obj_id), ",".join(people_ids)))
+        debug_logger.debug("%s download report people ids is %s" % (str(authuser_obj_id), ",".join(people_ids)))
         now = datetime.datetime.now().strftime("%Y-%m-%d")
         timestamp = int(time.time()*100)
         parent_path = "%s-report-download-%s" % (str(authuser_obj_id), str(timestamp))
@@ -642,7 +641,7 @@ def file_task(authuser_obj_id, authuser_obj_email, people_ids, project_id):
                 )
             if relations.exists():
                 if people.username is None:
-                    logger.debug('people id=%s 没有username' % str(people.id))
+                    debug_logger.debug('people id=%s 没有username' % str(people.id))
                     people.username = 'No username'
                 # people_file_path = os.path.join(file_path, "%s_%s" % (people.username, people.id))
                 account_name = AuthUser.objects.filter(id=people.user_id).values_list("account_name", flat=True)
@@ -847,7 +846,7 @@ def get_file(assess_id, people_ids, x, is_simple=False):
     # 每一张问卷
     people_info_same_get_one_dict = {}
     for survey_id in survey_ids:
-        logger.info("survey_id %s" % survey_id)
+        info_logger.info("survey_id %s" % survey_id)
         # 避免一张问卷出2个表格
         if survey_id in process_survey_ids:
             continue
@@ -945,7 +944,7 @@ def get_file(assess_id, people_ids, x, is_simple=False):
             question_type_map = {}
             question_info = []
             if not question_info_qs.exists():
-                logger.info("surveyId %s is no question" % survey_id)
+                info_logger.info("surveyId %s is no question" % survey_id)
             else:
                 if form_type == Survey.FORM_TYPE_FORCE:
                     # 迫选组卷 title 栏字段
@@ -1006,7 +1005,7 @@ def get_file(assess_id, people_ids, x, is_simple=False):
                                     title.append("%s-%s" % (order + 1, msg))
         for index_p, people in enumerate(peoples):
             if index_p % 500 == 1:
-                logger.info('survey_id %s, people_id %s' % (survey_id, people.id))
+                info_logger.info('survey_id %s, people_id %s' % (survey_id, people.id))
             # 每个人的信息
             if people.id not in people_info_same_get_one_dict:
                 # 账户名
@@ -1211,7 +1210,7 @@ def get_file(assess_id, people_ids, x, is_simple=False):
                                                         qs.exclude(id__in=list(qs_ids)).update(is_active=False)
                                                         qs = qs.filter(is_active=True)
                                                 except:
-                                                    logger.error('%s answer_distinct error' % people.id)
+                                                    err_logger.error('%s answer_distinct error' % people.id)
 
                                             for q in qs:
                                                 people_data.append(q.answer_score)
@@ -1228,7 +1227,7 @@ def get_file(assess_id, people_ids, x, is_simple=False):
                                                 try:
                                                     qs = answer_distinct(qs.order_by("answer_id"))
                                                 except:
-                                                    logger.error('%s answer_distinct error' % people.id)
+                                                    err_logger.error('%s answer_distinct error' % people.id)
 
                                             answer_scores_list = [int(x) for x in qs.order_by("answer_id").values_list('answer_score', flat=True)]
                                             # 迫排题 有5个选项，每个选项都有值， 如果需要显示关联，则在title中加标志位
@@ -1237,7 +1236,7 @@ def get_file(assess_id, people_ids, x, is_simple=False):
                                             for x in default_scores_list:
                                                 people_data.append(x)
                     data.append(people_data)
-        logger.info("try_write")
+        info_logger.info("try_write")
         if survey_index < len(survey_ids) - 1:
             file_path = excel_util.create_excel(default_export_file_name, title, data,
                 sheet_name=u"%s,%s" % (survey_index, survey_name), force_save=False,
@@ -1249,7 +1248,7 @@ def get_file(assess_id, people_ids, x, is_simple=False):
                 sheet_index=survey_index
             )
         survey_index += 1
-    logger.info("finish")
+    info_logger.info("finish")
     return file_path, default_export_file_name
 
 
@@ -1321,7 +1320,7 @@ def zip_excel(path_list, assess_id):
         shutil.copyfile(x, file_full_path)
     zip_file_path = "%s.zip" % zip_path
     zip_folder(zip_path, zip_file_path)
-    logger.info("assess_id %s zip survey_user" % assess_id)
+    info_logger.info("assess_id %s zip survey_user" % assess_id)
     return zip_file_path, zip_file_path.split(LINUX_SPLIT)[-1]
 
 
@@ -1438,7 +1437,7 @@ def check_input_useful(info_dict, assess_id, enterprise_id, new_user, old_user, 
                     a_obj = AuthUser.objects.get(id=a_qs[0].user_id)
                     a_obj_id = a_obj.id
                 except:
-                    logger.error(u"企业账户 %s 没有对应的AuthUser用户 %s" % (str(a_qs[0].id), str(a_qs[0].user_id)))
+                    err_logger.error(u"企业账户 %s 没有对应的AuthUser用户 %s" % (str(a_qs[0].id), str(a_qs[0].user_id)))
                     return u"非法账户",
             if a_qs.count() > 1:
                 return u"账户已经在企业中存在"
@@ -1591,7 +1590,7 @@ def import_assess_user_task_0916(assess_id, file_path):
                         print msg, index
                         #return ErrorCode.FAILURE, msg, index, new_user, old_user
             except Exception, e:
-                logger.error(u"check_input_people_data_error %s" % e)
+                err_logger.error(u"check_input_people_data_error %s" % e)
                 return ErrorCode.FAILURE, u"异常", index, new_user, old_user
         return ErrorCode.SUCCESS, None, index, new_user, old_user
     for index, infos in enumerate(data):
@@ -1626,7 +1625,7 @@ def import_assess_user_task_0916(assess_id, file_path):
             if msg != ErrorCode.SUCCESS:
                 return ErrorCode.FAILURE, msg, index, new_user, old_user
         except Exception, e:
-            logger.error(u"check_input_people_data_error %s" % e)
+            err_logger.error(u"check_input_people_data_error %s" % e)
             return ErrorCode.FAILURE, u"异常", index, new_user, old_user
     return ErrorCode.SUCCESS, None, index, new_user, old_user
 
@@ -1671,7 +1670,7 @@ def distribute_all_survey_task_1025(people_ids, assess_id, status):
             if survey_qs.count() == 1:
                 survey = survey_qs[0]
             else:
-                logger.error("survey_id %d filter ERROR" % survey_id)
+                err_logger.error("survey_id %d filter ERROR" % survey_id)
                 continue
             asr_qs = AssessSurveyRelation.objects.filter_active(assess_id=assess_id, survey_id=survey_id)
             asud_qs = AssessSurveyUserDistribute.objects.filter_active(assess_id=assess_id, survey_id=survey_id)
@@ -1793,7 +1792,7 @@ def zip_excel_back(path_list, assess_id):
         shutil.copyfile(x, file_full_path)
     zip_file_path = "%s.zip" % zip_path
     zip_folder(zip_path, zip_file_path)
-    logger.info("assess_id %s zip survey_user" % assess_id)
+    info_logger.info("assess_id %s zip survey_user" % assess_id)
     return zip_file_path, zip_file_path.split(LINUX_SPLIT)[-1]
 
 def get_title_task_back(stand_title, assess_id=None):
@@ -1896,7 +1895,7 @@ def get_file_back(assess_id, people_ids, x):
     # 每一张问卷
     people_info_same_get_one_dict = {}
     for survey_id in survey_ids:
-        logger.info("survey_id %s" % survey_id)
+        info_logger.info("survey_id %s" % survey_id)
         # 避免一张问卷出2个表格
         if survey_id in process_survey_ids:
             continue
@@ -1965,7 +1964,7 @@ def get_file_back(assess_id, people_ids, x):
         question_info = []
         timestamp = int(time.time() * 100)
         if not question_info_qs.exists():
-            logger.info("surveyId %s is no question" % survey_id)
+            info_logger.info("surveyId %s is no question" % survey_id)
         else:
             if form_type == Survey.FORM_TYPE_FORCE:
                 # 迫选组卷 title 栏字段
@@ -2027,7 +2026,7 @@ def get_file_back(assess_id, people_ids, x):
                                 title.append("%s-%s" % (order + 1, msg))
         for index_p, people in enumerate(peoples):
             if index_p % 2000 == 1:
-                logger.info('survey_id %s, people_id %s' % (survey_id, people.id))
+                info_logger.info('survey_id %s, people_id %s' % (survey_id, people.id))
             # 每个人的信息
             if people.id not in people_info_same_get_one_dict:
                 # 账户名
@@ -2049,7 +2048,7 @@ def get_file_back(assess_id, people_ids, x):
                             if stand_dict_item.keys()[0] == key_value[u'key_name']:
                                 stand_dict_item[stand_dict_item.keys()[0]] = str_check(key_value[u'key_value'])
                 except Exception, e:
-                    logger.error("用户信息格式有误 %s" % e)
+                    err_logger.error("用户信息格式有误 %s" % e)
                 stand_dict = [x.values()[0] for x in stand_dict]
                 # 找到所有组织名
                 people_org_qs = Organization.objects.filter_active(assess_id=project_obj.id, identification_code__in=people.org_codes).order_by("parent_id")
@@ -2259,7 +2258,7 @@ def get_file_back(assess_id, people_ids, x):
                                         for x in default_scores_list:
                                             people_data.append(x)
                     data.append(people_data)
-        logger.info("try_write")
+        info_logger.info("try_write")
         if survey_index < len(survey_ids) - 1:
             file_path = excel_util.create_excel(default_export_file_name, title, data,
                 sheet_name=u"%s,%s" % (survey_index, survey_name), force_save=False,
@@ -2271,5 +2270,5 @@ def get_file_back(assess_id, people_ids, x):
                 sheet_index=survey_index
             )
         survey_index += 1
-    logger.info("finish")
+    info_logger.info("finish")
     return file_path, default_export_file_name

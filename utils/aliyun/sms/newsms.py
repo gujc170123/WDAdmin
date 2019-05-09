@@ -6,15 +6,13 @@ from utils import get_random_str
 from utils.aliyun.aliyunsdkdysmsapi.request.v20170525 import SendSmsRequest
 from aliyunsdkcore.client import AcsClient
 
-from utils.logger import get_logger
+from utils.logger import err_logger
 
 u"""
 短信产品-发送短信接口
 Created on 2017-06-12
 https://help.aliyun.com/document_detail/55491.html?spm=5176.10629532.106.3.4a7ac541cSg5o3
 """
-
-logger = get_logger("utils")
 
 
 class Sms(object):
@@ -54,7 +52,7 @@ class Sms(object):
             template_code = "SMS_145596097"
             cls.__send_sms(business_id, phone_nums, template_code, phone_param)
         except Exception, e:
-            logger.error("send sms error, msg(%s)" % e)
+            err_logger.error("send sms error, msg(%s)" % e)
 
     @classmethod
     def send_activate_code(cls, code, phone_list):
@@ -72,4 +70,4 @@ class Sms(object):
                 index += 1000
                 send_phone_list = phone_list[index: index + 1000]
         except Exception, e:
-            logger.error("send sms error, msg(%s)" % e)
+            err_logger.error("send sms error, msg(%s)" % e)

@@ -12,9 +12,9 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'django.contrib.staticfiles',    
+    'django.contrib.staticfiles',
     'rest_framework',
-    'corsheaders',    
+    'corsheaders',
     'wduser',
     'assessment',
     'research',
@@ -98,6 +98,10 @@ CSRF_HEADER_NAME = global_settings.CSRF_HEADER_NAME
 AUTH_USER_MODEL = "wduser.AuthUser"
 #
 MAIN_LOG_NAME = "web"
+WD_LOG_DIR = 'wdlogs'
+WD_LOG_PATH = os.path.join(os.path.dirname(BASE_DIR), WD_LOG_DIR)
+if not os.path.exists(WD_LOG_PATH):
+    os.mkdir(WD_LOG_PATH)
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -116,21 +120,29 @@ LOGGING = {
     },
     'handlers': {
         'null': {
-            'level': 'DEBUG',
+            'level': 'INFO',
             'class': 'logging.NullHandler',
         },
         'console': {
-            'level': 'DEBUG',
+            'level': 'INFO',
             'class': 'logging.StreamHandler',
             'formatter': 'simple'
         },
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': '%s/django_sys.log' % WD_LOG_PATH,
+            'formatter': 'verbose',
+            'maxBytes': 1024 * 1024 * 5,
+            'backupCount': 100,
+        },
     },
     'loggers': {
-        #  'django.db.backends': {
-        #     'handlers': ['console'],
-        #     'propagate': True,
-        #     'level':'DEBUG',
-        # },
+        'django': {
+            'handlers': ['file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
     },
 }
 # django rest framework
@@ -148,7 +160,7 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/day',
         'user': '1000/day'
-    },    
+    },
     'DEFAULT_PERMISSION_CLASSES': (
         # 'rest_framework.permissions.DjangoModelPermissions',
     ),

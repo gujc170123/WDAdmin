@@ -19,7 +19,7 @@ from utils.aliyun.email import EmailUtils
 from utils.aliyun.sms.newsms import Sms
 from utils.cache.cache_utils import VerifyCodeExpireCache
 from utils.excel import ExcelUtils
-from utils.logger import get_logger
+from utils.logger import err_logger, info_logger
 from utils.regular import RegularUtils, Convert
 from utils.response import general_json_response, ErrorCode
 from utils.views import WdCreateAPIView, AuthenticationExceptView, WdListCreateAPIView, WdRetrieveUpdateAPIView, \
@@ -32,9 +32,6 @@ from wduser.serializers import UserBasicSerializer, EnterpriseBasicSerializer, O
     RoleUserBusinessBasicSeriaSerializer, RoleUserBusinessListSeriaSerializer, RoleUserInfoSerializer
 from wduser.tasks import import_org_task, send_general_code, enterprise_statistics_test_user
 from wduser.user_utils import UserAccountUtils, OrgImportExport, OrganizationUtils
-
-
-logger = get_logger('user')
 
 
 def login_info(request, user, context):
@@ -160,7 +157,7 @@ class LogoutView(WdCreateAPIView):
         try:
             logout(request)
         except Exception, e:
-            logger.error("web logout error, msg(%s)" % e)
+            err_logger.error("web logout error, msg(%s)" % e)
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
 
@@ -271,7 +268,7 @@ class EnterpriseRetrieveUpdateDestroyAPIView(WdRetrieveUpdateAPIView, WdDestroyA
         # 有测评项目不可以删除企业
         if AssessProject.objects.filter(enterprise_id=self.get_id()).exists():
             return general_json_response(status.HTTP_200_OK, ErrorCode.ENTERPRISE_DELETE_FAILED_WITH_ASSESS_PROJECT)
-        logger.info('user_id %s want delete enterprise_id %s' % (self.request.user.id, self.get_id()))
+        info_logger.info('user_id %s want delete enterprise_id %s' % (self.request.user.id, self.get_id()))
         return super(EnterpriseRetrieveUpdateDestroyAPIView, self).delete(request, *args, **kwargs)
 
 
@@ -288,7 +285,7 @@ class EnterpriseOpsView(WdCreateAPIView):
             if AssessProject.objects.filter(enterprise_id__in=enterprise_ids).exists():
                 return general_json_response(status.HTTP_200_OK, ErrorCode.ENTERPRISE_DELETE_FAILED_WITH_ASSESS_PROJECT)
         EnterpriseInfo.objects.filter(id__in=enterprise_ids).update(is_active=False)
-        logger.info('user_id %s want delete enterprise_id %s' % (self.request.user.id, enterprise_ids))
+        info_logger.info('user_id %s want delete enterprise_id %s' % (self.request.user.id, enterprise_ids))
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
     def post(self, request, *args, **kwargs):
@@ -374,7 +371,7 @@ class OrganizationlRetrieveUpdateDestroyView(WdRetrieveUpdateAPIView, WdDestroyA
         if PeopleOrganization.objects.filter_active(org_code__in=codes).exists():
             return general_json_response(status.HTTP_200_OK, ErrorCode.ORG_USED_IN_PROJECT_CAN_NOT_DELETE)
         Organization.objects.filter(id__in=org_tree_ids).update(is_active=False)
-        logger.info('user_id %s want delete orgs %s' % (self.request.user.id,org_tree_ids))
+        info_logger.info('user_id %s want delete orgs %s' % (self.request.user.id,org_tree_ids))
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
     def perform_tag(self):
@@ -494,7 +491,7 @@ class UserAdminRoleDetailView(WdRetrieveUpdateAPIView, WdDestroyAPIView):
         super(UserAdminRoleDetailView, self).perform_destroy(instance)
         RoleUser.objects.filter_active(role_id=self.get_id()).update(is_active=False)
         RoleUserBusiness.objects.filter_active(role_id=self.get_id()).update(is_active=False)
-        logger.info('user_id %s want delete roleuser %s' % (self.request.user.id, self.get_id()))
+        info_logger.info('user_id %s want delete roleuser %s' % (self.request.user.id, self.get_id()))
 
 
 class PermissionListView(WdListAPIView):
@@ -718,7 +715,7 @@ class RoleUserDetailView(WdRetrieveUpdateAPIView, WdDestroyAPIView):
         # 用户可能在多个角色下面
         # AuthUser.objects.filter(id=obj.user_id).update(is_active=False)
         RoleUserBusiness.objects.filter_active(role_id=obj.role_id, user_id=obj.user_id).update(is_active=False)
-        logger.info('user_id %s want delete roleuser_Detail user %s' % (self.request.user.id, obj.user_id))
+        info_logger.info('user_id %s want delete roleuser_Detail user %s' % (self.request.user.id, obj.user_id))
 
 
 class UserRoleListCreateView(WdListCreateAPIView):
@@ -787,7 +784,7 @@ class RoleUserBusinessListCreateView(WdListCreateAPIView, WdDestroyAPIView):
         RoleUserBusiness.objects.filter_active(
             user_id=self.user_id, model_type=self.model_type, model_id=self.model_id
         ).update(is_active=False)
-        logger.info('user_id %s want delete role_user_business %s' % (self.request.user.id, self.user_id))
+        info_logger.info('user_id %s want delete role_user_business %s' % (self.request.user.id, self.user_id))
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
     def get_queryset(self):
@@ -872,6 +869,6 @@ class RoleUserPartListCreateView(WdListCreateAPIView, WdDestroyAPIView):
                 model_type=self.type,
                 model_id=self.model_id
             )
-        logger.info('user %s update model type %s id %s roleuserbusiness model' % (request.user.id, self.type, self.model_id))
+        info_logger.info('user %s update model type %s id %s roleuserbusiness model' % (request.user.id, self.type, self.model_id))
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 

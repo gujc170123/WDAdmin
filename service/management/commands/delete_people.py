@@ -6,10 +6,8 @@ from django.core.management import BaseCommand
 from django.db import transaction
 
 from assessment.models import AssessUser, AssessProject
-from utils.logger import get_logger
 from wduser.models import AuthUser, People, EnterpriseInfo, EnterpriseAccount, PeopleOrganization
 
-logger = get_logger("enterprise_account")
 
 def delete_people_assess(assess_id):
     au_qs = AssessUser.objects.filter(assess_id=assess_id)

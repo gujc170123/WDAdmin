@@ -4,9 +4,6 @@ from __future__ import unicode_literals
 import json
 
 from utils.cache.cache_utils import AutoExpireCache, NormalHashSet
-from utils.logger import get_logger
-
-logger = get_logger('config_cache')
 
 
 class ConfigCache(NormalHashSet):

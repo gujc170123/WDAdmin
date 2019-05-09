@@ -8,9 +8,7 @@ from utils.aliyun.com.aliyun.api.gateway.sdk.http import request
 from utils.aliyun.com.aliyun.api.gateway.sdk.common import constant
 from utils.aliyun.com.aliyun.api.gateway.sdk.util import DateUtil
 # from utils.logger import xd_logger
-from utils.logger import get_logger
-
-logger = get_logger("sms")
+from utils.logger import debug_logger, err_logger
 
 
 class Sms(object):
@@ -65,7 +63,7 @@ class Sms(object):
     def send_general_code(cls, code, phone_list):
         try:
             result = cls.__send_sms(cls.__get_url(json.dumps({"code": code}), phone_list, "SMS_34905145"))
-            logger.debug("send sms end: result is %s" %result[2])
+            debug_logger.debug("send sms end: result is %s" %result[2])
         except Exception, e:
-            logger.error("send sms error, msg(%s)" %e)
+            err_logger.error("send sms error, msg(%s)" %e)
 

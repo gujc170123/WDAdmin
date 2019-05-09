@@ -20,9 +20,7 @@ from research.serializers import ResearchModelBasicSerializer, ResearchDimension
 from utils.regular import Convert
 from utils.response import general_json_response, ErrorCode
 from utils.views import WdListCreateAPIView, WdDestroyAPIView, WdRetrieveUpdateAPIView, WdCreateAPIView
-from utils.logger import get_logger
-
-logger = get_logger("research")
+from utils.logger import info_logger
 
 
 class ResearchModelListCreateView(WdListCreateAPIView):
@@ -107,7 +105,7 @@ class ResearchModelDetailAPIView(WdDestroyAPIView, WdRetrieveUpdateAPIView):
         self.obj = self.get_object()
         if self.obj.used_count > 0:
             return general_json_response(status.HTTP_200_OK, ErrorCode.RESEARCH_MODEL_USED_DEL_ERROR)
-        logger.info('user_id %s want delete researchmodel %s' % (self.request.user.id, self.obj.id))
+        info_logger.info('user_id %s want delete researchmodel %s' % (self.request.user.id, self.obj.id))
         return super(ResearchModelDetailAPIView, self).delete(request, *args, **kwargs)
 
     def perform_destroy(self, instance):
@@ -240,7 +238,7 @@ class ResearchDimensionDetailView(WdDestroyAPIView, WdRetrieveUpdateAPIView):
             # 模型使用次数为0，不能删除维度了   修继伟   2018/09/21
         if research_model.used_count > 0:
             return ErrorCode.RESEARCH_DIMENSION_DELETE_FORBID
-        logger.info('user_id %s want delete model_id %s research_dimension %s' % (self.request.user.id, self.dimension_obj.model_id, self.dimension_obj.id))
+        info_logger.info('user_id %s want delete model_id %s research_dimension %s' % (self.request.user.id, self.dimension_obj.model_id, self.dimension_obj.id))
         return err_code
 
     def perform_update(self, serializer):
@@ -332,7 +330,7 @@ class ResearchSubstandardDetailView(WdDestroyAPIView, WdRetrieveUpdateAPIView):
         if (research_model.used_count > 0) or research_model.status == ResearchModel.STATUS_RELEASE:
         # if research_model.used_count > 0:
             return ErrorCode.RESEARCH_DIMENSION_DELETE_FORBID
-        logger.info('user_id %s want delete model_id %s research_subsandard %s' % (self.request.user.id, self.substandard_obj.model_id, self.substandard_obj.id))
+        info_logger.info('user_id %s want delete model_id %s research_subsandard %s' % (self.request.user.id, self.substandard_obj.model_id, self.substandard_obj.id))
         return err_code
 
     def perform_update(self, serializer):
@@ -438,7 +436,7 @@ class TagDetailAPIView(WdRetrieveUpdateAPIView, WdDestroyAPIView):
         from research.models import *
         super(TagDetailAPIView, self).perform_destroy(instance)
         eval(instance.tag_rel_model).objects.filter_active(tag_id=instance.id).update(is_active=False)
-        logger.info('user_id %s want delete tag %s' % (self.request.user.id, instance.id))
+        info_logger.info('user_id %s want delete tag %s' % (self.request.user.id, instance.id))
 
 # class TagRelationAPIView(WdListCreateAPIView):
 #     u"""标签 业务模型 关联接口 新建"""
@@ -503,7 +501,7 @@ class ReportDetailView(WdDestroyAPIView, WdRetrieveUpdateAPIView):
         survey_relations = ReportSurveyAssessmentProjectRelation.objects.filter_active(report_id=self.get_id())
         if survey_relations.exists():
             return ErrorCode.RESEARCH_REPORT_DELETE_FORBID
-        logger.info('user_id %s want delete report_id %s' % (self.request.user.id, self.get_id()))
+        info_logger.info('user_id %s want delete report_id %s' % (self.request.user.id, self.get_id()))
         return ErrorCode.SUCCESS
 
 

@@ -4,9 +4,7 @@ from __future__ import unicode_literals
 import json
 
 from utils.cache.cache_utils import AutoExpireCache
-from utils.logger import get_logger
-
-logger = get_logger('obj_cache')
+from utils.logger import err_logger
 
 
 class BaseObjCache(AutoExpireCache):
@@ -26,7 +24,7 @@ class BaseObjCache(AutoExpireCache):
             json_obj = json.dumps(obj)
             self.setex(json_obj)
         except Exception, e:
-            logger.error('set cache obj error, msg: %s, key:%s' %(e, self.key))
+            err_logger.error('set cache obj error, msg: %s, key:%s' %(e, self.key))
 
     def get_obj(self):
         try:
@@ -36,4 +34,4 @@ class BaseObjCache(AutoExpireCache):
             else:
                 return None
         except Exception, e:
-            logger.error('get cache obj error, msg: %s, key:%s' % (e, self.key))
+            err_logger.error('get cache obj error, msg: %s, key:%s' % (e, self.key))

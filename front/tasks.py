@@ -16,12 +16,10 @@ from question.serializers import QuestionDetailSerializer
 from research.models import ResearchModel, ResearchDimension, ResearchSubstandard
 from survey.models import Survey, SurveyQuestionResult, SurveyModelFacetRelation, SurveyQuestionRelation
 from survey.serializers import SurveyForceQuestionResultSerializer
-from utils.logger import get_logger
+from utils.logger import err_logger, info_logger, debug_logger
 from utils.rpc_service.report_service import ReportService
 from utils.response import ErrorCode
 from wduser.models import People
-
-logger = get_logger("front")
 
 
 def check_survey_open(people_id, project_id, surveyid, role_type, evaluated_people_id, check_page=None):
@@ -91,12 +89,12 @@ def survey_sync(survey_id, project_id):
     try:
         survey = Survey.objects.get(id=survey_id)
     except:
-        logger.error("survey id is not found: %s" % survey_id)
+        err_logger.error("survey id is not found: %s" % survey_id)
         return None
     assess_survey_qs = AssessSurveyRelation.objects.filter_active(
         assess_id=project_id, survey_id=survey_id)
     if not assess_survey_qs.exists():
-        logger.error("project(%s) survey id(%s) is not found" % (project_id, survey_id))
+        err_logger.error("project(%s) survey id(%s) is not found" % (project_id, survey_id))
         return None
     assess_survey_obj = assess_survey_qs[0]
     try:
@@ -200,7 +198,7 @@ def survey_sync(survey_id, project_id):
 
 @shared_task
 def survey_question_sync(survey_id, project_id, block_id):
-    logger.debug("survey_question_sync: %s, %s, %s" % (survey_id, project_id, block_id))
+    debug_logger.debug("survey_question_sync: %s, %s, %s" % (survey_id, project_id, block_id))
     survey_qs = SurveyInfo.objects.filter_active(survey_id=survey_id, project_id=project_id)
     src_survey = Survey.objects.get(id=survey_id)
     if not survey_qs.exists():
@@ -208,7 +206,7 @@ def survey_question_sync(survey_id, project_id, block_id):
     else:
         survey = survey_qs[0]
     if survey.form_type == Survey.FORM_TYPE_FORCE:
-        logger.debug("survey_question_sync of force survey")
+        debug_logger.debug("survey_question_sync of force survey")
         # 迫选题
         sqr_qs = SurveyQuestionResult.objects.filter_active(
             survey_id=survey_id).order_by('order_num')
@@ -228,10 +226,10 @@ def survey_question_sync(survey_id, project_id, block_id):
         return survey_question_info
     else:
         # 普通组卷
-        logger.debug("survey_question_sync of normal survey")
+        debug_logger.debug("survey_question_sync of normal survey")
         if survey.test_type == Survey.TEST_TYPE_BY_QUESTION:
             # 逐题测试
-            logger.debug("survey_question_sync, test_type == TEST_TYPE_BY_QUESTION")
+            debug_logger.debug("survey_question_sync, test_type == TEST_TYPE_BY_QUESTION")
             sqr_qs = list(SurveyQuestionResult.objects.filter_active(
                 survey_id=survey_id).order_by('order_num').values_list("question_id", flat=True))
             qs = Question.objects.filter_active(id__in=sqr_qs)
@@ -257,7 +255,7 @@ def survey_question_sync(survey_id, project_id, block_id):
         else:
             # 分块测试
             # 所有维度
-            logger.debug("survey_question_sync, test_type == TEST_TYPE_BY_PART")
+            debug_logger.debug("survey_question_sync, test_type == TEST_TYPE_BY_PART")
             dimension = ResearchDimension.objects.get(id=block_id)
             # 每个维度/块 关联的题目
             relation_ids = list(SurveyModelFacetRelation.objects.filter_active(
@@ -400,7 +398,7 @@ def get_report(detail, user_id=0, force_recreate=False, language=SurveyAlgorithm
                     report_result.report_status = PeopleSurveyRelation.REPORT_FAILED
                     report_result.save()
     except Exception, e:
-        logger.error("report create error: msg: %s, report data is %s" % (e, report_result))
+        err_logger.error("report create error: msg: %s, report data is %s" % (e, report_result))
 
 
 @shared_task
@@ -452,7 +450,7 @@ def send_one_user_survey(assess_id, people_id):
     project = AssessProject.objects.get(id=assess_id)
     all_survey_ids = AssessSurveyRelation.objects.filter_active(assess_id=project.id).values_list(
         "survey_id", flat=True).order_by("-order_number")
-    logger.debug("add people(%s) to survey(%s)" % (people_id, all_survey_ids))
+    debug_logger.debug("add people(%s) to survey(%s)" % (people_id, all_survey_ids))
     survey_ids = AssessSurveyRelation.objects.filter_active(
         assess_id=project.id, survey_been_random=False).values_list("survey_id", flat=True)
     random_survey_ids = AssessSurveyRelation.objects.filter_active(
@@ -510,18 +508,18 @@ def send_one_user_survey(assess_id, people_id):
 
     if random_survey_ids:
         random_survey_ids, random_index = has_random_survey_ids, random_index
-        logger.info('suiji wenjuan %s' % random_survey_ids)
+        info_logger.info('suiji wenjuan %s' % random_survey_ids)
     else:
         random_survey_ids, random_index = [], random_index
     if survey_ids:
-        logger.info('normal wenjuan %s' % survey_ids)
+        info_logger.info('normal wenjuan %s' % survey_ids)
     else:
         survey_ids = []
     person_survey_ids_list = []
     for i in all_survey_ids:
         if (i in random_survey_ids) or (i in survey_ids):
             person_survey_ids_list.append(i)
-    logger.info('finish ids %s' % person_survey_ids_list)
+    info_logger.info('finish ids %s' % person_survey_ids_list)
 
     def distribute_one_people_survey(survey_ids, people_id, assess_id, status):
         # 只有不随机问卷需要判断有没有发过
@@ -531,7 +529,7 @@ def send_one_user_survey(assess_id, people_id):
             if survey_qs.count() == 1:
                 survey = survey_qs[0]
             else:
-                logger.error("survey_id %d filter ERROR" % survey_id)
+                err_logger.error("survey_id %d filter ERROR" % survey_id)
                 continue
             asud_qs = AssessSurveyUserDistribute.objects.filter_active(assess_id=assess_id,
                                                                        survey_id=survey_id)
@@ -567,7 +565,7 @@ def send_one_user_survey(assess_id, people_id):
 # 360 自评他评的异步任务：
 @shared_task
 def get_360_report(enterprise_id):
-    logger.info("get_360_report")
+    info_logger.info("get_360_report")
     ap_qs = AssessProject.objects.filter_active(assess_type=AssessProject.TYPE_360, enterprise_id=enterprise_id)
     for ap_obj in ap_qs:
         need = False
@@ -583,7 +581,7 @@ def get_360_report(enterprise_id):
             need = True
             # 处理掉一些不用统计的
         if need:
-            logger.info("auto_get_360_report assess_id=%s" % ap_obj.id)
+            info_logger.info("auto_get_360_report assess_id=%s" % ap_obj.id)
             auto_get_360_report.delay(assess_id=ap_obj.id)
 
 
@@ -617,7 +615,7 @@ def auto_get_360_report(assess_id=0):
                 if int(report_info[str(index)]["status"]) == 1:
                     report_result = PeopleSurveyRelation.objects.get(id=data["people_result_id"])
                     if "url" in report_info[str(index)] and report_info[str(index)]["url"]:
-                        logger.info("peoplesurveyrelation {} has new report {}".format(people_result_id, report_info[str(index)]["url"]))
+                        info_logger.info("peoplesurveyrelation {} has new report {}".format(people_result_id, report_info[str(index)]["url"]))
                         report_result.report_url = report_info[str(index)]["url"]
                     if "en_url" in report_info[str(index)] and report_info[str(index)]["en_url"]:
                         report_result.en_report_url = report_info[str(index)]["en_url"]
@@ -629,11 +627,11 @@ def auto_get_360_report(assess_id=0):
                         report_result.report_status = PeopleSurveyRelation.REPORT_FAILED
                         report_result.save()
         except Exception, e:
-            logger.error("report create error: msg: %s, report data is %s" % (e, report_result))
+            err_logger.error("report create error: msg: %s, report data is %s" % (e, report_result))
         pass
 
     # 需要生产报告的项目
-    logger.info("auto_get_360_report assess_id=%s" % assess_id)
+    info_logger.info("auto_get_360_report assess_id=%s" % assess_id)
     if not assess_id:
         return
     psr_qs = PeopleSurveyRelation.objects.filter_active(project_id=assess_id, status=PeopleSurveyRelation.STATUS_FINISH)

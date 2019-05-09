@@ -10,16 +10,13 @@ from .models import SurveyOverviewCleanTask, EscapeTask, SurveyOverviewAnalysisT
 from research.models import ResearchModel, ResearchDimension
 from console.console_utils import DimensionUtils
 from survey.models import Survey
-from utils.logger import get_logger
+from utils.logger import debug_logger
 from utils.response import ErrorCode, general_json_response
 from rest_framework import status
 from question.models import Question, QuestionFacet
 from question.serializers import QuestionSerializer, QuestionFacetSerializer
 import json
 from console.etl import EtlTrialClean
-
-
-logger = get_logger("console")
 
 
 class SignalView(WdCreateAPIView):
@@ -37,7 +34,7 @@ class SignalView(WdCreateAPIView):
         return ErrorCode.SUCCESS
 
     def post(self, request, *args, **kwargs):
-        logger.debug("状态:%s， 任务:%s, id:%s" % (self.status, self.task, self.task_id) )
+        debug_logger.debug("状态:%s， 任务:%s, id:%s" % (self.status, self.task, self.task_id) )
         task = self.task
         if task in ['trail_task', 'clean']:
             ret_code = self.trial()

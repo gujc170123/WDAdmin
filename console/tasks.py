@@ -8,18 +8,15 @@ from console.models import SurveyOverview, CleanTask, EscapeTask, AnalysisTask, 
 from survey.models import Survey
 from wduser.models import EnterpriseInfo
 from datetime import datetime, timedelta
-from utils.logger import get_logger
+from utils.logger import debug_logger
 from front.models import PeopleSurveyRelation
 import requests
-
-
-logger = get_logger("console")
 
 
 @shared_task
 def etl_start(etl_key, etl_class, **kwargs):
     from console.etl import *
-    logger.debug("etl_start of %s(%s)" % (etl_class, etl_key))
+    debug_logger.debug("etl_start of %s(%s)" % (etl_class, etl_key))
     eval(etl_class)(etl_key, **kwargs).do_etl()
 
 
