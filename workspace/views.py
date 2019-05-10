@@ -253,6 +253,7 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
 class UserBatchDeleteView(AuthenticationExceptView,WdDestroyAPIView):
     model = None
     serializer_class = None
+    GET_CHECK_REQUEST_PARAMETER = ("users",)
 
     def post(self, request, *args, **kwargs):
         '''batch delete'''
