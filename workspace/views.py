@@ -251,6 +251,17 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
         user.save()
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
+class UserBatchDeleteView(AuthenticationExceptView,WdDestroyAPIView):
+    model = None
+    serializer_class = None
+
+    def post(self, request, *args, **kwargs):
+        '''batch delete'''
+        users = self.request.data.get("users")
+        AuthUser.objects.filter(id__in=users.split(","),is_active=True).update(is_active=False)
+
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
+
 class UserImportExportView(AuthenticationExceptView,WdCreateAPIView):
 
     POST_CHECK_REQUEST_PARAMETER = ("enterprise_id",)
@@ -264,7 +275,7 @@ class UserImportExportView(AuthenticationExceptView,WdCreateAPIView):
         self.parser_classes = (FileUploadParser,)
         filename = request.data["name"]
         filetype = filename.split('.')[-1]
-        filecsv =request.FILES.get("file", None)
+        filecsv = request.FILES.get("file", None)
         enterprise_id = self.enterprise_id
 
         if not filecsv:
@@ -273,7 +284,7 @@ class UserImportExportView(AuthenticationExceptView,WdCreateAPIView):
             "data_msg": u'未检测到任何上传文件'
         })
 
-        if filetype!='csv':
+        if filetype.upper()!='CSV':
             return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, {
             'data_index': -1,
             "data_msg": u'请确认上传文件类型是否为csv'
