@@ -10,6 +10,7 @@ from wduser.models import BaseOrganization
 from .helper import OrganizationHelper
 from django.db.models import Avg
 from assessment.models import FullOrganization, AssessSurveyRelation
+from threading import Thread
 
 
 class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
@@ -32,7 +33,9 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         # 企业幸福指数
         "business_index": "self.get_business_index",
         # 团队幸福指数特征
-        "wdindex": "self.WDindex"
+        "wdindex": "self.WDindex",
+        # 计算维度分，生成报告
+        "get_report": "self.get_report"
     }
 
     def get_temperature(self, **kwargs):
@@ -637,6 +640,20 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         assess_id = assess_obj.assess_id
         return assess_id
 
+    def get_report(self, **kwargs):
+        assess_id = kwargs.get("assess_id")
+        survey_id = kwargs.get("survey_id")
+        if not assess_id or not survey_id:
+            return {}, ErrorCode.INVALID_INPUT
+        from .util.etl_transfer import main
+        try:
+            t = Thread(target=main, args=(assess_id, survey_id))
+            t.start()
+        except Exception, e:
+            logger.error("get report data error, msg: %s " % e)
+            return {}, ErrorCode.INTERNAL_ERROR
+        return {}, ErrorCode.SUCCESS
+
     def post(self, request, *args, **kwargs):
         api_id = self.request.data.get("api", None)
         org_id = self.request.data.get("org", None)
@@ -645,6 +662,8 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         population_id = self.request.data.get("population", None)
         scale_id = self.request.data.get("scale", None)
         select_id = self.request.data.get("select", None)
+        assess_id = self.request.data.get("assess", None)
+        survey_id = self.request.data.get("survey", None)
 
         try:
             self.assess_id = self.get_assess_id(147)
@@ -656,7 +675,9 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                                                             dimension_id=dimension_id,
                                                             population_id=population_id,
                                                             scale_id=scale_id,
-                                                            select_id=select_id, )
+                                                            select_id=select_id,
+                                                            assess_id=assess_id,
+                                                            survey_id=survey_id,)
             if err_code != ErrorCode.SUCCESS:
                 return general_json_response(status.HTTP_200_OK, ErrorCode.INVALID_INPUT, {"msg": err_code})
             else:
