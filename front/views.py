@@ -142,7 +142,7 @@ class PeopleLoginView(AuthenticationExceptView, WdCreateAPIView):
             assess_id = base64.b64decode(assess_id_base64)
             try:                
                 project = AssessProject.objects.get(id=assess_id)
-                enterprise = project.organization_id
+                enterprise = project.enterprise_id
             except:
                 err_logger.error("project not found: %s" % assess_id)
                 return general_json_response(status.HTTP_200_OK, ErrorCode.INVALID_INPUT)
