@@ -486,7 +486,7 @@ class AssessOrganizationView(AuthenticationExceptView,WdCreateAPIView):
                                                       INNER JOIN assessment_assessorganizationpathssnapshots b\
                                                       ON b.child_id=a.id\
                                                       LEFT JOIN assessment_assessjoinedorganization c\
-                                                      ON a.id=c.id and c.assess_id=b.assess_id\
+                                                      ON a.id=c.organization_id and c.assess_id=b.assess_id\
                                                       WHERE b.assess_id=%s AND b.parent_id=%s",[self.assess,self.organization_id])
 
         if not list(organizations):
