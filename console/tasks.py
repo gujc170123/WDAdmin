@@ -13,9 +13,10 @@ from front.models import PeopleSurveyRelation
 import requests
 
 
+
 @shared_task
 def etl_start(etl_key, etl_class, **kwargs):
-    from console.etl import *
+    from console.etl import do_etl
     debug_logger.debug("etl_start of %s(%s)" % (etl_class, etl_key))
     eval(etl_class)(etl_key, **kwargs).do_etl()
 

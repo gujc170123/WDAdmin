@@ -5,7 +5,7 @@ from workspace.views import UserLoginView,OrganizationlRetrieveUpdateDestroyView
                             AssessCreateView,AssessDetailView,AssessSurveyRelationDistributeView,\
                             AssessProgressView,AssessProgressTotalView,UserImportExportView,\
                             AssessOrganizationView,OrganizationlUsersDestroyView,SurveyListView,\
-                            UserBatchDeleteView
+                            UserBatchDeleteView,AssessShareView
 from workspace.dashboard import Dashboard
 
 urlpatterns = [
@@ -41,5 +41,7 @@ urlpatterns = [
     url(r"^listassesssurvey/$",SurveyListView.as_view(),name='assesssurvey-list'),
     #users batch delete view
     url(r"^userbatchdel/$",UserBatchDeleteView.as_view(),name='userbatchdelete'),
+    #assess share view
+    url(r"^assess/assessshare/(?P<pk>\d+)/$",AssessShareView.as_view(),name='assessshareview'),
 
 ]

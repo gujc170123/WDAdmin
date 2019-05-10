@@ -1,5 +1,7 @@
 # -*- coding:utf-8 -*-
 from __future__ import unicode_literals
+import base64
+from urllib import quote
 from django.db.models import F
 from django.contrib.auth import logout
 from rest_framework import status
@@ -249,6 +251,14 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
         user.is_active=False
         user.save()
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
+
+class AssessShareView(AuthenticationExceptView,WdCreateAPIView):
+    model = None
+    serializer_class = None
+
+    def get(self, request, *args, **kwargs):
+        project_id_bs64 = quote(base64.b64encode(str(self.kwargs.get('pk'))))
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,{'url':settings.CLIENT_HOST + '/people/join-project/?ba=%s&bs=0' % project_id_bs64})
 
 class UserBatchDeleteView(AuthenticationExceptView,WdDestroyAPIView):
     model = None
