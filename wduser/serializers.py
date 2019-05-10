@@ -23,10 +23,21 @@ class UserBasicSerializer(serializers.ModelSerializer):
     u"""用户基础信息序列化"""
 
     extra_account_name = serializers.SerializerMethodField()
+    sequence_name = serializers.CharField(source='sequence.name', read_only=True)
+    gender_name = serializers.CharField(source='gender.name', read_only=True)
+    rank_name = serializers.CharField(source='rank.name', read_only=True)
+    marriage_name = serializers.CharField(source='marriage.name', read_only=True)
+    organization_name = serializers.CharField(source='organization.name', read_only=True)
+    enteprise = serializers.IntegerField(source='organization.enterprise_id', read_only=True)
 
     class Meta:
         model = AuthUser
-        fields = ('id', 'username', 'nickname', 'phone', 'email', 'role_type', 'headimg', 'display_name', 'remark', 'account_name', "extra_account_name")
+        fields = ('id', 'username', 'nickname', 'phone', 'email', 'role_type',
+                  'headimg', 'display_name', 'remark', 
+                  'account_name', "extra_account_name",
+                  'gender','rank','marriage','organization','enteprise',
+                  'sequence_name','gender_name','rank_name','marriage_name',
+                  'organization_name')
 
     def get_extra_account_name(self, obj):
         try:
