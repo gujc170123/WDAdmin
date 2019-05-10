@@ -123,6 +123,7 @@ class PeopleLoginView(AuthenticationExceptView, WdCreateAPIView):
         link = request.data.get('enterprise_dedicated_link', None)
         account = request.data.get('account', None)
         pwd = request.data.get("pwd", None)
+        assess_id_base64 = self.request.data.get("ba", None)
         if account is None or pwd is None:
             return general_json_response(status.HTTP_200_OK, ErrorCode.INVALID_INPUT)
         if True:
@@ -135,9 +136,21 @@ class PeopleLoginView(AuthenticationExceptView, WdCreateAPIView):
                 if ret != ErrorCode.SUCCESS:
                     return general_json_response(status.HTTP_200_OK, ret, {'msg': msg})
         user, err_code = UserAccountUtils.user_login_web(request, user, pwd)
+
+        enterprise = 0
+        if assess_id_base64:
+            assess_id = base64.b64decode(assess_id_base64)
+            try:                
+                project = AssessProject.objects.get(id=assess_id)
+                enterprise = project.organization_id
+            except:
+                err_logger.error("project not found: %s" % assess_id)
+                return general_json_response(status.HTTP_200_OK, ErrorCode.INVALID_INPUT)
+
         if err_code != ErrorCode.SUCCESS:
             return general_json_response(status.HTTP_200_OK, err_code)
         user_info = people_login(request, user, self.get_serializer_context())
+        user_info['enteprise'] = enterprise
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, user_info)
 
 class PeopleActiveCodeLoginView(AuthenticationExceptView, WdCreateAPIView):
@@ -360,11 +373,12 @@ class PeopleRegisterView(AuthenticationExceptView, WdCreateAPIView):
             # 理论成功创建用户应该都合法，err_code只是复用代码
             user, err_code = UserAccountUtils.user_login_web(request, user, pwd)
             user_info = people_login(request, user, self.get_serializer_context())
+            user_info['enterprise'] = enterprise
         # except:
         except Exception, e:
             err_logger.error("Register_FOR_Login error, msg is %s" % e)
             user_info = None
-        return general_json_response(status.HTTP_200_OK, rst_code, {"is_login": err_code, "user_info": user_info, "enterprise":enterprise})
+        return general_json_response(status.HTTP_200_OK, rst_code, {"is_login": err_code, "user_info": user_info})
 
 
 class UserAccountInfoView(WdRetrieveUpdateAPIView):
