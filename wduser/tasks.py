@@ -12,12 +12,10 @@ from utils import str_check
 from utils.aliyun.email import EmailUtils
 from utils.aliyun.sms.newsms import Sms
 from utils.excel import ExcelUtils
-from utils.logger import get_logger
+from utils.logger import err_logger
 from utils.response import ErrorCode
 from wduser.models import Organization, EnterpriseInfo
 from wduser.user_utils import OrgImportExport, OrganizationUtils
-
-logger = get_logger("wduser")
 
 
 @shared_task
@@ -86,7 +84,7 @@ def import_org_task_old(assess_id, file_path, email=None):
                     try:
                         name = name.encode("utf-8")
                     except Exception, e:
-                        logger.error("org name encode utf8 error: %s" %e)
+                        err_logger.error("org name encode utf8 error: %s" %e)
                 # if not code:
                 #     code = OrganizationUtils.generate_org_code(enterprise_id, name)
                 # code 全部由系统生成
@@ -97,7 +95,7 @@ def import_org_task_old(assess_id, file_path, email=None):
         return ErrorCode.SUCCESS
     except Exception, e:
         traceback.print_exc()
-        logger.error("import org data error, msg: %s, enterprise id: %s" %(e, assess_id))
+        err_logger.error("import org data error, msg: %s, enterprise id: %s" %(e, assess_id))
         return ErrorCode.ORG_IMPORT_DATA_ERROR
 
 
@@ -170,7 +168,7 @@ def import_org_task(assess_id, file_path, email=None):
         return ErrorCode.SUCCESS
     except Exception, e:
         traceback.print_exc()
-        logger.error("import org data error, msg: %s, assess_id id: %s" %(e, assess_id))
+        err_logger.error("import org data error, msg: %s, assess_id id: %s" %(e, assess_id))
         return ErrorCode.ORG_IMPORT_DATA_ERROR
 
 

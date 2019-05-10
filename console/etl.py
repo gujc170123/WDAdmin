@@ -9,11 +9,9 @@ from console.tasks import etl_start
 from utils.cache.cache_utils import NormalHashSet
 from survey.models import Survey, SurveyQuestionRelation
 from front.models import PeopleSurveyRelation, UserQuestionAnswerInfo
-from utils.logger import get_logger
+from utils.logger import debug_logger
 from wduser.models import People,Organization
 from assessment.models import AssessProject
-
-logger = get_logger("etl")
 
 
 class EtlBase(object):
@@ -33,7 +31,7 @@ class EtlBase(object):
         pass
 
     def start(self):
-        logger.debug("%s etl start of %s" % (self.__class__.__name__, self.etl_key))
+        debug_logger.debug("%s etl start of %s" % (self.__class__.__name__, self.etl_key))
         etl_start.delay(self.etl_key, self.__class__.__name__, **self.kwargs)
 
     def stop(self):
@@ -123,7 +121,7 @@ class EtlTrialClean(EtlBase):
     u"""试清洗"""
 
     def do_etl(self):
-        logger.debug("EtlTrialClean do_etl of %s" % self.etl_key)
+        debug_logger.debug("EtlTrialClean do_etl of %s" % self.etl_key)
         self.count = 0
         self.current = 0
         self.status = self.STATUS_ONGOING
@@ -145,7 +143,7 @@ class EtlTrialClean(EtlBase):
         # 实际总人数的id
         people_id_total = list(set(people_total_list))
         self.count = len(people_id_total)
-        logger.debug("实际总人数:%s" % self.count)
+        debug_logger.debug("实际总人数:%s" % self.count)
 
         if True:
 
@@ -210,7 +208,7 @@ class EtlTrialClean(EtlBase):
                     else:
                         clean_invalid_people_id.append(people_id)
                 self.current += 1
-                logger.debug("有效人数:%s" % self.current)
+                debug_logger.debug("有效人数:%s" % self.current)
             # 无效人数和有效人数交集 id
             invalid_effective_id = []
 
@@ -253,7 +251,7 @@ class EtlTrialClean(EtlBase):
             clean_effective_people_num = len(clean_effective_people_id)
             # 有效率
 
-            logger.debug('总人数：%s,有效人数：%s'%(people_id_total_num, clean_effective_people_num))
+            debug_logger.debug('总人数：%s,有效人数：%s'%(people_id_total_num, clean_effective_people_num))
 
             if people_id_total_num:
                 valid = '%.2f%%' % (clean_effective_people_num / people_id_total_num * 100)
@@ -264,7 +262,7 @@ class EtlTrialClean(EtlBase):
             happy_score_total = 0
             try:
                 for i in clean_happy_score_effective:
-                    logger.debug('单个问卷指数分%s' % i['people_id'])
+                    debug_logger.debug('单个问卷指数分%s' % i['people_id'])
                     print ('单个问卷指数分%s' % i['people_id'])
                     happy_score_total += i['people_id']
                 # 有效指数分
@@ -289,7 +287,7 @@ class EtlTrialClean(EtlBase):
                                 dimension_score_d[did]["score"] += obj[people_id][did]["score"]
                             else:
                                 dimension_score_d[did] = obj[people_id][did]
-                logger.debug('有效维度总分：%s' % dimension_score_d)
+                debug_logger.debug('有效维度总分：%s' % dimension_score_d)
 
                 # 有效维度分
                 dimension_score = {}
@@ -307,7 +305,7 @@ class EtlTrialClean(EtlBase):
             self.end_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             # logger.debug("EtlTrialClean do_etl success of %s,结束时间:%s 状态:%s" % (self.etl_key, self.end_time, self.status))
-            logger.debug("再次打印EtlTrialClean do_etl success of  %s,结束时间:%s 状态:%s" % (self.etl_key, self.end_time, self.status))
+            debug_logger.debug("再次打印EtlTrialClean do_etl success of  %s,结束时间:%s 状态:%s" % (self.etl_key, self.end_time, self.status))
 
         #except Exception as e:
             # logger.error("EtlTrialClean do_etl error of %s, msg is %s" % (self.etl_key, e))
@@ -319,7 +317,7 @@ class EtlTrialClean(EtlBase):
 #     u"""正式清洗"""
 #
 #     def do_etl(self):
-#         logger.debug("EtlTrialClean do_etl of %s" % self.etl_key)
+#         debug_logger.debug("EtlTrialClean do_etl of %s" % self.etl_key)
 #         self.count = 0
 #         self.current = 0
 #         self.status = self.STATUS_ONGOING
@@ -341,7 +339,7 @@ class EtlTrialClean(EtlBase):
 #         # 实际总人数的id
 #         people_id_total = list(set(people_total_list))
 #         self.count = len(people_id_total)
-#         logger.debug("实际总人数:%s" % self.count)
+#         debug_logger.debug("实际总人数:%s" % self.count)
 #         if True:
 #
 #             clean_dimension_score = []
@@ -401,7 +399,7 @@ class EtlTrialClean(EtlBase):
 #                     else:
 #                         clean_invalid_people_id.append(people_id)
 #                 self.current += 1
-#                 logger.debug("有效人数:%s" % self.current)
+#                 debug_logger.debug("有效人数:%s" % self.current)
 #             # 无效人数和有效人数交集 id
 #             invalid_effective_id = []
 #
@@ -468,7 +466,7 @@ class EtlTrialClean(EtlBase):
 #             self.status = self.STATUS_FINISHED
 #             self.end_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 #
-#             logger.debug("EtlClean do_etl success of %s,结束时间:%s 状态:%s" % (self.etl_key, self.end_time, self.status))
+#             debug_logger.debug("EtlClean do_etl success of %s,结束时间:%s 状态:%s" % (self.etl_key, self.end_time, self.status))
 
 
 

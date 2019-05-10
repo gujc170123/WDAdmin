@@ -2,10 +2,7 @@
 from __future__ import unicode_literals
 
 from django.utils.deprecation import MiddlewareMixin
-from utils.logger import get_logger
 from wduser.models import AuthUser,  BusinessPermission
-
-logger = get_logger("middleware")
 
 
 class PermissionMiddleware(MiddlewareMixin):

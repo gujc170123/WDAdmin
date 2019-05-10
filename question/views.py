@@ -19,9 +19,7 @@ from question.serializers import QuestionBankSerializer, QuestionFolderSerialize
     QuestionPassageSerializer, QuestionListSerializer
 from utils.response import ErrorCode, general_json_response
 from utils.views import WdListCreateAPIView, WdRetrieveUpdateAPIView, WdDestroyAPIView, WdListAPIView
-from utils.logger import get_logger
-
-logger = get_logger("question")
+from utils.logger import info_logger
 
 
 class QuestionBankListCreateView(WdListCreateAPIView, WdDestroyAPIView):
@@ -64,7 +62,7 @@ class QuestionBankListCreateView(WdListCreateAPIView, WdDestroyAPIView):
         QuestionFolder.objects.filter_active(question_bank_id__in=delete_ids).update(is_active=False)
         QuestionFacet.objects.filter_active(question_bank_id__in=delete_ids).update(is_active=False)
         Question.objects.filter_active(question_bank_id__in=delete_ids).update(is_active=False)
-        logger.info('user_id %s want delete question_bank %s' % (self.request.user.id, delete_ids))
+        info_logger.info('user_id %s want delete question_bank %s' % (self.request.user.id, delete_ids))
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
 
@@ -78,7 +76,7 @@ class QuestionBankDetailView(WdRetrieveUpdateAPIView, WdDestroyAPIView):
         id = self.get_id()
         if Question.objects.filter_active(question_bank_id=id, use_count__gt=0).exists():
             return ErrorCode.QUESTION_USED_DELETE_FORBID
-        logger.info('user_id %s want delete question_bank %s' % (self.request.user.id, id))
+        info_logger.info('user_id %s want delete question_bank %s' % (self.request.user.id, id))
         return super(QuestionBankDetailView, self).delete_check_parameter(kwargs)
 
 
@@ -149,7 +147,7 @@ class QuestionFolderDetailView(WdRetrieveUpdateAPIView, WdDestroyAPIView):
         id = self.get_id()
         if Question.objects.filter_active(question_folder_id=id, use_count__gt=0).exists():
             return ErrorCode.QUESTION_USED_DELETE_FORBID
-        logger.info('user_id %s want delete question_folder_id %s' % (self.request.user.id, id))
+        info_logger.info('user_id %s want delete question_folder_id %s' % (self.request.user.id, id))
         return super(QuestionFolderDetailView, self).delete_check_parameter(kwargs)
 
 
@@ -214,7 +212,7 @@ class QuestionFacetDetailView(WdRetrieveUpdateAPIView, WdDestroyAPIView):
         id = self.get_id()
         if Question.objects.filter_active(question_facet_id=id, use_count__gt=0).exists():
             return ErrorCode.QUESTION_USED_DELETE_FORBID
-        logger.info('user_id %s want delete question_facet_id %s' % (self.request.user.id, id))
+        info_logger.info('user_id %s want delete question_facet_id %s' % (self.request.user.id, id))
         return super(QuestionFacetDetailView, self).delete_check_parameter(kwargs)
 
     def perform_update(self, serializer):
@@ -343,7 +341,7 @@ class QuestionDetailView(WdRetrieveUpdateAPIView, WdDestroyAPIView):
         obj = self.get_object()
         if obj.use_count > 0:
             return ErrorCode.QUESTION_USED_DELETE_FORBID
-        logger.info('user_id %s want delete question %s' % (self.request.user.id, obj.id))
+        info_logger.info('user_id %s want delete question %s' % (self.request.user.id, obj.id))
         return super(QuestionDetailView, self).delete_check_parameter(kwargs)
 
     def post_check_parameter(self, kwargs):
@@ -425,7 +423,7 @@ class QuestionPassageCreateView(WdListCreateAPIView, WdDestroyAPIView):
             if Question.objects.filter_active(question_passage_id=passage_id, use_count__gt=0).exists():
                 return general_json_response(status.HTTP_200_OK, ErrorCode.QUESTION_USED_DELETE_FORBID)
         passage_qs.update(is_active=False)
-        logger.info("user_id %s want delete passage_ids %s" % (self.request.user.id, self.passage_ids))
+        info_logger.info("user_id %s want delete passage_ids %s" % (self.request.user.id, self.passage_ids))
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
     def qs_order_by(self, qs):
@@ -462,7 +460,7 @@ class QuestionPassageDetailView(WdRetrieveUpdateAPIView, WdDestroyAPIView):
         passage_id = self.get_id()
         if Question.objects.filter_active(question_passage_id=passage_id, use_count__gt=0).exists():
             return ErrorCode.QUESTION_USED_DELETE_FORBID
-        logger.info('user_id %s want delete question_passage %s' % (self.request.user.id, passage_id))
+        info_logger.info('user_id %s want delete question_passage %s' % (self.request.user.id, passage_id))
         return super(QuestionPassageDetailView, self).delete_check_parameter(kwargs)
 
 

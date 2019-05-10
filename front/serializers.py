@@ -13,9 +13,6 @@ from front.models import PeopleSurveyRelation, SurveyInfo, SurveyQuestionInfo, U
 from front.tasks import survey_sync, algorithm_task
 from research.models import ResearchModel, ResearchDimension
 from survey.models import Survey
-from utils.logger import get_logger
-
-logger = get_logger("front")
 
 
 class SurveyInfoSerializer(serializers.ModelSerializer):

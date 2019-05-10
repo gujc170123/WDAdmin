@@ -38,7 +38,7 @@ from utils.aliyun.email import EmailUtils
 from utils.aliyun.oss import AliyunOss
 from utils.cache.cache_utils import FileStatusCache
 from utils.excel import ExcelUtils
-from utils.logger import get_logger
+from utils.logger import info_logger, err_logger, debug_logger
 from utils.regular import RegularUtils, Convert
 from utils.response import general_json_response, ErrorCode
 from utils.views import WdListCreateAPIView, WdRetrieveUpdateAPIView, WdDestroyAPIView, \
@@ -48,7 +48,7 @@ from wduser.models import PeopleOrganization, People, Organization, AuthUser, Ro
 from wduser.serializers import PeopleSerializer, PeopleSerializer360
 from survey.models import Survey
 
-logger = get_logger("assessment")
+# logger = get_logger("assessment")
 
 
 def polling_survey(random_num, random_index, polling_list):
@@ -104,7 +104,7 @@ def check_org(org_codes):
                 return ErrorCode.FAILURE
         return ErrorCode.SUCCESS
     except Exception, e:
-        logger.error("check input org_id_code_error %s" % e)
+        err_logger.error("check input org_id_code_error %s" % e)
         return ErrorCode.FAILURE
 
 
@@ -133,7 +133,7 @@ def do_one_infos(infos):
                 key_infos.append(key_info)
         return key_infos
     except Exception, e:
-        logger.error('add one do his infos error %s' % e)
+        err_logger.error('add one do his infos error %s' % e)
         return None
 
 
@@ -163,7 +163,7 @@ def do_org(finish_peoples):
         PeopleOrganization.objects.bulk_create(people_org_list)
         return ErrorCode.SUCCESS, None
     except Exception, e:
-        logger.error("do_org, msg(%s)" % e)
+        err_logger.error("do_org, msg(%s)" % e)
         return ErrorCode.FAILURE, None, u'组织修改失败'
 
 
@@ -412,7 +412,7 @@ class AssessRetrieveUpdateDestroyView(WdRetrieveUpdateAPIView, WdDestroyAPIView)
         now = datetime.datetime.now()
         if obj.begin_time is not None and now > obj.begin_time:
             return general_json_response(status.HTTP_200_OK, ErrorCode.PROJECT_BEGIN_CAN_NOT_DELETE)
-        logger.info('user_id %s want delete assess_id %s' % (self.request.user.id, obj.id))
+        info_logger.info('user_id %s want delete assess_id %s' % (self.request.user.id, obj.id))
         return super(AssessRetrieveUpdateDestroyView, self).delete(request, *args, **kwargs)
 
     def perform_destroy(self, instance):
@@ -485,7 +485,7 @@ class AssessSurveyRelationView(WdListCreateAPIView, WdDestroyAPIView):
             self.survey_ids = [int(self.survey_ids)]
         if AssessSurveyRelation.objects.filter_active(assess_id=self.assess_id, survey_id__in=self.survey_ids, user_count__gt=0).exists():
             return general_json_response(status.HTTP_200_OK, ErrorCode.PROJECT_SURVEY_USED_FORBID_DELETE)
-        logger.info('user_id %s want delete assess_id %s with survey_ids %s' % (self.request.user.id, self.assess_id, self.survey_ids))
+        info_logger.info('user_id %s want delete assess_id %s with survey_ids %s' % (self.request.user.id, self.assess_id, self.survey_ids))
         AssessSurveyRelation.objects.filter_active(assess_id=self.assess_id, survey_id__in=self.survey_ids).update(is_active=False)
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
@@ -717,11 +717,11 @@ class AssessSurveyRelationDistributeView(WdListCreateAPIView):
             # 批量创建
             if len(people_survey_b_create_list) > 2000:
                 PeopleSurveyRelation.objects.bulk_create(people_survey_b_create_list)
-                logger.info("people_b_create_survey")
+                info_logger.info("people_b_create_survey")
                 people_survey_b_create_list = []
         # 发送最后一批问卷
         if people_survey_b_create_list:
-            logger.info("people_b_create_survey")
+            info_logger.info("people_b_create_survey")
             PeopleSurveyRelation.objects.bulk_create(people_survey_b_create_list)
         # 发激活码
         if new_distribute_ids:
@@ -1065,7 +1065,7 @@ class AssessUserListView(WdListAPIView, WdDestroyAPIView):
             people_id__in=self.people_ids, org_code__in=orgs).update(is_active=False)
         PeopleSurveyRelation.objects.filter_active(project_id=self.assess_id, people_id__in=self.people_ids).update(is_active=False)
         delete_assesssurveyuserdistribute(self.assess_id, self.people_ids)
-        logger.info('user_id %s want delete assess_id %s with people_ids %s' % (self.request.user.id, self.assess_id, self.people_ids))
+        info_logger.info('user_id %s want delete assess_id %s with people_ids %s' % (self.request.user.id, self.assess_id, self.people_ids))
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
 
@@ -1167,7 +1167,7 @@ class AssessUserCreateView(WdCreateAPIView):
             AssessUser.objects.create(assess_id=assess_id, people_id=new_people_obj.id)
             return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {'msg': u'成功'})
         except Exception, e:
-            logger.error("新增单用户失败 %s" % e)
+            err_logger.error("新增单用户失败 %s" % e)
             return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, {'msg': u'新增单用户失败'})
 
 
@@ -1180,7 +1180,7 @@ class AssessUseDetailView(WdRetrieveUpdateAPIView):
             people_obj = self.get_object()
             authuser_obj = AuthUser.objects.get(id=people_obj.user_id)
         except Exception, e:
-            logger.error('not this people %s' % e)
+            err_logger.error('not this people %s' % e)
             return general_json_response(status.HTTP_200_OK, ErrorCode.USER_ACCOUNT_NOT_FOUND)
         infos = request.data.get('infos', None)
         phone = str_check(request.data.get('phone', None))
@@ -1278,7 +1278,7 @@ class AssessUseDetailView(WdRetrieveUpdateAPIView):
                 PeopleOrganization.objects.create(people_id=people_obj.id, org_code=codes)
             return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
         except Exception, e:
-            logger.error("update %d error %s" % (people_obj.id, e))
+            err_logger.error("update %d error %s" % (people_obj.id, e))
             return general_json_response(status.HTTP_200_OK, ErrorCode.USER_UPDATE_ERROR, {'msg': u'修改异常'})
 
 
@@ -1547,7 +1547,7 @@ class DownloadReportView(WdExeclExportView):
 
     def down_data_to_file(self, url, file_name, file_path):
         import urllib2
-        logger.debug("download report url is %s" % url)
+        debug_logger.debug("download report url is %s" % url)
         req = urllib2.Request(url.encode("utf-8"))
         rst = urllib2.urlopen(req)
         fdata = rst.read()
@@ -1573,7 +1573,7 @@ class DownloadReportView(WdExeclExportView):
                 report_status=PeopleSurveyRelation.REPORT_SUCCESS,
                 report_url__isnull=False
             ).values_list("people_id", flat=True).order_by("-id")[:3])
-        logger.debug("%s download report people ids is %s" % (str(self.request.user.id), ",".join(people_ids)))
+        debug_logger.debug("%s download report people ids is %s" % (str(self.request.user.id), ",".join(people_ids)))
         now = datetime.datetime.now().strftime("%Y-%m-%d")
         timestamp = int(time.time()*100)
         parent_path = "%s-report-download-%s" % (self.request.user.id, str(timestamp))

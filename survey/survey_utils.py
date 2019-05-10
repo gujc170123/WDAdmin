@@ -11,10 +11,8 @@ from question.serializers import QuestionDetailSerializer
 from research.models import ResearchModel, ResearchDimension, ResearchSubstandard
 from survey.models import Survey, SurveyModelFacetRelation, SurveyQuestionRelation, SurveyQuestionResult
 from survey.serializers import SurveyBasicSerializer, SurveyForceQuestionResultSerializer
-from utils.logger import get_logger
+from utils.logger import err_logger
 from utils.response import ErrorCode
-
-logger = get_logger('survey')
 
 
 class SurveyUtils(object):
@@ -152,7 +150,7 @@ class SurveyUtils(object):
                                 scores = list(QuestionOption.objects.filter_active(
                                     question_id=question.id).order_by("order_number").values_list("score", flat=True))
                             except Exception, e:
-                                logger.error("get question score error, msg: %s" % e)
+                                err_logger.error("get question score error, msg: %s" % e)
                             force_question_data["options"].append({
                                 "content": question.title,
                                 "en_content": question.en_title,
@@ -164,7 +162,7 @@ class SurveyUtils(object):
                         question_data.append(force_question_data)
                 return ErrorCode.SUCCESS, question_data
             except Exception, e:
-                logger.error("force survey error, msg: %s" % e)
+                err_logger.error("force survey error, msg: %s" % e)
                 if Survey.BASE_LEVEL_DIMENSION == self.force_base_level:
                     return ErrorCode.SURVEY_FORCE_OPTION_DIMENSION_ERROR, None  # 迫选维度数量错误
                 return ErrorCode.SURVEY_FORCE_OPTION_RELATED_ERROR, None

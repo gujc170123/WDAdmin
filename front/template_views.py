@@ -15,14 +15,12 @@ from front.models import PeopleSurveyRelation
 from front.tasks import send_one_user_survey
 from front.views import people_login
 from survey.models import Survey
-from utils.logger import get_logger
+from utils.logger import err_logger
 from utils.response import ErrorCode
 from utils.views import WdTemplateView, AuthenticationExceptView
 from wduser.models import People, AuthUser
 from wduser.user_utils import UserAccountUtils
 import uuid
-
-logger = get_logger("front")
 
 
 def open_people_assess_survey_user_distribute(assess_id, survey_id, people_id):
@@ -48,7 +46,7 @@ class OpenSurveyJoinView(AuthenticationExceptView, WdTemplateView):
         ba = self.request.GET.get("ba", 0)
         if not hasattr(request, 'user') or not request.user.is_authenticated:
             # 跳转登录页面
-            logger.error("user is not is_authenticated")
+            err_logger.error("user is not is_authenticated")
             return HttpResponseRedirect("/#/login?bs=%s&ba=%s" % (bs, ba))
         survey_id = base64.b64decode(bs)
         assess_id = base64.b64decode(ba)
@@ -56,16 +54,16 @@ class OpenSurveyJoinView(AuthenticationExceptView, WdTemplateView):
             survey = Survey.objects.get(id=survey_id)
         except:
             # 跳转我的测评页面
-            logger.error("survey id %s is not found" % survey_id)
+            err_logger.error("survey id %s is not found" % survey_id)
             return HttpResponseRedirect("/#/")
         relation_qs = AssessSurveyRelation.objects.filter_active(assess_id=assess_id, survey_id=survey_id)
         if not relation_qs.exists():
-            logger.error("project(%s) and survey(%s) relation is not found" % (assess_id, survey_id))
+            err_logger.error("project(%s) and survey(%s) relation is not found" % (assess_id, survey_id))
             # 跳转我的测评页面
             return HttpResponseRedirect("/#/")
         relation_obj = relation_qs[0]
         if relation_obj.distribute_type == AssessSurveyRelation.DISTRIBUTE_IMPORT:
-            logger.error("project(%s) survey(%s) is not open" %(assess_id, survey_id))
+            err_logger.error("project(%s) survey(%s) is not open" %(assess_id, survey_id))
             # 跳转我的测评页面
             return HttpResponseRedirect("/#/")
 
@@ -100,16 +98,16 @@ class OpenProjectJoinView(AuthenticationExceptView, WdTemplateView):
             project = AssessProject.objects.get(id=assess_id)
         except:
             # 跳转我的测评页面
-            logger.error("project id %s is not found" % assess_id)
+            err_logger.error("project id %s is not found" % assess_id)
             # return HttpResponseRedirect("/#/")
             return Response({"err_code": 1})
         if project.distribute_type == AssessSurveyRelation.DISTRIBUTE_IMPORT:
-            logger.error("project(%s) is not open" % (assess_id))
+            err_logger.error("project(%s) is not open" % (assess_id))
             return Response({"err_code": 2})
 
         if not hasattr(request, 'user') or not request.user.is_authenticated:
             # 跳转登录页面
-            logger.error("user is not is_authenticated")
+            err_logger.error("user is not is_authenticated")
             return HttpResponseRedirect("/#/login?bs=%s&ba=%s" % (bs, quote(ba)))
         relation_qs = AssessSurveyRelation.objects.filter_active(assess_id=assess_id, survey_been_random=False)
         random_relation_qs = AssessSurveyRelation.objects.filter_active(assess_id=assess_id, survey_been_random=True).values_list('survey_id', flat=True)
@@ -119,7 +117,7 @@ class OpenProjectJoinView(AuthenticationExceptView, WdTemplateView):
         if len(random_relation_qs) < random_num:
             random_num = len(random_relation_qs)
         if (not relation_qs.exists()) and (not random_relation_qs):
-            logger.error("project(%s) survey relation is not found" % (assess_id))
+            err_logger.error("project(%s) survey relation is not found" % (assess_id))
             # 跳转我的测评页面
             return HttpResponseRedirect("/#/")
         user = self.request.user
@@ -132,7 +130,7 @@ class OpenProjectJoinView(AuthenticationExceptView, WdTemplateView):
         try:
             send_one_user_survey(assess_id, people.id)
         except Exception, e:
-            logger.error("add people to project error, %s, %s" %(people.id, assess_id))
+            err_logger.error("add people to project error, %s, %s" %(people.id, assess_id))
         # TODO: 跳转我的测评页面
         return HttpResponseRedirect("/#/")
 
@@ -148,11 +146,11 @@ class OpenJoinView(AuthenticationExceptView, WdTemplateView):
             project = AssessProject.objects.get(id=assess_id)
         except:
             # 跳转我的测评页面
-            logger.error("project id %s is not found" % assess_id)
+            err_logger.error("project id %s is not found" % assess_id)
             # return HttpResponseRedirect("/#/")
             return Response({"err_code": 1})
         if project.distribute_type == AssessSurveyRelation.DISTRIBUTE_IMPORT:
-            logger.error("project(%s) is not open" % (assess_id))
+            err_logger.error("project(%s) is not open" % (assess_id))
             return Response({"err_code": 2})
         
         relation_qs = AssessSurveyRelation.objects.filter_active(assess_id=assess_id, survey_been_random=False)
@@ -163,7 +161,7 @@ class OpenJoinView(AuthenticationExceptView, WdTemplateView):
         if len(random_relation_qs) < random_num:
             random_num = len(random_relation_qs)
         if (not relation_qs.exists()) and (not random_relation_qs):
-            logger.error("project(%s) survey relation is not found" % (assess_id))
+            err_logger.error("project(%s) survey relation is not found" % (assess_id))
             # 跳转我的测评页面
             return HttpResponseRedirect("/#/")
 
@@ -176,7 +174,7 @@ class OpenJoinView(AuthenticationExceptView, WdTemplateView):
         try:
             send_one_user_survey(assess_id, people.id)
         except Exception, e:
-            logger.error("add people to project error, %s, %s" %(people.id, assess_id))
+            err_logger.error("add people to project error, %s, %s" %(people.id, assess_id))
         # TODO: 跳转我的测评页面
         return HttpResponseRedirect("/#/")
 
@@ -190,7 +188,7 @@ class LinkProjectJoinView(AuthenticationExceptView, WdTemplateView):
                 return Response({"err_code": 3})
             authuser_obj = AuthUser.objects.get(dedicated_link=link, is_active=True)
         except:
-            logger.error("link %s is not found" % link)
+            err_logger.error("link %s is not found" % link)
             return Response({"err_code": 4})
         people_qs = People.objects.filter_active(user_id=authuser_obj.id)
         if not people_qs.exists():

@@ -21,12 +21,10 @@ from rest_framework_xml.parsers import XMLParser
 from rest_framework.response import Response
 
 from WeiDuAdmin import settings
-from utils.logger import get_logger
+from utils.logger import debug_logger, err_logger
 from utils.response import general_json_response, ErrorCode
 
 from research.models import *
-
-logger = get_logger("utils")
 
 
 class TextXMLParser(XMLParser):
@@ -117,7 +115,7 @@ class WdAPIView(GenericAPIView):
                     if self.request.data["creator_id"] == 0:
                         return ErrorCode.INVALID_INPUT
             except Exception, e:
-                logger.debug("user auto create failed, msg(%s)" %e)
+                debug_logger.debug("user auto create failed, msg(%s)" %e)
 
         if self.request.method == "PUT":
             try:
@@ -128,7 +126,7 @@ class WdAPIView(GenericAPIView):
                     if self.request.data["last_modify_user_id"] == 0:
                         return ErrorCode.INVALID_INPUT
             except Exception, e:
-                logger.error("user auto create error, msg(%s)" %e)
+                err_logger.error("user auto create error, msg(%s)" %e)
 
         if self.request.method == "POST" or self.request.method == "PUT":
             err_code = self.post_check_parameter(kwargs)
@@ -255,7 +253,7 @@ class WdAPIView(GenericAPIView):
                 response = self.handle_exception(exc)
             except Exception as e:
                 traceback.print_exc()
-                logger.error("dispatch handler exception error, msg: %s" %e.message)
+                err_logger.error("dispatch handler exception error, msg: %s" %e.message)
                 return general_json_response(status.HTTP_200_OK, ErrorCode.INTERNAL_ERROR)
         self.response = self.finalize_response(request, response, *args, **kwargs)
         if self.response.status_code in {status.HTTP_200_OK, status.HTTP_302_FOUND}:

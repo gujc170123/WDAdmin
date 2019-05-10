@@ -17,10 +17,8 @@ from question.models import Question
 from research.models import ResearchDimension, ResearchSubstandard, ResearchModel
 from survey.models import SurveyQuestionRelation, Survey, SurveyQuestionResult
 from utils import time_format
-from utils.logger import get_logger
+from utils.logger import info_logger
 from wduser.models import People, PeopleOrganization, EnterpriseInfo, Organization
-
-logger = get_logger("ops_etl")
 
 
 def utf8_more_info(more_info):
@@ -304,7 +302,7 @@ class Command(BaseCommand):
         project_id = options.get("project_id", None)
         survey_id = options.get("survey_id", None)
         limit_num = options.get("limit_num", None)
-        logger.info("ope etl process %s %s" % (project_id, survey_id))
+        info_logger.info("ope etl process %s %s" % (project_id, survey_id))
         if not project_id:
             return
         t = datetime.datetime.now().strftime('%Y-%m-%d')

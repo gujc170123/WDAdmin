@@ -8,9 +8,7 @@ from django.db import transaction
 from front.models import PeopleSurveyRelation
 from front.serializers import PeopleSurveySerializer
 from front.tasks import algorithm_task, get_report
-from utils.logger import get_logger
-
-logger = get_logger("ops_process_report")
+from utils.logger import info_logger, debug_logger
 
 
 def ops_process_report(project_id, survey_id, finish_time, is_test):
@@ -25,11 +23,11 @@ def ops_process_report(project_id, survey_id, finish_time, is_test):
         ],
         finish_time__lt=finish_time
     )
-    logger.debug("process result count: %s" % pqs.count())
+    debug_logger.debug("process result count: %s" % pqs.count())
     # datas = PeopleSurveySerializer(instance=pqs, many=True).data
     for obj in pqs:
         data = PeopleSurveySerializer(instance=obj).data
-        logger.debug("process result_id %s" % data["id"])
+        debug_logger.debug("process result_id %s" % data["id"])
         get_report({"results": [data]}, user_id=0, force_recreate=True)
         if is_test == 1:
             break
@@ -55,5 +53,5 @@ class Command(BaseCommand):
         survey_id = options["survey_id"]
         finish_time = options["finish_time"]
         is_test = int(options.get("is_test", 1))
-        logger.info("ops_survey_result process %s %s" % (project_id, survey_id))
+        info_logger.info("ops_survey_result process %s %s" % (project_id, survey_id))
         ops_process_report(project_id, survey_id, finish_time, is_test)

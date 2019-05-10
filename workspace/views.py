@@ -8,7 +8,7 @@ from utils.views import AuthenticationExceptView, WdCreateAPIView, WdRetrieveUpd
 from utils.response import general_json_response, ErrorCode
 from rest_framework.response import Response
 from wduser.user_utils import UserAccountUtils
-from utils.logger import get_logger
+from utils.logger import err_logger, info_logger
 from workspace.helper import OrganizationHelper
 from workspace.serializers import UserSerializer,BaseOrganizationSerializer,AssessSerializer,\
                                   AssessListSerializer,SurveyListSerializer
@@ -31,7 +31,6 @@ from rest_framework.parsers import FileUploadParser
 from tasks import userimport_task,CreateNewUser
 
 #retrieve logger entry for workspace app
-logger = get_logger("workspace")
 
 class UserLoginView(AuthenticationExceptView, WdCreateAPIView):
     """Login API for Workspace"""
@@ -134,7 +133,7 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
 
             return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {'id':user.id})
         except Exception, e:
-            logger.error("新增用户失败 %s" % e.message)
+            err_logger.error("新增用户失败 %s" % e.message)
             return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, {'msg': u'新增用户失败:%s' % e.message})
 
 
@@ -241,7 +240,7 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
             user.save()
             return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
         except Exception, e:
-            logger.error("update %d error %s" % (user.id, e))
+            err_logger.error("update %d error %s" % (user.id, e))
             return general_json_response(status.HTTP_200_OK, ErrorCode.USER_UPDATE_ERROR, {'msg': u'modification error'})
 
     def delete(self, request, *args, **kwargs):
@@ -343,7 +342,7 @@ class OrganizationlRetrieveUpdateDestroyView(AuthenticationExceptView,
         if alluser is None:
             BaseOrganization.objects.filter_active(childorg__parent_id=org).update(is_active=False)
             BaseOrganization.objects.get(pk=org)._closure_deletelink()
-            logger.info('user_id %s want delete organization %s' % (self.request.user.id,org))
+            info_logger.info('user_id %s want delete organization %s' % (self.request.user.id,org))
             return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
         else:
             return general_json_response(status.HTTP_200_OK, ErrorCode.WORKSPACE_ORG_MEMBEREXISTS)

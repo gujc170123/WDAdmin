@@ -8,9 +8,6 @@ from django.db import transaction
 from front.models import PeopleSurveyRelation
 from front.tasks import algorithm_task
 from question.models import QuestionPassage, QuestionFacet, Question, QuestionPassageRelation
-from utils.logger import get_logger
-
-logger = get_logger("ops_survey_result")
 
 
 def ops_passage_update():
