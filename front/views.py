@@ -274,7 +274,7 @@ class PeopleRegisterView(AuthenticationExceptView, WdCreateAPIView):
             send_one_user_survey(project.id, people.id)
         except Exception, e:
             err_logger.error("people survey relation error, msg: %s" %e)
-        return ErrorCode.SUCCESS, user
+        return ErrorCode.SUCCESS, user, project.enterprise_id
 
     def org_code_register(self, account, pwd, org_code):
         u"""这边假设所有的用户都是先后台导入，创建了People，后台自动发送组织码，其他渠道获取的组织码，
@@ -343,6 +343,7 @@ class PeopleRegisterView(AuthenticationExceptView, WdCreateAPIView):
             return general_json_response(status.HTTP_200_OK, ErrorCode.USER_ACCOUNT_EXISTS)
 
         rst_code = ErrorCode.SUCCESS
+        enterprise = 0
         # SUCCESS不合法，递交的参数没有组织码和assess_id_base64 也success
         if org_code:
             # 组织码注册
@@ -353,7 +354,7 @@ class PeopleRegisterView(AuthenticationExceptView, WdCreateAPIView):
                                              {"is_login": err_code, "user_info": user_info})
         elif assess_id_base64:
             # 问卷连接注册
-            rst_code, user = self.survey_register_normal(account, pwd, survey_id_base64, assess_id_base64)
+            rst_code, user, enterprise = self.survey_register_normal(account, pwd, survey_id_base64, assess_id_base64)
         # 注册后返回用户信息以便直接跳转登陆
         try:
             # 理论成功创建用户应该都合法，err_code只是复用代码
@@ -363,7 +364,7 @@ class PeopleRegisterView(AuthenticationExceptView, WdCreateAPIView):
         except Exception, e:
             err_logger.error("Register_FOR_Login error, msg is %s" % e)
             user_info = None
-        return general_json_response(status.HTTP_200_OK, rst_code, {"is_login": err_code, "user_info": user_info})
+        return general_json_response(status.HTTP_200_OK, rst_code, {"is_login": err_code, "user_info": user_info, "enterprise":enterprise})
 
 
 class UserAccountInfoView(WdRetrieveUpdateAPIView):
