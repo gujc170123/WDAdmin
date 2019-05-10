@@ -650,7 +650,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             t = Thread(target=main, args=(assess_id, survey_id))
             t.start()
         except Exception, e:
-            logger.error("get report data error, msg: %s " % e)
+            err_logger.error("get report data error, msg: %s " % e)
             return {}, ErrorCode.INTERNAL_ERROR
         return {}, ErrorCode.SUCCESS
 

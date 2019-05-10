@@ -32,7 +32,7 @@ class WDIndex(models.Model):
 
 
 class FactOEI(models.Model):
-    AssessID = models.IntegerField(db_index=True)
+    AssessKey = models.IntegerField(db_index=True)
     DW_Person_ID = models.IntegerField(db_index=True)
     organization1 = models.CharField(max_length=30, db_index=True, null=True, blank=True)
     organization2 = models.CharField(max_length=30, db_index=True, null=True, blank=True)
@@ -43,7 +43,7 @@ class FactOEI(models.Model):
     profile1 = models.CharField(max_length=30, db_index=True, null=True, blank=True, verbose_name="年龄")
     profile2 = models.CharField(max_length=30, db_index=True, null=True, blank=True, verbose_name="性别")
     profile3 = models.CharField(max_length=30, db_index=True, null=True, blank=True, verbose_name="岗位序列")
-    profile4 = models.IntegerField(db_index=True, null=True, blank=True, verbose_name="工龄")
+    profile4 = models.CharField(max_length=30, db_index=True, null=True, blank=True, verbose_name="工龄")
     profile5 = models.CharField(max_length=30, db_index=True, null=True, blank=True, verbose_name="层级")
     profile6 = models.CharField(max_length=30, db_index=True, null=True, blank=True)
     profile7 = models.CharField(max_length=30, db_index=True, null=True, blank=True)
@@ -117,4 +117,4 @@ class FactOEI(models.Model):
     quota54 = models.DecimalField(max_digits=5, decimal_places=2, verbose_name="灵活变通")
 
     class Meta:
-        unique_together = ("DW_Person_ID", "AssessID")
+        unique_together = ("DW_Person_ID", "AssessKey")
