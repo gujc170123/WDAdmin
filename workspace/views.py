@@ -434,7 +434,7 @@ class SurveyListView(AuthenticationExceptView, WdListCreateAPIView):
     GET_CHECK_REQUEST_PARAMETER={"assess"}
 
     def get(self, request, *args, **kwargs):
-        surveys = Survey.objects.filter_active(id__in=AssessSurveyRelation.objects.filter_active(assess_id=self.assess).values_list('survey_id'))
+        surveys = Survey.objects.filter_active(id__in=AssessSurveyRelation.objects.filter_active(assess_id=self.assess).values_list('survey_id')).order_by('-id')
         surveyinfo = SurveyListSerializer(instance=surveys, many=True).data
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,surveyinfo)    
 
