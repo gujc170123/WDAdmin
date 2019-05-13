@@ -335,10 +335,10 @@ class OrganizationListCreateView(AuthenticationExceptView, WdCreateAPIView):
                 nodes[record['id']].pop('children')
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"data": top})
 
-class OrganizationListView(AuthenticationExceptView, WdCreateAPIView):
+class OrganizationListView(AuthenticationExceptView):
     """enterprise-organization tree view"""
-    model = BaseOrganization
-    serializer_class = BaseOrganizationSerializer
+    model = None
+    serializer_class = None
     GET_CHECK_REQUEST_PARAMETER = {"enterprise_id"}
     
     def get(self, request, *args, **kwargs):
