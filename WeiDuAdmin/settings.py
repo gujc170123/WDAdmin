@@ -143,6 +143,10 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'celery': {
+            'handlers': ['celery', 'console'],
+            'level': 'DEBUG',
+        },
     },
 }
 # django rest framework

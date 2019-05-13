@@ -32,7 +32,7 @@ from utils.aliyun.email import EmailUtils
 from utils.aliyun.oss import AliyunOss
 from utils.aliyun.sms.newsms import Sms
 from utils.excel import ExcelUtils
-from utils.logger import err_logger, info_logger,debug_logger
+from utils.logger import err_logger, info_logger,debug_logger,info_c_logger
 from utils.regular import RegularUtils
 from utils.rpc_service.clientservice import ClientService
 from utils.response import ErrorCode
@@ -1298,9 +1298,10 @@ def get_people_list_task(assess_id, org_codes, email, user_id, num_p=0, is_simpl
         file_path, default_export_file_name = get_file(assess_id, people_ids[x * PEOPLE_NUM:(x + 1) * PEOPLE_NUM], x, is_simple=is_simple)
         all_files_path.append(file_path)
     zip_path, zip_name = zip_excel(all_files_path, assess_id)
-    info_logger.info("upload oss start")
+    
+    info_c_logger.info("upload oss start")
     oss_keys = AliyunOss().upload_file(user_id, zip_name, zip_path, prefix='wdadmin')
-    info_logger.info("upload oss end")
+    info_c_logger.info("upload oss end")
     EmailUtils().send_oss_people_list(oss_keys, email)
 
 

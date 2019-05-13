@@ -7,6 +7,7 @@ import traceback
 
 from django.conf import settings
 import logging.config
+from celery.utils.log import get_task_logger
 
 log_root_path = settings.WD_LOG_PATH
 # log_root_path = '/var/log/wdadmin/'
@@ -59,3 +60,6 @@ def get_logger(name=None):
 err_logger = get_logger("error")
 info_logger = get_logger("info")
 debug_logger = get_logger("debug")
+err_c_logger = get_task_logger("error")
+info_c_logger = get_task_logger("info")
+debug_c_logger = get_task_logger("debug")

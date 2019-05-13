@@ -335,6 +335,35 @@ class OrganizationListCreateView(AuthenticationExceptView, WdCreateAPIView):
                 nodes[record['id']].pop('children')
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"data": top})
 
+class OrganizationListView(AuthenticationExceptView, WdCreateAPIView):
+    """enterprise-organization tree view"""
+    model = BaseOrganization
+    serializer_class = BaseOrganizationSerializer
+    GET_CHECK_REQUEST_PARAMETER = {"enterprise_id"}
+    
+    def get(self, request, *args, **kwargs):
+        """get organization tree of current user"""
+        toporg = BaseOrganization.objects.filter_active(enterprise_id=self.enterprise_id,parent_id__isnull=True).first()
+        if not toporg:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.NOT_EXISTED)
+
+        organizations = BaseOrganization.objects.filter_active(childorg__parent_id=toporg.id).order_by('childorg__depth').\
+                                                                values('id','name','parent_id').all()
+                                                            
+        nodes = {}
+        for record in organizations:
+            nodes[record['id']] = {'id':record['id'],'name':record['name'],'papa':record['parent_id']}
+            nodes[record['id']]['children']=[]
+        for record in organizations:
+            if record['parent_id'] in nodes:
+                nodes[record['parent_id']]['children'].append(nodes[record['id']])
+            else:
+                top = nodes[record['id']]
+        for record in organizations:
+            if len(nodes[record['id']]['children'])==0:
+                nodes[record['id']].pop('children')
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"data": top})
+
 class OrganizationlRetrieveUpdateDestroyView(AuthenticationExceptView,
                                              WdRetrieveUpdateAPIView, WdDestroyAPIView):
     """organization management"""
@@ -438,7 +467,6 @@ class SurveyListView(AuthenticationExceptView, WdListCreateAPIView):
         surveyinfo = SurveyListSerializer(instance=surveys, many=True).data
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,surveyinfo)    
 
-
 class AssessDetailView(AuthenticationExceptView, WdCreateAPIView):
     '''update/delete assess view'''
     model = AssessProject
@@ -504,7 +532,6 @@ class AssessOrganizationView(AuthenticationExceptView,WdCreateAPIView):
             if len(nodes[record.id]['children'])==0:
                 nodes[record.id].pop('children')
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"data": top})
-
 
 class AssessProgressView(AuthenticationExceptView,WdCreateAPIView):
 
