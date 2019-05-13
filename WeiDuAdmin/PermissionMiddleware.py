@@ -93,11 +93,12 @@ class PermissionMiddleware(MiddlewareMixin):
         '/api/v1/user/login/',
         '/api/v1/user/logout/',
         '/api/v1/research/tag/',
-        '/people/join-project/'
+        '/people/join-project/',
     ]
     PERMISSION_EXCEPT_URL_PREFIX = [
         '/api/client/v1/front/',
-        '/people/'
+        '/people/',
+        '/api/ws/v1/',
     ]
 
     def process_request(self, request):
