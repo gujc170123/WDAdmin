@@ -73,8 +73,8 @@ class EmailUtils(object):
             err_logger.error("邮件发送失败，数据接收拒绝:%s,%s" % (e.smtp_code, e.smtp_error))
         except smtplib.SMTPException, e:
             err_logger.error("邮件发送失败:%s" % (e.message))
-        except Exception, e:
-            err_logger.error("邮件发送异常:%s" % (str(e))
+        except Exception, e:            
+            err_logger.error("邮件发送异常:%s" % (str(e)))
 
     def send_active_code(self, code, receive_email):
         subject = u"格略维度平台激活码"
