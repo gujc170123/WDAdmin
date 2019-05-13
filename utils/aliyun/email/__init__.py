@@ -9,12 +9,13 @@ from email.mime.application import MIMEApplication
 from email.header import Header
 # 发件人地址，通过控制台创建的发件人地址
 from WeiDuAdmin import settings
+from utils.logger import err_logger, info_logger
 
-username = 'noreply@email.exuetech.com'
+username = 'service@iwedoing.com'
 # 发件人密码，通过控制台创建的发件人密码
-password = 'ex1234ABcd'
+password = 'GLcxzaqweds123'
 # 自定义的回复地址
-replyto = 'mengzhaoying@exuetech.com'
+replyto = 'service@gelue.com'
 # 收件人地址或是地址列表，支持多个收件人，最多30个
 #rcptto = ['***', '***']
 # rcptto = '***'
@@ -44,6 +45,7 @@ class EmailUtils(object):
             msg.attach(texthtml)
             # 发送邮件
         # 发送邮件
+        info_logger.info("mail client start")
         try:
             client = smtplib.SMTP()
             # python 2.7以上版本，若需要使用SSL，可以这样创建client
@@ -58,21 +60,21 @@ class EmailUtils(object):
             #      使用SMTP.mail/SMTP.rcpt/SMTP.data方法
             client.sendmail(username, receive_emails, msg.as_string())
             client.quit()
-            print '邮件发送成功！'
+            info_logger.info("mail sent")
         except smtplib.SMTPConnectError, e:
-            print '邮件发送失败，连接失败:', e.smtp_code, e.smtp_error
+            err_logger.error("邮件发送失败，连接失败:%s,%s" % (e.smtp_code, e.smtp_error))
         except smtplib.SMTPAuthenticationError, e:
-            print '邮件发送失败，认证错误:', e.smtp_code, e.smtp_error
+            err_logger.error("邮件发送失败，认证错误:%s,%s" % (e.smtp_code, e.smtp_error))
         except smtplib.SMTPSenderRefused, e:
-            print '邮件发送失败，发件人被拒绝:', e.smtp_code, e.smtp_error
+            err_logger.error("邮件发送失败，发件人被拒绝:%s,%s" % (e.smtp_code, e.smtp_error))
         except smtplib.SMTPRecipientsRefused, e:
-            print '邮件发送失败，收件人被拒绝:', e.recipients
+            err_logger.error("邮件发送失败，收件人被拒绝:%s" % (e.recipients))
         except smtplib.SMTPDataError, e:
-            print '邮件发送失败，数据接收拒绝:', e.smtp_code, e.smtp_error
+            err_logger.error("邮件发送失败，数据接收拒绝:%s,%s" % (e.smtp_code, e.smtp_error))
         except smtplib.SMTPException, e:
-            print '邮件发送失败, ', e.message
+            err_logger.error("邮件发送失败:%s" % (e.message))
         except Exception, e:
-            print '邮件发送异常, ', str(e)
+            err_logger.error("邮件发送异常:%s" % (str(e))
 
     def send_active_code(self, code, receive_email):
         subject = u"格略维度平台激活码"
