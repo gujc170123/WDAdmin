@@ -14,7 +14,7 @@ from workspace.util.redispool import redis_pool
 reload(sys)
 sys.setdefaultencoding('utf8')
 
-logger = get_logger("sql_transfer.log")
+logger = get_logger("sql_transfer")
 
 
 def try_catch(func):
