@@ -185,3 +185,15 @@ dingzhi_DEBUG = None
 dingzhi_assess_ids = [172, '172']
 
 dingzhi_assess_id = 172
+
+# ********  ETL conf  **********
+etl_data_dir = os.path.join(os.path.dirname(BASE_DIR), 'etl_data')
+if not os.path.exists(etl_data_dir):
+    os.mkdir(etl_data_dir)
+HOST = "rm-bp1i2yah9e5d27k26.mysql.rds.aliyuncs.com"
+PORT = 3306
+DB_admin = "wdadmin_uat"
+DB_front = "wdfront_uat"
+DB_user = "appserver"
+DB_pwd = "AS@wdadmin"
+tag_id = 54

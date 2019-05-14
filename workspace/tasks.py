@@ -6,6 +6,7 @@ from wduser.models import AuthUser,People,EnterpriseAccount
 from utils.regular import RegularUtils
 from assessment.views import get_mima
 import datetime,pandas,numpy as np
+from .util.etl_transfer import main
 
 def userimport_task(file_data, file_name, enterprise_id ,total,delimiter):
 

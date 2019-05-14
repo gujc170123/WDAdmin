@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
 from __future__ import division
-
+import time
 from utils.views import AuthenticationExceptView, WdListCreateAPIView
 from utils.response import general_json_response, ErrorCode
 from rest_framework import status
@@ -9,7 +9,9 @@ from workspace.models import FactOEI, WDIndex
 from wduser.models import BaseOrganization, BaseOrganizationPaths
 from .helper import OrganizationHelper
 from django.db.models import Avg
-from assessment.models import FullOrganization, AssessSurveyRelation
+from assessment.models import AssessSurveyRelation
+from workspace.tasks import main
+from workspace.util.redispool import redis_pool
 
 
 class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
@@ -642,13 +644,19 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         survey_id = kwargs.get("survey_id")
         if not assess_id or not survey_id:
             return {}, ErrorCode.INVALID_INPUT
-        from .util.etl_transfer import main
-        try:
+        redis_key = 'etl_%s_%s' % (assess_id, survey_id)
+        redis_value = redis_pool.lrange(redis_key, -2, -1)
+        if redis_value and redis_value[-1] == '0':
+            return {'msg': u'正在生成报告，请稍后访问。', 'status': 2}, ErrorCode.SUCCESS
+        elif redis_value and redis_value[-1] == '1':
+            return {'msg': u'报告完成。', 'status':1}, ErrorCode.SUCCESS
+        else:
             main.delay(assess_id, survey_id)
-        except Exception, e:
-            err_logger.error("get report data error, msg: %s " % e)
-            return {}, ErrorCode.INTERNAL_ERROR
-        return {}, ErrorCode.SUCCESS
+            redis_pool.rpush(redis_key, time.time(), 0)
+            if not redis_value:
+                return {'msg': u'开始生成报告。', 'status': 0}, ErrorCode.SUCCESS
+            else:
+                return {'msg': u'重新生成报告。', 'status': 3}, ErrorCode.SUCCESS
 
     def post(self, request, *args, **kwargs):
         api_id = self.request.data.get("api", None)
