@@ -29,23 +29,23 @@ CELERY_TIMEZONE = 'Asia/Shanghai'
 
 CELERYBEAT_SCHEDULE = {
 
-    'add': {
+    # 'add': {
 
-        'task': 'console.tasks.auto_update_database',
+    #     'task': 'console.tasks.auto_update_database',
 
-        'schedule': crontab(minute="*/10"),
+    #     'schedule': crontab(minute="*/10"),
 
-        'args': ()
-    },
+    #     'args': ()
+    # },
 
-    'update': {
+    # 'update': {
 
-        'task': 'console.tasks.auto_update_clean_status',
+    #     'task': 'console.tasks.auto_update_clean_status',
 
-        'schedule': crontab(minute="*/10"),
+    #     'schedule': crontab(minute="*/10"),
 
-        'args': ()
-    }
+    #     'args': ()
+    # }
 }
 
 

@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 import base64
 from urllib import quote
-from django.db.models import F
+from django.db.models import F,Q
 from django.contrib.auth import logout
 from rest_framework import status
 from utils.views import AuthenticationExceptView, WdCreateAPIView, WdRetrieveUpdateAPIView ,\
@@ -66,8 +66,7 @@ class UserLoginView(AuthenticationExceptView, WdCreateAPIView):
 class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
     """list/create person"""
     model = AuthUser
-    serializer_class = UserSerializer
-    SEARCH_FIELDS = ("username", "phone", "email", "account_name", "rank","sequence","gender")
+    serializer_class = UserSerializer    
     GET_CHECK_REQUEST_PARAMETER = ("organization_id",)
 
     def post(self, request, *args, **kwargs):
@@ -146,6 +145,7 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
         pagesize = int(request.GET.get('pagesize', 20))
         pageType = str(request.GET.get('pageType', ''))
         org = request.GET.get('organization_id')
+        keyword = str(request.GET.get('search',''))
         
         if pageType == 'pageDown':
             curPage += 1
@@ -155,9 +155,18 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
         startPos = (curPage - 1) * pagesize
         endPos = startPos + pagesize
        
-        alluser = AuthUser.objects.filter(is_active=True,organization__childorg__parent_id=org,organization__is_active=True).order_by('organization__id').all()
+        
+        alluser = AuthUser.objects.filter(is_active=True,organization__childorg__parent_id=org,organization__is_active=True)
+        if keyword:
+            alluser = alluser.filter(Q(nickname__contains=keyword) | Q(phone__contains=keyword) | Q(email__contains=keyword))
+        
+        alluser = alluser.all().order_by('organization__id')
         allUserCounts =alluser.count()
         if allUserCounts>0:
+            if endPos>allUserCounts:
+                startPos = (allUserCounts/pagesize)*pagesize
+                endPos = allUserCounts
+                curPage = allUserCounts/pagesize + 1
             users = UserSerializer(alluser[startPos:endPos],many=True)
             allPage = (allUserCounts+pagesize-1) / pagesize            
             return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"allPage":allPage, "curPage":curPage,"data":users.data })
