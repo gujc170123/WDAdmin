@@ -1,12 +1,16 @@
 # -*- coding:utf-8 -*-
 import re
+import os
 import sys
 import json
+import time
 import pandas as pd
 import pymysql
 import functools
 from utils.logger import get_logger
 from celery import shared_task
+from django.conf import settings
+from workspace.util.redispool import redis_pool
 reload(sys)
 sys.setdefaultencoding('utf8')
 
@@ -24,7 +28,10 @@ def try_catch(func):
             return ret
         except Exception, e:
             logger.error(u"执行%s出错" % name)
-            json.dump(args[0], open("%s_args.json" % func.__name__, 'w'))
+            redis_pool.rpush(redis_key, time.time(), 2)
+            for arg in args:
+                data_file = os.path.join(settings.etl_data_dir, "%s_%s.json" % (func.__name__, arg))
+                json.dump(args[0], open(data_file, 'w'))
             raise e
 
     return inner
@@ -529,23 +536,27 @@ def db_create(res, assessID):
         'quota53': res["score"][u'合理归因'],
         'quota54': res["score"][u'灵活变通'],
     }
-    FactOEI.objects.create(**score_dict)
+    try:
+        FactOEI.objects.create(**score_dict)
+    except Exception, e:
+        logger.error(e)
 
 
 @shared_task
 def main(AssessID, SurveyID):
-    HOST = "rm-bp1i2yah9e5d27k26.mysql.rds.aliyuncs.com"
-    PORT = 3306
-    DB = "wdadmin_uat"
-    user = "appserver"
-    pwd = "AS@wdadmin"
-    sql_conn = MySqlConn(HOST, PORT, DB, user, pwd, )
-    DB_front = "wdfront_uat"
-    front_conn = MySqlConn(HOST, PORT, DB_front, user, pwd, )
-
     assess_id = project_id = AssessID  # 191
     survey_id = SurveyID  # 132
-    tag_id = 54  # 固定
+    tag_id = settings.tag_id
+
+    global redis_key
+    redis_key = 'etl_%s_%s' % (assess_id, survey_id)
+    redis_pool.rpush(redis_key, time.time(), 3)
+
+    sql_conn = MySqlConn(settings.HOST, settings.PORT, settings.DB_admin, settings.DB_user, settings.DB_pwd)
+    front_conn = MySqlConn(settings.HOST, settings.PORT, settings.DB_front, settings.DB_user, settings.DB_pwd)
+
+    redis_pool.rpush(redis_key, time.time(), 0)
+
     # Sort rows 3
     column_index_sr3, sort_rows_3 = line1(sql_conn, assess_id)
     column_index_sr2, sort_rows_2 = line2(sql_conn, assess_id)
@@ -560,10 +571,7 @@ def main(AssessID, SurveyID):
                                               how='left', on=["people_id"], name='merge_join_3_3')
 
     compute_all(merge_join_3_3, column_index_mj33, AssessID, name=u'计算各项维度分')
+    redis_pool.rpush(redis_key, time.time(), 1)
 
     sql_conn.close()
     front_conn.close()
-
-
-if __name__ == '__main__':
-    main(191, 132)
