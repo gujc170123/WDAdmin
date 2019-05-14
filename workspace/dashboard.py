@@ -6,11 +6,10 @@ from utils.response import general_json_response, ErrorCode
 from rest_framework import status
 from utils.logger import err_logger
 from workspace.models import FactOEI, WDIndex
-from wduser.models import BaseOrganization
+from wduser.models import BaseOrganization, BaseOrganizationPaths
 from .helper import OrganizationHelper
 from django.db.models import Avg
 from assessment.models import FullOrganization, AssessSurveyRelation
-from threading import Thread
 
 
 class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
@@ -577,7 +576,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
 
     def get_organization(self, org):
         organization = (
-            'AssessKey', 'organization1', 'organization2', 'organization3', 'organization4', 'organization5', 'organization6'
+            'organization1', 'organization2', 'organization3', 'organization4', 'organization5', 'organization6'
         )
         org_list = org.split('.')
         query_dict = dict(zip(organization, org_list))
@@ -626,13 +625,11 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             err_logger.error("get report data error, msg: %s " % e)
             return res, ErrorCode.INTERNAL_ERROR
 
-    def get_org_siblings(self, org_id, assess_id):
-        org = FullOrganization.objects.filter(organization=org_id, assess_id=assess_id).values_list(
-            "assess_id", "organization1", "organization2", "organization3", "organization4", "organization5", "organization6"
-        )
-        org = list(org)
-        if len(org) == 1 and len(org[0]) > 1:
-            org = [unicode(i) for i in org[0] if i]
+    def get_org_siblings(self, org_id):
+        parents = BaseOrganizationPaths.objects.filter(child_id=org_id).values_list('parent_id').order_by("-depth")
+        parent_id = [i[0] for i in parents]
+        orgs = BaseOrganization.objects.filter(id__in=parent_id).values_list("name")
+        org = [j[0] for j in orgs]
         return '.'.join(org)
 
     def get_assess_id(self, survey_id):
@@ -647,8 +644,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             return {}, ErrorCode.INVALID_INPUT
         from .util.etl_transfer import main
         try:
-            t = Thread(target=main, args=(assess_id, survey_id))
-            t.start()
+            main.delay(assess_id, survey_id)
         except Exception, e:
             err_logger.error("get report data error, msg: %s " % e)
             return {}, ErrorCode.INTERNAL_ERROR
@@ -666,9 +662,8 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         survey_id = self.request.data.get("survey", None)
 
         try:
-            self.assess_id = self.get_assess_id(147)
             if org_id:
-                org_id = self.get_org_siblings(org_id, self.assess_id)
+                org_id = self.get_org_siblings(org_id)
             # retrieve chart's data
             data, err_code = eval(self.api_mapping[api_id])(org_id=org_id,
                                                             profile_id=profile_id,

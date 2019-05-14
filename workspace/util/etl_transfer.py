@@ -6,7 +6,7 @@ import pandas as pd
 import pymysql
 import functools
 from utils.logger import get_logger
-
+from celery import shared_task
 reload(sys)
 sys.setdefaultencoding('utf8')
 
@@ -532,14 +532,15 @@ def db_create(res, assessID):
     FactOEI.objects.create(**score_dict)
 
 
+@shared_task
 def main(AssessID, SurveyID):
     HOST = "rm-bp1i2yah9e5d27k26.mysql.rds.aliyuncs.com"
     PORT = 3306
-    DB = "wdadmin"
-    user = "ad_wd"
-    pwd = "Admin@Weidu2018"
+    DB = "wdadmin_uat"
+    user = "appserver"
+    pwd = "AS@wdadmin"
     sql_conn = MySqlConn(HOST, PORT, DB, user, pwd, )
-    DB_front = "wdfront"
+    DB_front = "wdfront_uat"
     front_conn = MySqlConn(HOST, PORT, DB_front, user, pwd, )
 
     assess_id = project_id = AssessID  # 191
