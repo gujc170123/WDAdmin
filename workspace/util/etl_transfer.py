@@ -9,13 +9,16 @@ import pymysql
 import functools
 from utils.logger import get_logger
 from celery import shared_task
-from django.conf import settings
+from collections import OrderedDict
 from workspace.util.redispool import redis_pool
 reload(sys)
 sys.setdefaultencoding('utf8')
 
 logger = get_logger("sql_transfer")
-
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+etl_data_dir = os.path.join(os.path.dirname(BASE_DIR), 'etl_data')
+if not os.path.exists(etl_data_dir):
+    os.mkdir(etl_data_dir)
 
 def try_catch(func):
     @functools.wraps(func)
@@ -30,7 +33,7 @@ def try_catch(func):
             logger.error(u"执行%s出错" % name)
             redis_pool.rpush(redis_key, time.time(), 2)
             for arg in args:
-                data_file = os.path.join(settings.etl_data_dir, "%s_%s.json" % (func.__name__, arg))
+                data_file = os.path.join(etl_data_dir, "%s_%s.json" % (func.__name__, arg))
                 json.dump(args[0], open(data_file, 'w'))
             raise e
 
@@ -201,7 +204,7 @@ def statistics_base_info(rows, name):
 # 转置 and Select values 3   ** people_id, username,...
 @try_catch
 def transpose(lst, name):
-    res = {}
+    res = OrderedDict()
     target = [u"年龄", u"性别", u"岗位序列", u"司龄", u"层级"]
     global profile
     profile = []
@@ -546,14 +549,19 @@ def db_create(res, assessID):
 def main(AssessID, SurveyID):
     assess_id = project_id = AssessID  # 191
     survey_id = SurveyID  # 132
-    tag_id = settings.tag_id
-
+    tag_id = 54
+    HOST = "rm-bp1i2yah9e5d27k26.mysql.rds.aliyuncs.com"
+    PORT = 3306
+    DB_admin = "wdadmin_uat"
+    DB_front = "wdfront_uat"
+    DB_user = "appserver"
+    DB_pwd = "AS@wdadmin"
     global redis_key
     redis_key = 'etl_%s_%s' % (assess_id, survey_id)
     redis_pool.rpush(redis_key, time.time(), 3)
 
-    sql_conn = MySqlConn(settings.HOST, settings.PORT, settings.DB_admin, settings.DB_user, settings.DB_pwd)
-    front_conn = MySqlConn(settings.HOST, settings.PORT, settings.DB_front, settings.DB_user, settings.DB_pwd)
+    sql_conn = MySqlConn(HOST, PORT, DB_admin, DB_user, DB_pwd)
+    front_conn = MySqlConn(HOST, PORT, DB_front, DB_user, DB_pwd)
 
     redis_pool.rpush(redis_key, time.time(), 0)
 
