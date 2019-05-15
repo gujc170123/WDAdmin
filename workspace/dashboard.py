@@ -448,7 +448,21 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             res[i][u"组织卓越"] = round(scores["dimension6__avg"], 2)
             level = self.get_level(scores["model__avg"])
             res[i][u"区间"] = level
-        return res, ErrorCode.SUCCESS
+        types = [u"人数", u"区间", u"工作投入", u"生活愉悦", u"成长有力", u"人际和谐", u"领导激发", u"组织卓越"]
+        rest = self.transe_list(res, types)
+        if not profile:
+            t = [i.split('.')[-1] for i in rest[0]]
+            rest[0] = t
+        return rest, ErrorCode.SUCCESS
+
+    def transe_list(self, res, types):
+        title = []
+        score = [[] for i in types]
+        for key in res:
+            title.append(key)
+            for i in range(len(types)):
+                score[i].append(res[key][types[i]])
+        return [title, score]
 
     def get_level(self, score):
         if 80 <= score <= 100:
@@ -501,7 +515,9 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                    u"组织卓越": "dimension6", u"员工幸福能力": "dimension7"}
         for i in res_zip:
             res[i] = ret[res_zip[i]]
-        return res, ErrorCode.SUCCESS
+        types = [u"保持区", u"优势区", u"障碍区", u"潜力区", u"改进区", u"需提升", u"提升区"]
+        rest = self.transe_list(res, types)
+        return rest, ErrorCode.SUCCESS
 
     def get_business_index(self, **kwargs):
         res = {}
@@ -513,7 +529,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         # current department
         department = FactOEI.objects.complex_filter(query_dict)
         if not department.exists():
-            return res, ErrorCode.INVALID_INPUT
+            return res, ErrorCode.NOT_EXISTED
         # get result by profile
         if profile in profile_options:
             # all optional fields
@@ -555,7 +571,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         query_dict = self.get_organization(org)[0]
         org_query_set = WDIndex.objects.complex_filter(query_dict)
         if not org_query_set.exists():
-            return {}, ErrorCode.INVALID_INPUT
+            return {}, ErrorCode.NOT_EXISTED
         action_query_tuple = org_query_set.values_list("action_id").distinct()
         action_list = [i[0] for i in action_query_tuple]
         for act_id in action_list:
