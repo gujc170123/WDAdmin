@@ -5,7 +5,7 @@ from utils.views import AuthenticationExceptView, WdListCreateAPIView
 from utils.response import general_json_response, ErrorCode
 from rest_framework import status
 from utils.logger import err_logger
-from workspace.models import FactOEI, WDIndex
+from workspace.models import FactOEI, FactOEIFacet
 from wduser.models import BaseOrganization, BaseOrganizationPaths
 from .helper import OrganizationHelper
 from django.db.models import Avg
@@ -569,7 +569,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         if not org:
             return {}, ErrorCode.INVALID_INPUT
         query_dict = self.get_organization(org)[0]
-        org_query_set = WDIndex.objects.complex_filter(query_dict)
+        org_query_set = FactOEIFacet.objects.complex_filter(query_dict)
         if not org_query_set.exists():
             return {}, ErrorCode.NOT_EXISTED
         action_query_tuple = org_query_set.values_list("action_id").distinct()

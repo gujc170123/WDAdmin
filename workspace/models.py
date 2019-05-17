@@ -4,32 +4,33 @@ from django.db import models
 from utils.models import BaseModel
 
 
-class Dimension(models.Model):
-    title = models.CharField(max_length=32)
+class FactOEIFacet(models.Model):
+    assess_id = models.IntegerField(db_index=True)
+    user_id = models.IntegerField()
+    organization_id = models.IntegerField(db_index=True)
+    facet_id =  models.IntegerField(db_index=True)
+    score = models.DecimalField(max_digits=5, decimal_places=2)
 
+class DimensionOEI(BaseModel):
+    name = models.CharField(max_length=20,db_index=True)
+    description = models.CharField(max_length=200, null=True, blank=True)
 
-class Quote(models.Model):
-    title = models.CharField(max_length=32)
+class DimensionOEIPaths(models.Model):
+    """tree path close"""
+    assess_id = models.IntegerField(db_index=True,default=0)
+    parent = models.ForeignKey(DimensionOEI,related_name='parentnode', on_delete=models.CASCADE, null=True)
+    child = models.ForeignKey(DimensionOEI,related_name='childnode', on_delete=models.CASCADE, null=True)
+    depth = models.IntegerField(default=0)
 
-
-class Action(models.Model):
-    title = models.CharField(max_length=32)
-
-
-class WDIndex(models.Model):
-    AssessID = models.IntegerField(db_index=True)
-    DW_Person_ID = models.IntegerField(db_index=True)
-    organization1 = models.CharField(max_length=30, db_index=True, null=True, blank=True)
-    organization2 = models.CharField(max_length=30, db_index=True, null=True, blank=True)
-    organization3 = models.CharField(max_length=30, db_index=True, null=True, blank=True)
-    organization4 = models.CharField(max_length=30, db_index=True, null=True, blank=True)
-    organization5 = models.CharField(max_length=30, db_index=True, null=True, blank=True)
-    organization6 = models.CharField(max_length=30, db_index=True, null=True, blank=True)
-    dimension = models.ForeignKey("Dimension", null=True, blank=True)
-    quote = models.ForeignKey("Quote", null=True, blank=True)
-    action = models.ForeignKey("Action", null=True, blank=True)
-    score = models.IntegerField()
-
+class FactOEIFacetDistributions(models.Model):
+    assess_id = models.IntegerField(db_index=True)
+    organization_id = models.IntegerField(db_index=True)
+    facet_id =  models.IntegerField(db_index=True)
+    N = models.IntegerField(default=0)
+    Mean = models.DecimalField(max_digits=5, decimal_places=2)
+    STD = models.DecimalField(max_digits=5, decimal_places=2)
+    Min = models.DecimalField(max_digits=5, decimal_places=2)
+    Max = models.DecimalField(max_digits=5, decimal_places=2)
 
 class FactOEI(models.Model):
     AssessKey = models.IntegerField(db_index=True)

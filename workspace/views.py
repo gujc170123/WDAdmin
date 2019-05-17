@@ -19,8 +19,7 @@ from assessment.views import get_mima, get_random_char, get_active_code
 from wduser.models import AuthUser, BaseOrganization, People, EnterpriseAccount, Organization, \
                           BaseOrganizationPaths
 from assessment.models import AssessProject, AssessSurveyRelation, AssessProjectSurveyConfig, \
-                              AssessSurveyUserDistribute,AssessUser, AssessOrganization, \
-                              FullOrganization
+                              AssessSurveyUserDistribute,AssessUser, AssessOrganization
 from survey.models import Survey
 from utils.cache.cache_utils import FileStatusCache
 from rest_framework.views import APIView
@@ -517,8 +516,6 @@ class AssessOrganizationView(AuthenticationExceptView,WdCreateAPIView):
     
     def get(self, request, *args, **kwargs):
         """get organization tree of current user"""
-        assess =  request.GET.get('assess')
-        org =  request.GET.get('org')
         organizations = BaseOrganization.objects.raw("SELECT a.id,a.parent_id,a.name,if(c.id is null,False,True) is_active FROM wduser_baseorganization a\
                                                       INNER JOIN assessment_assessorganizationpathssnapshots b\
                                                       ON b.child_id=a.id\

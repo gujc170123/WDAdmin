@@ -108,16 +108,6 @@ class AssessSurveyOrganization(BaseModel):
     organization_id = models.BigIntegerField(u"组织ID", db_index=True)
     organization_code = models.CharField(u"组织标识码", max_length=20, db_index=True, null=True)
 
-class FullOrganization(BaseModel):
-    assess = models.ForeignKey(AssessProject)
-    organization = models.ForeignKey(Organization)
-    organization1 = models.BigIntegerField(db_index=True, null=True)
-    organization2 = models.BigIntegerField(db_index=True, null=True)
-    organization3 = models.BigIntegerField(db_index=True, null=True)
-    organization4 = models.BigIntegerField(db_index=True, null=True)
-    organization5 = models.BigIntegerField(db_index=True, null=True)
-    organization6 = models.BigIntegerField(db_index=True, null=True)
-
 class AssessUser(BaseModel):
     u"""项目所有用户
     @version:20180622 @summary:

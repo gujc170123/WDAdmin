@@ -356,7 +356,7 @@ class QuestionFacetTagRelation(BaseTagModel):
 
 
 class QuestionTagRelation(BaseTagModel):
-    pass
+    tag_value = models.CharField(u"标签值", db_index=True, max_length=128,null=True, blank=True)
 
 
 class QuestionOptionTagRelation(BaseTagModel):
