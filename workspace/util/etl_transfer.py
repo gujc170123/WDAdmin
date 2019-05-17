@@ -110,7 +110,7 @@ def question_tag(conn, t_id, name):
 # Row denormaliser
 @try_catch
 def row_denormaliser(value_lists, name):
-    res = {}
+    res = OrderedDict()
     for lst in value_lists:
         key = lst[0]
         tag = lst[2]
@@ -355,7 +355,7 @@ def compute_tag_group(person_score_list, col_index, fields, multiple):
 
 # 计算一个人的各项分数
 def compute_person(person_score_list, col_index):
-    res = {}
+    res = OrderedDict()
     fields_dict = {
         20: [
             'G1+G2', 'G3', 'G4', 'G5', 'G6+G7', 'G8',
@@ -417,7 +417,7 @@ def compute_person(person_score_list, col_index):
 
 # 按各项汇总
 def statistics(score):
-    statistic = {}
+    statistic = OrderedDict()
     res = {
         u"个人幸福能力": [u"自主定向", u"意义寻求", u"自我悦纳", u"自我拓展", u"情绪调节", u"专注投入",
                     u"亲和利他", u"包容差异", u"乐观积极", u"自信坚韧", u"合理归因", u"灵活变通"],
@@ -446,7 +446,7 @@ def statistics(score):
 @try_catch
 def compute_all(all_score, col_index, assessID, **kwargs):
     for person_score_list in all_score:
-        personal_res = {}
+        personal_res = OrderedDict()
         for i in xrange(16):
             personal_res[col_index[i]] = person_score_list[i]
         score = compute_person(person_score_list, col_index)

@@ -36,7 +36,9 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         # 团队幸福指数特征
         "wdindex": "self.WDindex",
         # 计算维度分，生成报告
-        "get_report": "self.get_report"
+        "get_report": "self.get_report",
+
+        "get_assess": "self.get_assess_id",
     }
 
     def get_temperature(self, **kwargs):
@@ -598,26 +600,27 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         )
         org_list = org.split('.')
         query_dict = dict(zip(organization, org_list))
+        query_dict.update({'AssessKey': self.assess_id})
         return query_dict, org_list
 
     def get_child_org(self, query_dict):
         len_query = len(query_dict)
-        if len_query == 1:
+        if len_query == 2:
             child_org = FactOEI.objects.complex_filter(query_dict).values_list("organization1",
                                                                                "organization2").distinct()
-        elif len_query == 2:
+        elif len_query == 3:
             child_org = FactOEI.objects.complex_filter(query_dict).values_list(
                 "organization1", "organization2", "organization3"
             ).distinct()
-        elif len_query == 3:
+        elif len_query == 4:
             child_org = FactOEI.objects.complex_filter(query_dict).values_list(
                 "organization1", "organization2", "organization3", "organization4"
             ).distinct()
-        elif len_query == 4:
+        elif len_query == 5:
             child_org = FactOEI.objects.complex_filter(query_dict).values_list(
                 "organization1", "organization2", "organization3", "organization4", "organization5"
             ).distinct()
-        elif len_query == 5:
+        elif len_query == 6:
             child_org = FactOEI.objects.complex_filter(query_dict).values_list(
                 "organization1", "organization2", "organization3", "organization4", "organization5", "organization6"
             ).distinct()
@@ -650,10 +653,29 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         org = [j[0] for j in orgs]
         return '.'.join(org)
 
-    def get_assess_id(self, survey_id):
-        assess_obj = AssessSurveyRelation.objects.filter(survey_id=survey_id).order_by("-survey_id").first()
-        assess_id = assess_obj.assess_id
-        return assess_id
+    def get_assess_id(self, **kwargs):
+        org_id = kwargs.get('org_id')
+        survey_id = kwargs.get('survey_id')
+        parents = BaseOrganizationPaths.objects.filter(child_id=org_id).values_list('parent_id').order_by("-depth")
+        if not parents.exists():
+            return {'msg': 'invalid input'}, ErrorCode.INVALID_INPUT
+        parent_id = [i[0] for i in parents]
+        base_org_objs = BaseOrganization.objects.filter(id__in=parent_id)
+        if not base_org_objs.exists():
+            return {'msg': 'not existed'}, ErrorCode.NOT_EXISTED
+        assess_list = []
+        for base_obj in base_org_objs:
+            assess_ids_tpl = base_obj.organization_set.values_list("assess_id")
+            if not assess_ids_tpl.exists():
+                return {'msg': 'not existed'}, ErrorCode.NOT_EXISTED
+            ass_ids = [oid[0] for oid in assess_ids_tpl]
+            assess_list.extend(ass_ids)
+
+        assess_obj = AssessSurveyRelation.objects.filter(survey_id=survey_id, assess_id__in=assess_list)
+        if not assess_obj.exists():
+            return {"msg": 'not existed'}, ErrorCode.NOT_EXISTED
+        assess_id = assess_obj.last().assess_id
+        return {'assess_id': assess_id}, ErrorCode.SUCCESS
 
     def get_report(self, **kwargs):
         assess_id = kwargs.get("assess_id")
@@ -686,17 +708,23 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         survey_id = self.request.data.get("survey", None)
 
         try:
-            if org_id:
-                org_id = self.get_org_siblings(org_id)
-            # retrieve chart's data
-            data, err_code = eval(self.api_mapping[api_id])(org_id=org_id,
-                                                            profile_id=profile_id,
-                                                            dimension_id=dimension_id,
-                                                            population_id=population_id,
-                                                            scale_id=scale_id,
-                                                            select_id=select_id,
-                                                            assess_id=assess_id,
-                                                            survey_id=survey_id,)
+            if api_id == 'get_assess':
+                data, err_code = eval(self.api_mapping[api_id])(
+                    org_id=org_id, survey_id=survey_id
+                )
+            else:
+                self.assess_id = assess_id
+                if org_id:
+                    org_id = self.get_org_siblings(org_id)
+                # retrieve chart's data
+                data, err_code = eval(self.api_mapping[api_id])(org_id=org_id,
+                                                                profile_id=profile_id,
+                                                                dimension_id=dimension_id,
+                                                                population_id=population_id,
+                                                                scale_id=scale_id,
+                                                                select_id=select_id,
+                                                                assess_id=assess_id,
+                                                                survey_id=survey_id,)
             if err_code != ErrorCode.SUCCESS:
                 return general_json_response(status.HTTP_200_OK, ErrorCode.INVALID_INPUT, {"msg": err_code})
             else:
