@@ -18,6 +18,7 @@ class ErrorCode(object):
     INTERNAL_ERROR = 40500
     NOT_EXISTED = 40404
     METHOD_NOT_ALLOWED = 40405
+    NONEMPTY_INPUT = 40406
 
     # user
     USER_CODE = 41000
@@ -196,7 +197,8 @@ class ErrorCode(object):
         PERMISSION_PHONE_EMAIL_NOT_SAME_USER: u"手机和邮箱对应两个不同帐号，请更换手机或邮箱",
 
         # workspace
-        WORKSPACE_ORG_MEMBEREXISTS: u"人员已存在，请在移除人员后再删除"
+        WORKSPACE_ORG_MEMBEREXISTS: u"人员已存在，请在移除人员后再删除",
+        NONEMPTY_INPUT: u"请填写必填信息"
     }
 
 

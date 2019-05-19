@@ -46,6 +46,7 @@ class WdAPIView(GenericAPIView):
     UPDATER_AUTO_REFRESH = True
     OWN_PERMISSION_CHECK = True
     POST_CHECK_REQUEST_PARAMETER = ()
+    POST_CHECK_NONEMPTYREQUEST_PARAMETER = ()
     GET_CHECK_REQUEST_PARAMETER = ()
     DELETE_CHECK_REQUEST_PARAMETER = ()
     GET_AUTH_PASS = False
@@ -85,6 +86,13 @@ class WdAPIView(GenericAPIView):
                 setattr(self, parameter, kwargs.get(parameter, None))
                 if getattr(self, parameter) is None:
                     return ErrorCode.INVALID_INPUT
+        return ErrorCode.SUCCESS
+
+    def post_check_nonempty_parameter(self, kwargs):
+        if self.POST_CHECK_NONEMPTYREQUEST_PARAMETER:
+            for parameter in self.POST_CHECK_NONEMPTYREQUEST_PARAMETER:
+                if not getattr(self, parameter):
+                    return ErrorCode.NONEMPTY_INPUT
         return ErrorCode.SUCCESS
 
     def get_check_parameter(self, kwargs):
@@ -130,6 +138,8 @@ class WdAPIView(GenericAPIView):
 
         if self.request.method == "POST" or self.request.method == "PUT":
             err_code = self.post_check_parameter(kwargs)
+            if not err_code:
+               err_code = self.post_check_nonempty_parameter(kwargs)
         if self.request.method == "GET":
             err_code = self.get_check_parameter(kwargs)
         if self.request.method == "DELETE":

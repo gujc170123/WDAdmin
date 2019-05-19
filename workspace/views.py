@@ -437,8 +437,9 @@ class AssessCreateView(AuthenticationExceptView, WdListCreateAPIView):
     model = AssessProject
     serializer_class = AssessSerializer
 
-    POST_CHECK_REQUEST_PARAMETER={"name","distribute_type","surveys","begin","end","enterprise"}
-    GET_CHECK_REQUEST_PARAMETER={"enterprise"}
+    POST_CHECK_REQUEST_PARAMETER = {"name","distribute_type","surveys","begin","end","enterprise"}
+    POST_CHECK_NONEMPTYREQUEST_PARAMETER = {"name","distribute_type","surveys","begin","end","enterprise"}
+    GET_CHECK_REQUEST_PARAMETER = {"enterprise"}
 
     SURVEY_DISC = 89
     SURVEY_OEI = 147
