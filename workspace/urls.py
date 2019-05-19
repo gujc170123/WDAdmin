@@ -5,12 +5,14 @@ from workspace.views import UserLoginView,OrganizationlRetrieveUpdateDestroyView
                             AssessCreateView,AssessDetailView,AssessSurveyRelationDistributeView,\
                             AssessProgressView,AssessProgressTotalView,UserImportExportView,\
                             AssessOrganizationView,OrganizationlUsersDestroyView,SurveyListView,\
-                            UserBatchDeleteView,AssessShareView,OrganizationListView
+                            UserBatchDeleteView,AssessShareView,OrganizationListView,LogoutView
 from workspace.dashboard import Dashboard
 
 urlpatterns = [
     #login
     url(r"^login/$", UserLoginView.as_view(), name="user-login"),
+    #logout
+    url(r"^logout/$", LogoutView.as_view(), name="user-logout"),    
     #list organizations
     url(r"^listorg/$", OrganizationListCreateView.as_view(), name="org-list"),
     #manage organizations
