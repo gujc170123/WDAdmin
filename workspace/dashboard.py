@@ -12,6 +12,8 @@ from django.db.models import Avg
 from assessment.models import AssessSurveyRelation
 from workspace.tasks import main
 from workspace.util.redispool import redis_pool
+from WeiDuAdmin.env import DATABASES
+import pymysql
 
 
 class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
@@ -36,7 +38,9 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         # 团队幸福指数特征
         "wdindex": "self.WDindex",
         # 计算维度分，生成报告
-        "get_report": "self.get_report"
+        "get_report": "self.get_report",
+
+        "get_assess": "self.get_assess_id",
     }
 
     def get_temperature(self, **kwargs):
@@ -121,6 +125,13 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                 res = res1 if scale == "scale1" else res2
                 for i in res:
                     res[i] = round(res[i] * 100 / total, 2)
+                high = res['r1c1'] + res['r1c2'] + res['r2c1'] + res['r2c2']
+                res['high'] = high
+                if scale == 'scale1':
+                    low = res["r6c6"] + res["r6c7"] + res["r7c6"] + res["r7c7"]
+                else:
+                    low = res["r4c6"] + res["r4c7"] + res["r5c6"] + res["r5c7"]
+                res['low'] = low
                 return res, ErrorCode.SUCCESS
             else:
                 return res, ErrorCode.NOT_EXISTED
@@ -564,33 +575,52 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         return res, ErrorCode.SUCCESS
 
     def WDindex(self, **kwargs):
-        res = {"high": [], "low": []}
         org = kwargs.get("org_id")
-        if not org:
-            return {}, ErrorCode.INVALID_INPUT
-        query_dict = self.get_organization(org)[0]
-        org_query_set = FactOEIFacet.objects.complex_filter(query_dict)
-        if not org_query_set.exists():
-            return {}, ErrorCode.NOT_EXISTED
-        action_query_tuple = org_query_set.values_list("action_id").distinct()
-        action_list = [i[0] for i in action_query_tuple]
-        for act_id in action_list:
-            action_querySet = org_query_set.filter(action_id=act_id)
-            dimension = action_querySet.first().dimension.title
-            quote = action_querySet.first().quote.title
-            action = action_querySet.first().action.title
-            score = action_querySet.aggregate(Avg("score"))
-            score = score["score__avg"]
-            if score >= 85:
-                res["high"].append([dimension, quote, action, round(score)])
-            if score < 65:
-                res["low"].append([dimension, quote, action, round(score)])
-        ret = {}
-        res["high"].sort(key=lambda x: x[3], reverse=True)
-        ret["high"] = res["high"][:5]
-        res["low"].sort(key=lambda x: x[3])
-        ret["low"] = res["low"][:5]
-        return ret, ErrorCode.SUCCESS
+        assess = kwargs.get("assess_id")
+        conn = pymysql.connect(
+            host=DATABASES["default"]["HOST"],
+            port=int(DATABASES["default"]["PORT"]),
+            database=DATABASES["default"]["NAME"],
+            user=DATABASES["default"]["USER"],
+            password=DATABASES["default"]["PASSWORD"]
+        )
+        cursor = conn.cursor()
+        sql = """
+            select m3.name,m3.description,m1.name,m2.name,c.mean
+            from 
+            workspace_factoeifacetdistributions c,
+            workspace_dimensionoeipaths d1,
+            workspace_dimensionoeipaths d2,
+            workspace_dimensionoei m1,
+            workspace_dimensionoei m2,
+            workspace_dimensionoei m3
+            where
+             c.facet_id=d1.child_id
+            and d1.depth=1
+            and d1.parent_id=d2.child_id
+            and d2.depth=1
+            and m1.id=d1.parent_id
+            and m2.id=d2.parent_id
+            and m3.id=c.facet_id
+            and c.organization_id=%s
+            and c.assess_id=%s
+            and d1.assess_id=0
+            and d2.assess_id=0
+            """
+        cursor.execute(sql, (org, assess))
+        res = cursor.fetchall()
+        if not res:
+            return {'msg': 'NOT FOUND'}, ErrorCode.NOT_EXISTED
+        order_res = list(res)
+        order_res.sort(key=lambda x: x[4], reverse=True)
+        advantage = order_res[:5]
+        disadvantage = order_res[-5:]
+        keys = ['gm', 'behavior', 'index', 'dimension', 'score']
+        adv_dic = [dict(zip(keys, adv)) for adv in advantage]
+        disadv_dic = [dict(zip(keys, disadv)) for disadv in disadvantage]
+        cursor.close()
+        conn.close()
+        return {'advantage': adv_dic, 'disadvantage': disadv_dic}, ErrorCode.SUCCESS
 
     def get_organization(self, org):
         organization = (
@@ -598,26 +628,27 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         )
         org_list = org.split('.')
         query_dict = dict(zip(organization, org_list))
+        query_dict.update({'AssessKey': self.assess_id})
         return query_dict, org_list
 
     def get_child_org(self, query_dict):
         len_query = len(query_dict)
-        if len_query == 1:
+        if len_query == 2:
             child_org = FactOEI.objects.complex_filter(query_dict).values_list("organization1",
                                                                                "organization2").distinct()
-        elif len_query == 2:
+        elif len_query == 3:
             child_org = FactOEI.objects.complex_filter(query_dict).values_list(
                 "organization1", "organization2", "organization3"
             ).distinct()
-        elif len_query == 3:
+        elif len_query == 4:
             child_org = FactOEI.objects.complex_filter(query_dict).values_list(
                 "organization1", "organization2", "organization3", "organization4"
             ).distinct()
-        elif len_query == 4:
+        elif len_query == 5:
             child_org = FactOEI.objects.complex_filter(query_dict).values_list(
                 "organization1", "organization2", "organization3", "organization4", "organization5"
             ).distinct()
-        elif len_query == 5:
+        elif len_query == 6:
             child_org = FactOEI.objects.complex_filter(query_dict).values_list(
                 "organization1", "organization2", "organization3", "organization4", "organization5", "organization6"
             ).distinct()
@@ -650,10 +681,29 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         org = [j[0] for j in orgs]
         return '.'.join(org)
 
-    def get_assess_id(self, survey_id):
-        assess_obj = AssessSurveyRelation.objects.filter(survey_id=survey_id).order_by("-survey_id").first()
-        assess_id = assess_obj.assess_id
-        return assess_id
+    def get_assess_id(self, **kwargs):
+        org_id = kwargs.get('org_id')
+        survey_id = kwargs.get('survey_id')
+        parents = BaseOrganizationPaths.objects.filter(child_id=org_id).values_list('parent_id').order_by("-depth")
+        if not parents.exists():
+            return {'msg': 'invalid input'}, ErrorCode.INVALID_INPUT
+        parent_id = [i[0] for i in parents]
+        base_org_objs = BaseOrganization.objects.filter(id__in=parent_id)
+        if not base_org_objs.exists():
+            return {'msg': 'not existed'}, ErrorCode.NOT_EXISTED
+        assess_list = []
+        for base_obj in base_org_objs:
+            assess_ids_tpl = base_obj.organization_set.values_list("assess_id")
+            if not assess_ids_tpl.exists():
+                return {'msg': 'not existed'}, ErrorCode.NOT_EXISTED
+            ass_ids = [oid[0] for oid in assess_ids_tpl]
+            assess_list.extend(ass_ids)
+
+        assess_obj = AssessSurveyRelation.objects.filter(survey_id=survey_id, assess_id__in=assess_list)
+        if not assess_obj.exists():
+            return {"msg": 'not existed'}, ErrorCode.NOT_EXISTED
+        assess_id = assess_obj.last().assess_id
+        return {'assess_id': assess_id}, ErrorCode.SUCCESS
 
     def get_report(self, **kwargs):
         assess_id = kwargs.get("assess_id")
@@ -686,17 +736,27 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         survey_id = self.request.data.get("survey", None)
 
         try:
-            if org_id:
-                org_id = self.get_org_siblings(org_id)
-            # retrieve chart's data
-            data, err_code = eval(self.api_mapping[api_id])(org_id=org_id,
-                                                            profile_id=profile_id,
-                                                            dimension_id=dimension_id,
-                                                            population_id=population_id,
-                                                            scale_id=scale_id,
-                                                            select_id=select_id,
-                                                            assess_id=assess_id,
-                                                            survey_id=survey_id,)
+            if api_id == 'get_assess':
+                data, err_code = eval(self.api_mapping[api_id])(
+                    org_id=org_id, survey_id=survey_id
+                )
+            elif api_id == 'wdindex':
+                data, err_code = eval(self.api_mapping[api_id])(
+                    org_id=org_id, assess_id=assess_id
+                )
+            else:
+                self.assess_id = assess_id
+                if org_id:
+                    org_id = self.get_org_siblings(org_id)
+                # retrieve chart's data
+                data, err_code = eval(self.api_mapping[api_id])(org_id=org_id,
+                                                                profile_id=profile_id,
+                                                                dimension_id=dimension_id,
+                                                                population_id=population_id,
+                                                                scale_id=scale_id,
+                                                                select_id=select_id,
+                                                                assess_id=assess_id,
+                                                                survey_id=survey_id,)
             if err_code != ErrorCode.SUCCESS:
                 return general_json_response(status.HTTP_200_OK, ErrorCode.INVALID_INPUT, {"msg": err_code})
             else:
