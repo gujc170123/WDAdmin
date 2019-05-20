@@ -4,6 +4,7 @@ import base64
 from urllib import quote
 from django.db.models import F,Q
 from django.contrib.auth import logout
+from django.http import QueryDict
 from rest_framework import status
 from utils.views import AuthenticationExceptView, WdCreateAPIView, WdRetrieveUpdateAPIView ,\
                         WdDestroyAPIView, WdListCreateAPIView
@@ -188,7 +189,7 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
     model = AuthUser
     serializer_class = UserSerializer
 
-    def put(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         '''update user's profile, password ,email ,phone and organization'''
         user = self.get_object()
 
@@ -206,7 +207,7 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
         sequence = request.data.get('sequence', None)
         marriage = request.data.get('marriage', None)
         is_staff = request.data.get('is_staff', True)
-        role_type = request.data.get('role_type', AuthUser.ROLE_NORMAL)        
+        role_type = request.data.get('role_type', AuthUser.ROLE_NORMAL)
 
         if account_name and (account_name != user.account_name):
             if AuthUser.objects.filter(organization_id=organization_id,

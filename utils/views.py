@@ -255,7 +255,7 @@ class WdAPIView(GenericAPIView):
             response = handler(request, *args, **kwargs)
         except Exception as exc:
             traceback.print_exc()
-            err_logger.warning("dispatch error, msg: %s" % exc.message)
+            err_logger.warning("dispatch error, msg: %s" % exc)
             if self.CUSTOM_TEMPLATE_VIEW:
                 self.template_name = self.default_template_name
                 return HttpResponseRedirect(self.template_name)

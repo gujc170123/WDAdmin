@@ -25,7 +25,7 @@ urlpatterns = [
     url(r"^user/$", UserListCreateView.as_view(),name="user-list-create"),
     #import user
     url(r"^userimport/$", UserImportExportView.as_view(),name="user-import"),    
-    #put/get/del user
+    #update/get/del user
     url(r"^user/(?P<pk>\d+)/$", UserDetailView.as_view(),name='user-detail'),
     #create/list assessment
     url(r"^assess/$", AssessCreateView.as_view(),name='assess-list-create'),
