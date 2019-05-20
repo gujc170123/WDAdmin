@@ -85,7 +85,7 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
         email = request.data.get('email', None)
         nickname = request.data.get('nickname', None)
         account_name = request.data.get('account_name', None)
-        organization_id = request.data.get('department', None)
+        organization_id = request.data.get('organization', None)
         hiredate = request.data.get('hiredate', None)
         rank = request.data.get('rank', None)
         birthday = request.data.get('birthday', None)
@@ -199,7 +199,7 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
         nickname = request.data.get('nickname', None)
         pwd = request.data.get('password', None)
         password = get_mima(pwd) if pwd else None
-        organization_id = request.data.get('department', None)
+        organization_id = request.data.get('organization', None)
         hiredate = request.data.get('hiredate', None)
         rank = request.data.get('rank', None)
         birthday = request.data.get('birthday', None)
