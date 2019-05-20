@@ -196,7 +196,7 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
         phone = request.data.get('phone', None)
         email = request.data.get('email', None)
         account_name = request.data.get('account_name', None)
-        nickname = request.data.get('username', None)
+        nickname = request.data.get('nickname', None)
         pwd = request.data.get('password', None)
         password = get_mima(pwd) if pwd else None
         organization_id = request.data.get('department', None)
