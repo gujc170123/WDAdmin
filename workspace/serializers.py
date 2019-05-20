@@ -49,7 +49,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ('id', 'nickname','role_type','phone','email','sequence',
                   'gender','rank','marriage','organization','enteprise',
                   'sequence_name','gender_name','rank_name','marriage_name',
-                  'organization_name')
+                  'organization_name','birthday','hiredate')
 
 class AssessSerializer(serializers.ModelSerializer):
     '''Assessment Serializer'''
