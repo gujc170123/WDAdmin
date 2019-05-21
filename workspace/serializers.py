@@ -37,10 +37,10 @@ class BaseOrganizationSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     """user serializer"""
-    sequence_name = serializers.CharField(source='sequence.name', read_only=True)
-    gender_name = serializers.CharField(source='gender.name', read_only=True)
-    rank_name = serializers.CharField(source='rank.name', read_only=True)
-    marriage_name = serializers.CharField(source='marriage.name', read_only=True)
+    sequence_name = serializers.CharField(source='Sequence.value', read_only=True)
+    gender_name = serializers.CharField(source='gender.value', read_only=True)
+    rank_name = serializers.CharField(source='rank.value', read_only=True)
+    marriage_name = serializers.CharField(source='marriage.value', read_only=True)
     organization_name = serializers.CharField(source='organization.name', read_only=True)
     enteprise = serializers.IntegerField(source='organization.enterprise_id', read_only=True)
 
