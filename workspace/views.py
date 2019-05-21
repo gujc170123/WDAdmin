@@ -337,7 +337,7 @@ class OrganizationListCreateView(AuthenticationExceptView, WdCreateAPIView):
     
     def get(self, request, *args, **kwargs):
         """get organization tree of current user"""
-        organizations = BaseOrganization.objects.filter_active(childorg__parent_id=self.organization_id).order_by('childorg__depth').\
+        organizations = BaseOrganization.objects.filter_active(childorg__parent_id=self.organization_id).order_by('childorg__depth','id').\
                                                                 values('id','name','parent_id').all()
                                                             
         nodes = {}

@@ -33,10 +33,7 @@ class BaseOrganization(BaseModel):
 
     def _closure_deletelink(self):
         """Remove incorrect links from the closure tree."""
-        childen = BaseOrganizationPaths.objects.filter(parent_id=self.pk).values_list('child_id', flat=True)
-        BaseOrganizationPaths.objects.filter(
-            child_id__in= childen
-        ).delete()
+        BaseOrganizationPaths.objects.filter(parent_id=self.pk).delete()
 
     def _closure_createlink(self):
         """Create a link in the closure tree."""
