@@ -69,12 +69,12 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         try:
             query_dict = self.get_organization(org)[0]
             res2 = FactOEI.objects.complex_filter(query_dict).aggregate(
-                Avg("model"), Avg("scale2"), Avg("dimension1"), Avg("dimension2"), Avg("dimension3"),
+                Avg("model"), Avg("quota41"), Avg("dimension1"), Avg("dimension2"), Avg("dimension3"),
                 Avg("dimension4"), Avg("dimension5"), Avg("dimension6"), Avg("dimension7")
             )
             if res2:
                 res[u"企业幸福指数"] = round(res2["model__avg"])
-                res[u"压力指数"] = round(res2["scale2__avg"])
+                res[u"压力指数"] = round(res2["quota41__avg"])
                 res[u"工作投入"] = round(res2["dimension1__avg"])
                 res[u"生活愉悦"] = round(res2["dimension2__avg"])
                 res[u"成长有力"] = round(res2["dimension3__avg"])
@@ -331,7 +331,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         dimension = kwargs.get("dimension_id")
         select = kwargs.get("select_id")
         if not org:
-            return res, ErrorCode.INVALID_INPUT
+            return res, ErrorCode.NOT_EXISTED
         try:
             query_dict, org_list = self.get_organization(org)
             if dimension:
@@ -346,7 +346,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                 }
                 company = FactOEI.objects.complex_filter(query_dict).aggregate(Avg(dimension_dict[dimension]))
             else:
-                company = FactOEI.objects.complex_filter(query_dict).aggregate(Avg("model"), Avg("scale2"))
+                company = FactOEI.objects.complex_filter(query_dict).aggregate(Avg("model"), Avg("quota41"))
             res[org_list[-1]] = company
             # get child department
             child_org = self.get_child_org(query_dict)
@@ -372,7 +372,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                             Avg(dimension_dict[dimension]))
                     else:
                         child_depart = FactOEI.objects.complex_filter(child_query_dict).aggregate(Avg("model"),
-                                                                                                  Avg("scale2"))
+                                                                                                  Avg("quota41"))
                     res[child_org_list[-1]] = child_depart
 
             if res:
@@ -380,7 +380,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                 for dic in res:
                     if dic == org_list[-1]:
                         if not dimension:
-                            head = {dic: [round(res[dic]["model__avg"]), round(res[dic]["scale2__avg"])]}
+                            head = {dic: [round(res[dic]["model__avg"]), round(res[dic]["quota41__avg"])]}
                         else:
                             head = {dic: round(tuple(res[dic].values())[0])}
 
@@ -388,7 +388,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                         name.append(dic)
                         if not dimension:
                             score.append(round(res[dic]["model__avg"]))
-                            score2.append(round(res[dic]["scale2__avg"]))
+                            score2.append(round(res[dic]["quota41__avg"]))
                         else:
                             score.append(round(tuple(res[dic].values())[0]))
                 if dimension:
@@ -424,7 +424,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         query_dict, org_list = self.get_organization(org)
         company_obj = FactOEI.objects.complex_filter(query_dict)
         if not company_obj.exists():
-            return {}, ErrorCode.INVALID_INPUT
+            return {}, ErrorCode.NOT_EXISTED
         res = {}
         if profile in profile_dict:
             types = company_obj.values_list(profile_dict[profile]).distinct()
@@ -497,8 +497,8 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         query_dict = self.get_organization(org)[0]
         company_query_set = FactOEI.objects.complex_filter(query_dict)
         if not company_query_set.exists():
-            return {}, ErrorCode.INVALID_INPUT
-        target = ["model", "scale2", "dimension1", "dimension2", "dimension3", "dimension4",
+            return {}, ErrorCode.NOT_EXISTED
+        target = ["model", "quota41", "dimension1", "dimension2", "dimension3", "dimension4",
                   "dimension5", "dimension6", "dimension7"]
         ret = {}
         for i in target:
@@ -521,7 +521,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                     ret[i][j] = round(len(ret[i][j]) * 100 / len(ret[i]["total"]))
             del ret[i]["total"]
         res = {}
-        res_zip = {u"企业幸福指数": "model", u"压力指数": "scale2", u"工作投入": "dimension1", u"生活愉悦": "dimension2",
+        res_zip = {u"企业幸福指数": "model", u"压力指数": "quota41", u"工作投入": "dimension1", u"生活愉悦": "dimension2",
                    u"成长有力": "dimension3", u"人际和谐": "dimension4", u"领导激发": "dimension5",
                    u"组织卓越": "dimension6", u"员工幸福能力": "dimension7"}
         for i in res_zip:
@@ -686,7 +686,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         survey_id = kwargs.get('survey_id')
         parents = BaseOrganizationPaths.objects.filter(child_id=org_id).values_list('parent_id').order_by("-depth")
         if not parents.exists():
-            return {'msg': 'invalid input'}, ErrorCode.INVALID_INPUT
+            return {'msg': 'NOT FOUND'}, ErrorCode.NOT_EXISTED
         parent_id = [i[0] for i in parents]
         base_org_objs = BaseOrganization.objects.filter(id__in=parent_id)
         if not base_org_objs.exists():
@@ -709,7 +709,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         assess_id = kwargs.get("assess_id")
         survey_id = kwargs.get("survey_id")
         if not assess_id or not survey_id:
-            return {}, ErrorCode.INVALID_INPUT
+            return {}, ErrorCode.NOT_EXISTED
         redis_key = 'etl_%s_%s' % (assess_id, survey_id)
         redis_value = redis_pool.lrange(redis_key, -2, -1)
         if redis_value and redis_value[-1] == '0':

@@ -37,7 +37,7 @@ class BaseOrganizationSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     """user serializer"""
-    sequence_name = serializers.CharField(source='Sequence.value', read_only=True)
+    sequence_name = serializers.CharField(source='sequence.value', read_only=True)
     gender_name = serializers.CharField(source='gender.value', read_only=True)
     rank_name = serializers.CharField(source='rank.value', read_only=True)
     marriage_name = serializers.CharField(source='marriage.value', read_only=True)
