@@ -24,16 +24,16 @@ def userimport_task(file_data, file_name, enterprise_id ,total,delimiter):
               u"是否为部门主管":[u"是",u"否"],u"婚姻":[u"已婚",u"单身"]}
     typedict = {u"邮箱":np.str,u"工号":np.str,u"手机号":np.str,u"姓名":np.str,u"出生年月":np.str,u"性别":np.str,
                 u"所属部门":np.str,u"是否为部门主管":np.str,u"层级":np.str,u"入职时间":np.str,u"序列":np.str,u"婚姻":np.str} 
-    res,data = read_file(filepath,targetcols,typedict,mustcolsset,mustcols,keycols,codedict)
+    res,data,error = read_file(filepath,targetcols,typedict,mustcolsset,mustcols,keycols,codedict)
     if not res:
-        return False
+        return False,error
 
-    res,datatoadd = preparedata(data,enterprise_id,delimiter)
+    res,datatoadd,error = preparedata(data,enterprise_id,delimiter)
 
     if not res:
-        return False
+        return False,error
     importdata(datatoadd)
-    return True
+    return True,error
 
 def preparedata(data,enterprise_id,delimiter):
     #get organization list
@@ -41,26 +41,26 @@ def preparedata(data,enterprise_id,delimiter):
     orgmerge = pandas.merge(data,dataorganizations,left_on=u'所属部门',right_on='orgname',how='left')
     invalidorg = orgmerge[orgmerge['orgname'].isnull()]['indice'].tolist()
     if len(invalidorg):
-        return False,[]
+        return False,[],u"部分人员的所属部门填写不正确"
     #get original users info
     datausers = pandas.read_sql("select a.account_name,a.phone,a.email,b.enterprise_id from wduser_authuser a, wduser_baseorganization b \
                                 where a.organization_id=b.id and a.is_active=true and b.is_active=true \
                                 and b.enterprise_id=%s ",connection,params=[enterprise_id])
     duplicated = pandas.merge(data,datausers,left_on=u'工号',right_on='account_name')['indice'].tolist()
     if len(duplicated):
-        return False,[]
+        return False,[],u"导入人员信息中的工号已在系统中登记"
     duplicated = pandas.merge(data,datausers,left_on=u'邮箱',right_on='email')['indice'].tolist()
     if len(duplicated):
-        return False,[]
+        return False,[],u"导入人员信息中的邮箱已在系统中登记"
     duplicated = pandas.merge(data,datausers,left_on=u'手机号',right_on='phone')['indice'].tolist()
     if len(duplicated):
-        return False,[]
+        return False,[],u"导入人员信息中的手机号已在系统中登记"
     
     codedict = {u"性别":pandas.DataFrame({u"性别":[u"男",u"女"],'gender':[1,2]}),
                  u"层级":pandas.DataFrame({u"层级":[u"高级",u"中级",u"初级"],'rank':[3,2,1]}),
                  u"序列":pandas.DataFrame({u"序列":[u"管理",u"职能",u"技术",u"营销",u"操作"],'sequence':[1,2,3,4,5]}),
                  u"是否为部门主管":pandas.DataFrame({u"是否为部门主管":[u"是",u"否"],'role_type':[200,100]}),
-                 u"是否为部门主管":pandas.DataFrame({u"婚姻":[u"已婚",u"单身"],'marriage':[1,2]})}
+                 u"婚姻":pandas.DataFrame({u"婚姻":[u"已婚",u"单身"],'marriage':[1,2]})}
     res = orgmerge
     for k,v in  codedict.items():
         res = pandas.merge(res,codedict[k],left_on=k,right_on=k,how='left')
@@ -68,39 +68,51 @@ def preparedata(data,enterprise_id,delimiter):
     for index, row in res.iterrows():
         if not pandas.isnull(row[u"手机号"]):
             if not RegularUtils.phone_check(row[u"手机号"]):
-                return False,[]
+                return False,[],u"导入人员信息中的手机号格式不正确"
         if not pandas.isnull(row[u"邮箱"]):
             if not RegularUtils.email_check(row[u"邮箱"]):
-                return False,[]
+                return False,[],u"导入人员信息中的邮箱格式不正确"
         if not pandas.isnull(row[u"出生年月"]):
             if not is_valid_date(row[u"出生年月"]):
-                return False,[]
+                return False,[],u"导入人员信息中的出身年月格式不正确（格式y-m-d）"
         if not pandas.isnull(row[u"入职时间"]):
             if not is_valid_date(row[u"入职时间"]):
-                return False,[]
-    return True,res
+                return False,[],u"导入人员信息中的入职时间格式不正确（格式y-m-d）"
+    return True,res,""
 
 
-def importdata(data):  
+def importdata(data):
+    UserList = []
+    batchsize = 5000
+    register = 0
     for index, row in data.iterrows():
-        user = CreateNewUser(
+        UserList.append(
+            AuthUser(
                     username=convertna2none(row[u"姓名"]),
                     account_name=convertna2none(row[u"工号"]),
                     nickname=convertna2none(row[u"姓名"]),
-                    pwd='123456',
+                    password=get_mima('123456'),
                     phone=convertna2none(row[u"手机号"]),
                     email=convertna2none(row[u"邮箱"]),
                     is_superuser=False,
                     role_type=convertna2none(row['role_type']),
                     is_staff=True,
-                    sequence=convertna2none(row['sequence']),
-                    gender=convertna2none(row['gender']),
+                    sequence_id=convertna2none(row['sequence']),
+                    gender_id=convertna2none(row['gender']),
                     birthday=convertna2none(row[u"出生年月"]),
-                    rank=convertna2none(row['rank']),
+                    rank_id=convertna2none(row['rank']),
                     hiredate=convertna2none(row[u"入职时间"]),
-                    marriage=convertna2none(row['marriage']),
+                    marriage_id=convertna2none(row['marriage']),
                     organization_id=row['id']
+            )
         )
+        register += 1
+        if register == batchsize:
+            AuthUser.objects.bulk_create(UserList,batchsize)
+            del UserList [:]
+            register = 0
+    if register > 0:
+        AuthUser.objects.bulk_create(UserList)
 
 def CreateNewUser(username,account_name,nickname,pwd,phone,email,is_superuser,
                     role_type,is_staff,sequence,gender,birthday,rank,hiredate,marriage,

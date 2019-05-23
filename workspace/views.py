@@ -170,7 +170,7 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
         if keyword:
             alluser = alluser.filter(Q(nickname__contains=keyword) | Q(phone__contains=keyword) | Q(email__contains=keyword))
         
-        alluser = alluser.all().order_by('organization__id')
+        alluser = alluser.all().order_by('organization__id','id')
         allUserCounts =alluser.count()
         if allUserCounts>0:
             if endPos>allUserCounts:
@@ -319,13 +319,13 @@ class UserImportExportView(AuthenticationExceptView,WdCreateAPIView):
             "data_msg": u'请确认上传文件类型是否为csv'
         })
 
-        result = userimport_task(filecsv,filename,enterprise_id,4,',')
+        result,errdata = userimport_task(filecsv,filename,enterprise_id,4,',')
         
         if result:
-            return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {})
+            return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
         else:
             return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, {
-                'err_code': result
+                'err_code': errdata
             })
 
 class OrganizationListCreateView(AuthenticationExceptView, WdCreateAPIView):
