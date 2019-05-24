@@ -14,6 +14,7 @@ from workspace.tasks import main
 from workspace.util.redispool import redis_pool
 from WeiDuAdmin.env import DATABASES
 import pymysql
+from django.shortcuts import HttpResponse
 
 
 class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
@@ -764,3 +765,14 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         except Exception, e:
             err_logger.error("dashboard error, msg is %s" % e)
             return general_json_response(status.HTTP_200_OK, ErrorCode.INTERNAL_ERROR, {"msg": "%s" % e})
+
+
+def redisStatus(request):
+    assess = request.GET.get("assess")
+    survey = request.GET.get("survey")
+    redisKey = 'etl_%s_%s' % (assess, survey)
+    redis_value = redis_pool.lrange(redisKey, -2, -1)
+    if not redis_value:
+        return HttpResponse('4')
+    stat = redis_value[-1] if redis_value[-1] != 3 else 0
+    return HttpResponse(stat)
