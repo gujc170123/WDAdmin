@@ -1406,8 +1406,184 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
         # 行为风格修改
         "NewBehavioralStyle": "self.get_xxwfg_value",
         # maanshan能力测评
-        "PECMAANSHAN": 'self.get_pec_maanshan',     
+        "PECMAANSHAN": 'self.get_pec_maanshan',
+        # 职业定向(new)
+        "CO2019": 'self.getCO2019',
     }
+
+    def getCO2019(self, personal_result_id):
+
+        list_quotas = [u"技术/职能型",u"管理型",u"自主/独立型",u"安全/稳定型",u"创业型",u"服务型",u"挑战型",u"生活型"]
+        dictquota_score = {u"技术/职能型":0,u"管理型":0.,u"自主/独立型":0,u"安全/稳定型":0,u"创业型":0,u"服务型":0,u"挑战型":0,u"生活型":0,}
+        dictquota_desc = \
+            {u"技术/职能型":
+                {u"基本特征":
+                    [u"技术/职能型职业锚，意味着您追求在技术/职能领域的成长和技能的不断提高，希望在工作中实践并应用这种技术/职能。您对自己的认可来自于您的专业水平，您喜欢面对专业领域内的挑战。",
+                     u"作为技术/职能型职业锚的一员，您强调实际技术/功能等业务工作，注重个人在专业技能领域的进一步发展，希望有机会实践自己的技术才能，享受作为某方面专家带来的满足、愉悦。您通常不愿意选择一般管理型的工作，因为这是一种您难以施展自己技术才能的工种，也意味着您放弃在技术功能领域的成就。",
+                     u"技术/职能型的您可能出现在许多领域，例如某些金融分析师专注于解决复杂的投资问题，一个工程师发现他非常擅长设计，一个销售员发现他独特的销售才能。"],
+                 u"工作类型":u"您在职业选择时主要考虑工作的内容，即工作是否可以带来自己在专业方面的成功和技能的不断提高。喜欢领域内的挑战和独立开展工作，抵制难以施展自己技术才能的工作。",
+                 u"薪酬福利":u"您希望薪酬福利可以反映技术、专业水平的高低。",
+                 u"工作晋升":u"您看重技术或专业等级，而非职位的晋升。",
+                 u"最佳认可方式":u"对您而言，来自本专业领域专家的肯定和认可，以及专业地位的提高，是最有效的激励方式。"},
+             u"管理型":
+                {u"基本特征":
+                    [u"管理型职业锚，意味着您追求并致力于职位晋升，倾心于全面管理，独立负责一个单元，可以跨部门整合其他人的努力成果。管理型的您希望承担整体的责任，并将公司的成功与否看作衡量自己工作的标准。具体的技术/职能工作仅仅被看作是您通向全面管理层的必经之路。"
+                     u"管理型职业锚的您强调实际的业务管理与控制，注重个人在一般管理与领导领域的进一步发展，希望有机会和时间展示自己的管理才能；管理型的您不愿意放弃任何在组织内获得更高职位的机会，您也愿意承担您所管理组织或单位的业绩与输出。"
+                     u"如果您目前还处于技术或者职能工作的领域，您会把这看作是学习的必经过程，也愿意接受本功能组织的管理岗位，但您更愿意接受一般性管理的职位。希望能够依靠个人的分析能力、人际关系、团队领导能力、情商、以及负责任的态度，为本组织或者项目的成功贡献力量。"],
+                 u"工作类型":u"管理型职业锚的您希望在工作中能够学习如何行使多项职责；如何综合利用来自多种渠道的信息；如何管理人数不断增加的员工队伍；以及如何运用人际交流技巧。",
+                 u"薪酬福利":u"管理型职业锚的您认为薪酬是由所处职位所决定的，因此，管理型的您在管理职位上的追求，也代表了您对于高薪酬福利的期望。",
+                 u"工作晋升":u"您拥护组织传统的职业发展道路，追求并致力于工作晋升，倾心于全面管理，独立负责一个部分，可以跨部门整合其他人的努力成果。管理型的您想去承担整体的责任，并将公司的成功与否看成自己的工作。",
+                 u"最佳认可方式":u"您希望通过获得更高的薪水以及职位的晋升来得到认可，如果让您去管理大项目，或者邀请出席重要会议，或者派您去参加某些研讨会，使您得以提升自身管理技能，也是不错的认可方式。"},
+             u"自主/独立型":
+                {u"基本特征":
+                    [u"自主/独立型职业锚，意味着您不会放弃任何可以以您的意志或方法定义您职业生涯发展的机会。您追求自主和独立，不愿意受别人约束，也不愿受程序、工作时间、着装方式等规范的制约。不管工作内容是什么，自主/独立型的您都希望能在工作过程中用自己的方式、工作习惯、时间进度和自己的标准来完成工作。"
+                     u"为了追求自主、独立，您宁愿放弃安逸的工作环境或优厚的薪金待遇。"
+                     u"自主/独立型的您，倾向于从事极具自由的职业，比如自由顾问、教授、独立的商务人士、销售员等等。如果您被局限在一个组织内，您希望职位能够具有灵活与独立性；您有时也会因为希望保留自主的权力而放弃晋升与发展的机会。"],
+                 u"工作类型":u"您喜欢专业领域内职责描述清晰、时间明确的工作。对您而言，承包式或项目式工作，全职、兼职或是临时性的工作都是可以接受的。另外您倾向于为“有明确工作目标，却不限制工作完成方式的组织”效力。您能接受组织强加的工作目标，但希望按照自己喜欢的方式完成工作；",
+                 u"薪酬福利":u"您喜欢基于工作绩效的工资、奖金，希望能当即付清；",
+                 u"工作晋升":u"您希望基于自己以往的成就获得晋升，希望从新的岗位上获取更多的独立和自主权。如果新的职位赋予了您更高的头衔和更多责任，却剥夺了您自由工作的空间，您会感到难以接受；",
+                 u"最佳认可方式":u"您最喜欢直接的表扬或认可，勋章、奖品、证书等奖励方式比晋升、获得头衔甚至是金钱更具吸引力。对您而言，如果能在工作上获取更大的自主空间，这将是最有效的激励方式。"},
+             u"安全/稳定型":
+                {u"基本特征":
+                    [u"安全/稳定型职业锚的您主要关注点是争取一份稳定的职业，这种职业锚也显示了对于财务安全性（比如养老金、公积金或医疗保险）、雇佣安全性以及地区选择的重视。"
+                     u"作为安全/稳定型中的一员，尽管您也可能因为才干获得在组织内的提升，但是您可能不太在意工作的内容或者是否能够得到职位的提升。"
+                     u"安全/稳定型的您关注于围绕着安全与稳定构建全部的自我形象。安全/稳定型的您只有在已经获得职位的成功以及确定的稳定性后才能够显得放松。"],
+                 u"工作类型":u"您希望获得一份长期的稳定职业，这些职业能够提供有保障的工作、体面的收入以及可靠的未来生活，这种可靠的未来生活通常是由良好的退休计划和较高的退休金来保证的，有可能的话，您会优先选择政府机关，医疗机构，教育行业，大型的外资或国有企业。",
+                 u"薪资福利":u"您不追求一份令人羡慕的薪金，而更在意稳定长期的财务安全性。对于您来说，除了固定的薪资，您还在意福利的结构，包括各种保险，公积金，休假，固定投资等等。",
+                 u"工作晋升":u"对于您来说，追求更为优越的职业或工作的晋升，如果意味着将要在您的生活中注入一种不稳定或保障较差的因素的话，那么您会觉得在一个熟悉的环境中维持一种稳定的、有保障的职业对您来说是更为重要的。",
+                 u"最佳认可方式":u"来自组织对于您长期贡献与经验资历的表彰是组织对您最佳的认可方式；而一份长期的或无固定期限的合同，或者组织提供的完善的家庭保障计划，将是对您最好的激励方式。"},
+             u"创业型":
+                {u"基本特征":
+                    [u"创业型职业锚，意味着您不会放弃任何可能创建属于您自己的团队或组织或企业的机会。您愿意基于自己的能力与意愿，承担风险并克服障碍。您愿意向其他人证明您能够依靠自己的努力创建一个企业。您可能为了学习与寻找机会而被雇佣，但是您一旦找到机会便会抽身而出。"
+                     u"您愿意去证明您创建企业的成功，您的需求如此强烈使得您愿意去承受可能的失败直到最终成功。极强烈的创造欲使创业型的人要求标新立异、有所创造、并做好冒险的准备。"
+                     u"大多数像您一样创业型职业锚的人成为了创业者、发明家或艺术家。但需要澄清的是，市场分析人员、研究开发人员、广告策划人员并不能归入这一类别，因为创业型人的主要动机和价值观是“创造”。"],
+                 u"工作类型":u"您希望通过自己的努力创造新的公司、产品或服务。您相信自己是天才，并有很高的动力去证明您具有创造力，而且不断地接受新的挑战；",
+                 u"薪资福利":u"您认为所有权和控制权对您才是最重要的，例如",
+                 u"工作晋升":u"您要求一定的权力和自由，可以不断去创造；",
+                 u"最佳认可方式":u"您要求很高的自我认可和公众认可。创造完全属于自己的东西，例如"},
+             u"服务型":
+                {u"基本特征":
+                    [u"服务型职业锚的人一直在追求他们的核心价值，例如"
+                     u"作为服务型职业锚的一员，意味着您不会放弃任何有可能创造某种价值的机会，比如改变人居环境，解决环境污染的问题，创造和谐的人际关系，帮助他人，改善人群的安全感，通过新产品的研发治疗疾病，以及其他方式。就算您所关注的工作或事宜有可能影响到组织的现状，您也会始终追求您的职业定位及其价值意义。您也会不愿意接受那些有可能使您不能关注于创造价值的职位转移或提升。"],
+                 u"工作类型":u"您希望工作能够创造价值，对他人能有所帮助、使生活更美好。您希望能以自己的价值观影响组织乃至社会；",
+                 u"薪资福利":u"您希望获得基于贡献的、公平的薪资，钱并不是您追求的根本；",
+                 u"工作晋升":u"您希望通过认可您的贡献，给您更多的权力和自由来体现自己的价值；",
+                 u"最佳认可方式":u"来自同事及上司的认可和支持，与他人共享自己的核心价值。通过自己的努力，给别人带来了帮助或促成了某项事业的成功。能给您继续提供为心中的理想打拼的机会，这才是对您的真正认可。"},
+             u"挑战型":
+                {u"基本特征":
+                    [u"挑战型职业锚的您，喜欢解决看上去无法解决的问题，战胜强硬的对手，克服无法克服的障碍等。对挑战型的您而言，参加工作或职业的原因是工作允许您去战胜各种不可能。您需要新奇、变化和困难，如果工作非常容易，您马上就会厌倦这份工作。"
+                     u"作为挑战型职业锚的一员，意味着您不会放弃任何发掘解决问题的方法，克服他人所不能克服的障碍，或者超越您竞争对手的机会。您认为自己可以征服任何事情或任何人；您将成功定义为“克服不可能的障碍，解决不可能解决的问题，或战胜非常强硬的对手”。随着自己的进步，您喜欢寻找越来越强硬的“挑战”，希望在工作中面临越来越艰巨的任务，并享受由战胜或征服而带来的成就感。"
+                 u"需要说明的是，您的职业锚类型与技术/职能型之间存在一定差别，即技术/职能型的人只关注某一专业领域内的挑战并持续为之奋斗；而挑战型的人，一旦达成了成就或征服了困难，再让您去做同一类型的任务，就会感觉无聊之极。还有一些挑战型职业锚的人，将挑战定义成人际间的竞争。例如"],
+                 u"工作类型":u"对您而言，一定水平的挑战是至关重要的，不管您的工作内容是什么，都需要有“挑战自我的机会”；",
+                 u"薪酬福利":u"您希望基于所从事的项目或任务的挑战性、难度得到报酬。金钱并不是您的最终追求，您更看重工作中是否有挑战自我或挑战难题的机会；",
+                 u"工作晋升":u"您希望自己的晋升能使自己的“工作为自己提供更多挑战困难或挑战自我的机会”，因而，如果职位提高了，挑战自我的机会减少了，那么您很快就会厌倦这个职位；",
+                 u"最佳认可方式":u"您渴望战胜困难或征服对手后的成就感，因此，战胜挑战后的愉悦感会激励着您不断寻求难度更大的挑战。您对自己的认可基于挑战的成败，而不是外在的奖励，因此，对您来说，挑战即是认可，只要给您布置好下一个工作任务就行了。"},
+             u"生活型":
+                {u"基本特征":
+                    [u"生活型职业锚的您，希望将生活的各个主要方面整合为一个整体，喜欢平衡个人的、家庭的和职业的需要，因此，生活型的您需要一个能够提供“足够弹性”的工作环境来实现这一目标。生活型的您甚至可以牺牲职业的一些方面，例如放弃职位的提升或调动，来换取三者的平衡。相对于具体的工作环境、工作内容，生活型的您更关注自己如何生活、在哪里居住、如何处理家庭事情及怎样自我提升等。"
+                     u"生活型职业锚是综合了职业与家庭关系的一种职业定位。生活型职业锚现在变得越来越普遍，因为作为家庭主要成员的两方必须同时关注两个同样重要，但是有可能就是不同的职业选择。如果您在生活型方面的得分相对最高，意味着您不会放弃任何有助于整合或平衡个人的需求，与家庭的需求，或者与您职业的需求的机会。您期望那些与生活工作重要的因素能够相互融合成一体，因此，您也愿意去发展您的职业生涯以提供足够的灵活性满足这种融合。"],
+                 u"工作类型":u"您希望为生活而工作，而不是为工作而生活，所以在工作上，您不会做过多份外之事。您期望您的工作内容是明确的。",
+                 u"薪资福利":u"您不追求通过加班或参与项目的方式获得额外的收入，您追求属于您的那一份明确工作任务的所得。对于您来说，这份薪酬福利已经能够使您正常快乐的生活，而额外付出的努力获得的收入反而得不偿失。",
+                 u"工作晋升":u"如果职位的晋升可能会带来对于生活家庭的负面的影响，您会毫不迟疑地拒绝；因为成功对您来说，不仅仅是在工作，而更是在生活与家庭上。",
+                 u"最佳认可方式":u"弹性的工作时间安排可能是对您最有效的奖励。您不希望承担超出最低工作要求之外的其他工作，所以您也不会期待除了薪水以外的其他奖励。在您表现出色、工作高效的时候，如果能给您一个最大化非工作时间的机会，这将是对您最大的奖励！"}}
+
+        list_scores = []
+        list_mainquotas = []
+        list_subquotas  = []
+        dictquota_main = {}
+        dictquota_sub = {}
+
+        default_data = {
+            "report_type": "",
+            "msg": {
+                "Name": "",
+                "Gender": "",
+                "TestTime": "",
+                "Age":"",
+                "Score": list_scores,
+                "MainTypes":list_mainquotas,
+                "SubTypes":list_subquotas,
+                "Main":dictquota_main,
+                "Sub":dictquota_sub               
+            }}
+
+        frontname = settings.DATABASES['front']['NAME']
+        sql_query = "select b.tag_value ,a.score from\
+            (select question_id,answer_score score\
+            from " + frontname + ".front_peoplesurveyrelation a,\
+            " + frontname + ".front_userquestionanswerinfo b\
+            where  a.id=%s and a.survey_id=b.survey_id and a.people_id=b.people_id\
+            and a.project_id=b.project_id and a.is_active=true and b.is_active=true\
+            group by b.question_id) a,research_questiontagrelation b\
+            where a.question_id=b.object_id and b.tag_id=54\
+            and b.is_active=True"
+
+        try:
+            people_result = PeopleSurveyRelation.objects.get(id=personal_result_id)
+            if people_result.status != PeopleSurveyRelation.STATUS_FINISH:
+                return default_data, ErrorCode.INVALID_INPUT
+            if not people_result.report_url:
+                people_result.report_url= settings.ROOT_HOST+'co2019/'+personal_result_id
+                people_result.report_status=PeopleSurveyRelation.STATUS_FINISH
+                people_result.save()
+            people = People.objects.get(id=people_result.people_id)
+            default_data["msg"]["Name"] = people.display_name
+            default_data["msg"]["Gender"] = people.get_info_value(u"性别", u"未知")
+            default_data["msg"]["Age"] = people.get_info_value(u"年龄", None)
+            if not default_data["msg"]["Age"]:
+                default_data["msg"]["Age"] = u"未知"
+            else:
+                default_data["msg"]["Age"] += u"岁"
+            if people_result.finish_time:
+                default_data["msg"]["TestTime"] = people_result.finish_time.strftime(u"%Y年%m月%d日")
+            else:
+                default_data["msg"]["TestTime"] = time.strftime(u"%Y年%m月%d日", time.localtime())
+
+            with connection.cursor() as cursor:
+                cursor.execute(sql_query, [personal_result_id])
+                columns = [col[0] for col in cursor.description]
+                dictscore = {}
+                for row in cursor.fetchall():
+                    dictscore[row[0]]=row[1]
+            
+            dictquota_score[u"技术/职能型"] = dictscore['TF1']+dictscore['TF2']+dictscore['TF3']+dictscore['TF4']+dictscore['TF5']
+            dictquota_score[u"管理型"] =dictscore['GM1']+dictscore['GM2']+dictscore['GM3']+dictscore['GM4']+dictscore['GM5']
+            dictquota_score[u"自主/独立型"] = dictscore['AU1']+dictscore['AU2']+dictscore['AU3']+dictscore['AU4']+dictscore['AU5']
+            dictquota_score[u"安全/稳定型"] = dictscore['SE1']+dictscore['SE2']+dictscore['SE3']+dictscore['SE4']+dictscore['SE5']
+            dictquota_score[u"创业型"] =dictscore['EC1']+dictscore['EC2']+dictscore['EC3']+dictscore['EC4']+dictscore['EC5']
+            dictquota_score[u"服务型"] = dictscore['SV1']+dictscore['SV2']+dictscore['SV3']+dictscore['SV4']+dictscore['SV5']
+            dictquota_score[u"挑战型"] =dictscore['CH1']+dictscore['CH2']+dictscore['CH3']+dictscore['CH4']+dictscore['CH5']
+            dictquota_score[u"生活型"] = dictscore['LS1']+dictscore['LS2']+dictscore['LS3']+dictscore['LS4']+dictscore['LS5']
+            sortedlist = sorted(dictquota_score.items(), key=lambda d:d[1], reverse = True)
+            
+            for member in list_quotas:
+                list_scores.append((member,dictquota_score[member]))
+            
+            No1 = sortedlist.pop(0)
+            No2 = sortedlist.pop(0)
+            list_mainquotas.append(No1[0])
+            if No1[1] == No2[1]:
+                list_mainquotas.append(No2[0])
+                No1 = sortedlist.pop(0)
+                No2 = sortedlist.pop(0)
+            else :
+                No1 = No2
+                No2 = sortedlist.pop(0)
+
+            list_subquotas.append(No1[0])
+            if No1[1] == No2[1]:
+                list_subquotas.append(No2[0])
+
+            for ct in list_mainquotas:
+                dictquota_main[ct] = dictquota_desc[ct]
+            
+            for ct in list_subquotas:
+                dictquota_sub[ct] = dictquota_desc[ct]
+
+        except Exception, e:
+            err_logger.error("get report data error, msg: %s" % e)
+            return default_data, ErrorCode.INVALID_INPUT
+        return default_data, ErrorCode.SUCCESS  
 
     def get_pec_maanshan(self, personal_result_id):
 
