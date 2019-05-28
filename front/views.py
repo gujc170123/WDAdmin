@@ -1458,12 +1458,12 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                      u"您愿意去证明您创建企业的成功，您的需求如此强烈使得您愿意去承受可能的失败直到最终成功。极强烈的创造欲使创业型的人要求标新立异、有所创造、并做好冒险的准备。"
                      u"大多数像您一样创业型职业锚的人成为了创业者、发明家或艺术家。但需要澄清的是，市场分析人员、研究开发人员、广告策划人员并不能归入这一类别，因为创业型人的主要动机和价值观是“创造”。"],
                  u"工作类型":u"您希望通过自己的努力创造新的公司、产品或服务。您相信自己是天才，并有很高的动力去证明您具有创造力，而且不断地接受新的挑战；",
-                 u"薪资福利":u"您认为所有权和控制权对您才是最重要的，例如",
+                 u"薪资福利":u"您认为所有权和控制权对您才是最重要的，例如：年薪、股票或期权。您不会在意每月固定的薪资，或者定期的奖金，对您来说，获得与所有权与控制权所对应报酬才是最重要的；您希望得到金钱，但不是出于爱财的缘故，而是因为把金钱当作您完成了某件大事业的有形标志；",
                  u"工作晋升":u"您要求一定的权力和自由，可以不断去创造；",
-                 u"最佳认可方式":u"您要求很高的自我认可和公众认可。创造完全属于自己的东西，例如"},
+                 u"最佳认可方式":u"您要求很高的自我认可和公众认可。创造完全属于自己的东西，例如：一件产品、服务、公司或反应成就的财富等。对于您来说，最佳的认可方式就是对您创造的“产品”的认可与赞扬，或者在公开场合给予您受之无愧的表扬。"},
              u"服务型":
                 {u"基本特征":
-                    [u"服务型职业锚的人一直在追求他们的核心价值，例如"
+                    [u"服务型职业锚的人一直在追求他们的核心价值，例如：帮助他人，改善人们的安全，通过新的产品消除疾病等。服务型的人一直追寻这种机会，即使变换公司，也不会接受无法实现这种价值的变动或工作提升。"
                      u"作为服务型职业锚的一员，意味着您不会放弃任何有可能创造某种价值的机会，比如改变人居环境，解决环境污染的问题，创造和谐的人际关系，帮助他人，改善人群的安全感，通过新产品的研发治疗疾病，以及其他方式。就算您所关注的工作或事宜有可能影响到组织的现状，您也会始终追求您的职业定位及其价值意义。您也会不愿意接受那些有可能使您不能关注于创造价值的职位转移或提升。"],
                  u"工作类型":u"您希望工作能够创造价值，对他人能有所帮助、使生活更美好。您希望能以自己的价值观影响组织乃至社会；",
                  u"薪资福利":u"您希望获得基于贡献的、公平的薪资，钱并不是您追求的根本；",
@@ -1513,8 +1513,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             from " + frontname + ".front_peoplesurveyrelation a,\
             " + frontname + ".front_userquestionanswerinfo b\
             where  a.id=%s and a.survey_id=b.survey_id and a.people_id=b.people_id\
-            and a.project_id=b.project_id and a.is_active=true and b.is_active=true\
-            group by b.question_id) a,research_questiontagrelation b\
+            and a.project_id=b.project_id and a.is_active=true and b.is_active=true) a,research_questiontagrelation b\
             where a.question_id=b.object_id and b.tag_id=54\
             and b.is_active=True"
 
