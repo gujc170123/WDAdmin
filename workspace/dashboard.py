@@ -14,6 +14,9 @@ from workspace.tasks import main
 from workspace.util.redispool import redis_pool
 from WeiDuAdmin.env import DATABASES
 import pymysql
+from django.shortcuts import HttpResponse
+import numpy as np
+from django.db.models import Count
 
 
 class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
@@ -500,35 +503,34 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             return {}, ErrorCode.NOT_EXISTED
         target = ["model", "quota41", "dimension1", "dimension2", "dimension3", "dimension4",
                   "dimension5", "dimension6", "dimension7"]
-        ret = {}
-        for i in target:
-            ret[i] = {}
-            ret[i]["total"] = company_query_set.values_list(i)
-            ret[i][u"优势区"] = []
-            ret[i][u"保持区"] = []
-            ret[i][u"潜力区"] = []
-            ret[i][u"需提升"] = []
-            ret[i][u"提升区"] = []
-            ret[i][u"改进区"] = []
-            ret[i][u"障碍区"] = []
-            for j in ret[i]["total"]:
-                level = self.get_level(j[0])
-                ret[i][level].append(j[0])
-
-        for i in ret:
-            for j in ret[i]:
-                if j != "total":
-                    ret[i][j] = round(len(ret[i][j]) * 100 / len(ret[i]["total"]))
-            del ret[i]["total"]
-        res = {}
-        res_zip = {u"企业幸福指数": "model", u"压力指数": "quota41", u"工作投入": "dimension1", u"生活愉悦": "dimension2",
-                   u"成长有力": "dimension3", u"人际和谐": "dimension4", u"领导激发": "dimension5",
-                   u"组织卓越": "dimension6", u"员工幸福能力": "dimension7"}
-        for i in res_zip:
-            res[i] = ret[res_zip[i]]
-        types = [u"保持区", u"优势区", u"障碍区", u"潜力区", u"改进区", u"需提升", u"提升区"]
-        rest = self.transe_list(res, types)
-        return rest, ErrorCode.SUCCESS
+        res = []
+        length = company_query_set.count()
+        for name in target:
+            group_num = company_query_set.values_list(name).annotate(c=Count("id"))   # [(name, c), ...]
+            types = [0 for num in xrange(7)]
+            for tpl in group_num:
+                score, number = tpl
+                if score <= 40:
+                    types[0] += number
+                elif 40 < score <= 60:
+                    types[1] += number
+                elif 60 < score < 65:
+                    types[2] += number
+                elif 65 <= score < 70:
+                    types[3] += number
+                elif 70 <= score < 75:
+                    types[4] += number
+                elif 75 <= score < 80:
+                    types[5] += number
+                else:
+                    types[6] += number
+            rate = [round(i * 100 // length) for i in types]
+            res.append(rate)
+        ret_arr = np.array(res)
+        ret = ret_arr.transpose().tolist()
+        title = [u"企业幸福指数", u"压力指数", u"工作投入", u"生活愉悦", u"成长有力", u"人际和谐",
+                 u"领导激发", u"组织卓越", u"员工幸福能力"]
+        return [title, ret], ErrorCode.SUCCESS
 
     def get_business_index(self, **kwargs):
         res = {}
@@ -764,3 +766,14 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         except Exception, e:
             err_logger.error("dashboard error, msg is %s" % e)
             return general_json_response(status.HTTP_200_OK, ErrorCode.INTERNAL_ERROR, {"msg": "%s" % e})
+
+
+def redisStatus(request):
+    assess = request.GET.get("assess")
+    survey = request.GET.get("survey")
+    redisKey = 'etl_%s_%s' % (assess, survey)
+    redis_value = redis_pool.lrange(redisKey, -2, -1)
+    if not redis_value:
+        return HttpResponse('4')
+    stat = redis_value[-1] if redis_value[-1] != 3 else 0
+    return HttpResponse(stat)

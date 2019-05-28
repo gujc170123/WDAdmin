@@ -6,7 +6,7 @@ from workspace.views import UserLoginView,OrganizationlRetrieveUpdateDestroyView
                             AssessProgressView,AssessProgressTotalView,UserImportExportView,\
                             AssessOrganizationView,OrganizationlUsersDestroyView,SurveyListView,\
                             UserBatchDeleteView,AssessShareView,OrganizationListView,LogoutView
-from workspace.dashboard import Dashboard
+from workspace.dashboard import Dashboard, redisStatus
 
 urlpatterns = [
     #login
@@ -47,5 +47,5 @@ urlpatterns = [
     url(r"^assess/assessshare/(?P<pk>\d+)/$",AssessShareView.as_view(),name='assessshareview'),
     #organization list
     url(r"^listEntorg/$",OrganizationListView.as_view(), name="org-list-e"),
-
+    url(r"^getStatus/$", redisStatus, name="redis_status"),
 ]
