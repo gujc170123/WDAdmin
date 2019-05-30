@@ -7,6 +7,7 @@ from workspace.views import UserLoginView,OrganizationlRetrieveUpdateDestroyView
                             AssessOrganizationView,OrganizationlUsersDestroyView,SurveyListView,\
                             UserBatchDeleteView,AssessShareView,OrganizationListView,LogoutView
 from workspace.dashboard import Dashboard, redisStatus
+from workspace.dedication import Dedication
 
 urlpatterns = [
     #login
@@ -48,4 +49,6 @@ urlpatterns = [
     #organization list
     url(r"^listEntorg/$",OrganizationListView.as_view(), name="org-list-e"),
     url(r"^getStatus/$", redisStatus, name="redis_status"),
+    # jing ye du
+    url(r'^dedication/$', Dedication.as_view(), name='dedication')
 ]
