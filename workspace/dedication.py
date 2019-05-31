@@ -8,6 +8,8 @@ from wduser.models import BaseOrganization, BaseOrganizationPaths
 from django.db.models import Count, Avg
 from workspace.models import FactOEI
 from workspace.util.redispool import redis_pool
+import numpy as np
+from collections import OrderedDict
 
 
 class Dedication(AuthenticationExceptView, WdListCreateAPIView):
@@ -22,33 +24,37 @@ class Dedication(AuthenticationExceptView, WdListCreateAPIView):
 
     def get_distribution(self, **kwargs):
         org = kwargs.get("org_id")
-        department = kwargs.get('department')  # 团队比较，查下属部门
+        department = kwargs.get('department')
         select_id = kwargs.get('select_id')
         if not org:
             return {}, ErrorCode.INVALID_INPUT
-        ret = {}
+        ret = []
+        title = []
         try:
-            query_dict, org = self.get_organization(org)  # org=[xxx, xxx]
-            query_dicts = {u"整体": query_dict}  # {'民生xx': {'org1': '民生xxx'}}
-            if department and not select_id:  # 查下属部门
+            query_dict, org = self.get_organization(org)
+            query_dicts = OrderedDict({u"整体": query_dict})
+            if department and not select_id:
                 children_org = self.get_child_org(query_dict)
                 for child_tpl in children_org:
-                    child_org = [i for i in child_tpl if i]  # 总行.xx.xx
+                    child_org = [i for i in child_tpl if i]
                     child_query_dict, org = self.get_organization(child_org)
                     query_dicts[org[-1]] = child_query_dict
-            if select_id in ('profile1', 'profile2', 'profile4') and not department:  # 按条件搜索
-                # 查所有类别
+            if select_id in ('profile1', 'profile2', 'profile4') and not department:
                 types_tpl = FactOEI.objects.complex_filter(query_dict).values_list(select_id).distinct()
-                types = [tpl[0] for tpl in types_tpl]  # 所有年龄分类
+                types = self.sort_types(types_tpl)
+                print 'types, ', types
                 for tp in types:
-                    query_dict.update({select_id: tp})
-                    query_dicts[tp] = query_dict
+                    from copy import deepcopy
+                    qd = deepcopy(query_dict)
+                    qd.update({select_id: tp})
+                    query_dicts[tp] = qd
             for key in query_dicts:
                 res = FactOEI.objects.complex_filter(query_dicts[key]).values_list('quota39')
-                # 判断各区间分数的数量
+                print 'query_dicts[key], ', query_dicts[key]
                 if res.exists():
                     total = res.count()
-                    group_res = res.annotate(c=Count('id'))  # [(score, count), ...]
+                    group_res = res.annotate(c=Count('id'))
+                    print 'group_res, ', group_res
                     numbers = [0 for i in xrange(6)]
                     for tpl in group_res:
                         score, count = tpl
@@ -65,8 +71,17 @@ class Dedication(AuthenticationExceptView, WdListCreateAPIView):
                         else:
                             numbers[5] += count
                     rates = [round(number*100/total, 2) for number in numbers]
-                    ret[key] = rates
+                    if key == u'整体':
+                        title.insert(0, key)
+                        ret.insert(0, rates)
+                    else:
+                        title.append(key)
+                        ret.append(rates)
             if ret:
+                if len(title) != 1:
+                    ret_arr = np.array(ret)
+                    ret = list(ret_arr.transpose().tolist())
+                    ret.insert(0, title)
                 return ret, ErrorCode.SUCCESS
             else:
                 return {}, ErrorCode.NOT_EXISTED
@@ -80,27 +95,25 @@ class Dedication(AuthenticationExceptView, WdListCreateAPIView):
         select_id = kwargs.get('select_id')
         if not org:
             return {}, ErrorCode.INVALID_INPUT
-        ret = {}
+        ret = OrderedDict()
         try:
             query_dict, org = self.get_organization(org)
-            query_dicts = {u"整体": query_dict}
+            query_dicts = OrderedDict({u"整体": query_dict})
             if department and not select_id:
                 children_org = self.get_child_org(query_dict)
                 for child_tpl in children_org:
-                    child_org = [i for i in child_tpl if i]  # 总行.xx.xx
+                    child_org = [i for i in child_tpl if i]
                     child_query_dict, org = self.get_organization(child_org)
                     query_dicts[org[-1]] = child_query_dict
             if select_id in ('profile1', 'profile2', 'profile4') and not department:
-                # 查所有类别
                 types_tpl = FactOEI.objects.complex_filter(query_dict).values_list(select_id).distinct()
-                types = [tpl[0] for tpl in types_tpl]  # 所有年龄分类
+                types = self.sort_types(types_tpl)
                 for tp in types:
                     query_dict.update({select_id: tp})
                     query_dicts[tp] = query_dict
 
             for key in query_dicts:
                 res = FactOEI.objects.complex_filter(query_dicts[key]).aggregate(Avg("X13"), Avg("X14"), Avg("X15"))
-                # 判断各区间分数的数量
                 if res:
                     res = [round(res[i]*20, 2) for i in res]
                     ret[key] = res
@@ -113,8 +126,7 @@ class Dedication(AuthenticationExceptView, WdListCreateAPIView):
             return {}, ErrorCode.INTERNAL_ERROR
 
     def get_feature(self, **kwargs):
-        res = {}
-        # org: org1.org2.org3.....
+        res = OrderedDict()
         org = kwargs.get("org_id")
         department = kwargs.get('department')
         select_id = kwargs.get('select_id')
@@ -124,7 +136,7 @@ class Dedication(AuthenticationExceptView, WdListCreateAPIView):
             query_dict = self.get_organization(org)[0]
             model = FactOEI.objects.complex_filter(query_dict).aggregate(Avg("model")).get('model__avg')
             if model:
-                res = {u'整体': round(model, 2)}
+                res[u'整体'] = round(model, 2)
                 if department and not select_id:
                     children_org = self.get_child_org(query_dict)
                     child_res = {}
@@ -137,7 +149,7 @@ class Dedication(AuthenticationExceptView, WdListCreateAPIView):
                     res.update(child_res)
                 if select_id in ('profile1', 'profile2', 'profile4') and not department:
                     types_tpl = FactOEI.objects.complex_filter(query_dict).values_list(select_id).distinct()
-                    types = [tpl[0] for tpl in types_tpl]
+                    types = self.sort_types(types_tpl)
                     for tp in types:
                         score = FactOEI.objects.complex_filter(query_dict).complex_filter({select_id: tp}).aggregate(
                             Avg("model")).get('model__avg')
@@ -149,7 +161,21 @@ class Dedication(AuthenticationExceptView, WdListCreateAPIView):
             err_logger.error("get report data error, msg: %s " % e)
             return res, ErrorCode.INTERNAL_ERROR
 
-    def get_org_siblings(self, org_id):
+    @staticmethod
+    def sort_types(types_tpl):
+        types, types2 = [], []
+        for tpl in types_tpl:
+            if len(tpl[0].split('-')[0]) > 1:
+                types2.append(tpl[0])
+            else:
+                types.append(tpl[0])
+        types.sort()
+        types2.sort()
+        types.extend(types2)
+        return types
+
+    @staticmethod
+    def get_org_siblings(org_id):
         redis_key = 'org_%s' % org_id
         org = redis_pool.get(redis_key)
         if not org:
@@ -160,7 +186,8 @@ class Dedication(AuthenticationExceptView, WdListCreateAPIView):
             redis_pool.set(redis_key, org)
         return org
 
-    def get_child_org(self, query_dict):
+    @staticmethod
+    def get_child_org(query_dict):
         len_query = len(query_dict)
         if len_query == 2:
             child_org = FactOEI.objects.complex_filter(query_dict).values_list("organization1",
