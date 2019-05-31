@@ -5,7 +5,7 @@ from utils.views import AuthenticationExceptView, WdListCreateAPIView
 from utils.response import general_json_response, ErrorCode
 from rest_framework import status
 from utils.logger import err_logger
-from workspace.models import FactOEI, FactOEIFacet
+from workspace.models import FactOEI
 from wduser.models import BaseOrganization, BaseOrganizationPaths
 from .helper import OrganizationHelper
 from django.db.models import Avg
@@ -17,6 +17,7 @@ import pymysql
 from django.shortcuts import HttpResponse
 import numpy as np
 from django.db.models import Count
+from collections import OrderedDict
 
 
 class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
@@ -56,7 +57,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             query_dict = self.get_organization(org)[0]
             res = FactOEI.objects.complex_filter(query_dict).aggregate(Avg("model"))
             if res:
-                res = {i: round(res[i]) for i in res}
+                res = {i: round(res[i], 2) for i in res}
                 return res, ErrorCode.SUCCESS
             else:
                 return res, ErrorCode.NOT_EXISTED
@@ -76,15 +77,15 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                 Avg("dimension4"), Avg("dimension5"), Avg("dimension6"), Avg("dimension7")
             )
             if res2:
-                res[u"企业幸福指数"] = round(res2["model__avg"])
-                res[u"压力指数"] = round(res2["quota41__avg"])
-                res[u"工作投入"] = round(res2["dimension1__avg"])
-                res[u"生活愉悦"] = round(res2["dimension2__avg"])
-                res[u"成长有力"] = round(res2["dimension3__avg"])
-                res[u"人际和谐"] = round(res2["dimension4__avg"])
-                res[u"领导激发"] = round(res2["dimension5__avg"])
-                res[u"组织卓越"] = round(res2["dimension6__avg"])
-                res[u"员工幸福能力"] = round(res2["dimension7__avg"])
+                res[u"企业幸福指数"] = round(res2["model__avg"], 2)
+                res[u"压力指数"] = round(res2["quota41__avg"], 2)
+                res[u"工作投入"] = round(res2["dimension1__avg"], 2)
+                res[u"生活愉悦"] = round(res2["dimension2__avg"], 2)
+                res[u"成长有力"] = round(res2["dimension3__avg"], 2)
+                res[u"人际和谐"] = round(res2["dimension4__avg"], 2)
+                res[u"领导激发"] = round(res2["dimension5__avg"], 2)
+                res[u"组织卓越"] = round(res2["dimension6__avg"], 2)
+                res[u"员工幸福能力"] = round(res2["dimension7__avg"], 2)
                 return res, ErrorCode.SUCCESS
             else:
                 return res, ErrorCode.NOT_EXISTED
@@ -101,6 +102,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         try:
             query_dict = self.get_organization(org)[0]
             # find company
+            scale = 'quota39' if scale == 'scale1' else 'quota41'  # scale1-敬业，实际-quota39; scale2-压力，实际-quote41
             result = FactOEI.objects.complex_filter(query_dict).values_list(scale, 'model')
             total = result.count()
             if total:
@@ -129,12 +131,12 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                 for i in res:
                     res[i] = round(res[i] * 100 / total, 2)
                 high = res['r1c1'] + res['r1c2'] + res['r2c1'] + res['r2c2']
-                res['high'] = high
+                res['high'] = round(high, 2)
                 if scale == 'scale1':
                     low = res["r6c6"] + res["r6c7"] + res["r7c6"] + res["r7c7"]
                 else:
                     low = res["r4c6"] + res["r4c7"] + res["r5c6"] + res["r5c7"]
-                res['low'] = low
+                res['low'] = round(low, 2)
                 return res, ErrorCode.SUCCESS
             else:
                 return res, ErrorCode.NOT_EXISTED
@@ -383,17 +385,17 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                 for dic in res:
                     if dic == org_list[-1]:
                         if not dimension:
-                            head = {dic: [round(res[dic]["model__avg"]), round(res[dic]["quota41__avg"])]}
+                            head = {dic: [round(res[dic]["model__avg"], 2), round(res[dic]["quota41__avg"], 2)]}
                         else:
-                            head = {dic: round(tuple(res[dic].values())[0])}
+                            head = {dic: round(tuple(res[dic].values())[0], 2)}
 
                     else:
                         name.append(dic)
                         if not dimension:
-                            score.append(round(res[dic]["model__avg"]))
-                            score2.append(round(res[dic]["quota41__avg"]))
+                            score.append(round(res[dic]["model__avg"], 2))
+                            score2.append(round(res[dic]["quota41__avg"], 2))
                         else:
-                            score.append(round(tuple(res[dic].values())[0]))
+                            score.append(round(tuple(res[dic].values())[0], 2))
                 if dimension:
                     result = [list(i) for i in zip(name, score)]
                     result.sort(key=lambda x: x[1], reverse=True)
@@ -428,10 +430,21 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         company_obj = FactOEI.objects.complex_filter(query_dict)
         if not company_obj.exists():
             return {}, ErrorCode.NOT_EXISTED
-        res = {}
+        res = OrderedDict()
         if profile in profile_dict:
-            types = company_obj.values_list(profile_dict[profile]).distinct()
-            types = [i[0] for i in types]
+            types_tpl = company_obj.values_list(profile_dict[profile]).distinct()
+            if profile == u'年龄':
+                types, types2 = [], []
+                for tpl in types_tpl:
+                    if len(tpl[0].split('-')[0]) > 1:
+                        types2.append(tpl[0])
+                    else:
+                        types.append(tpl[0])
+                types.sort()
+                types2.sort()
+                types.extend(types2)
+            else:
+                types = [i[0] for i in types_tpl]
 
         else:
             child_org = self.get_child_org(query_dict)
@@ -524,7 +537,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                     types[5] += number
                 else:
                     types[6] += number
-            rate = [round(i * 100 // length) for i in types]
+            rate = [round(i * 100 / length, 2) for i in types]
             res.append(rate)
         ret_arr = np.array(res)
         ret = ret_arr.transpose().tolist()
@@ -573,7 +586,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
 
         total = sum([len(res[i]) for i in res])
         for k in res:
-            res[k] = round(len(res[k]) * 100 / total)
+            res[k] = round(len(res[k]) * 100 / total, 2)
         return res, ErrorCode.SUCCESS
 
     def WDindex(self, **kwargs):
@@ -677,11 +690,15 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             return res, ErrorCode.INTERNAL_ERROR
 
     def get_org_siblings(self, org_id):
-        parents = BaseOrganizationPaths.objects.filter(child_id=org_id).values_list('parent_id').order_by("-depth")
-        parent_id = [i[0] for i in parents]
-        orgs = BaseOrganization.objects.filter(id__in=parent_id).values_list("name")
-        org = [j[0] for j in orgs]
-        return '.'.join(org)
+        redis_key = 'org_%s' % org_id
+        org = redis_pool.get(redis_key)
+        if not org:
+            parents = BaseOrganizationPaths.objects.filter(child_id=org_id).values_list('parent_id').order_by("-depth")
+            parent_id = [i[0] for i in parents]
+            orgs = BaseOrganization.objects.filter(id__in=parent_id).values_list("name")
+            org = '.'.join([j[0] for j in orgs])
+            redis_pool.set(redis_key, org)
+        return org
 
     def get_assess_id(self, **kwargs):
         org_id = kwargs.get('org_id')
