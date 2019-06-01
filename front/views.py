@@ -1522,7 +1522,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             if people_result.status != PeopleSurveyRelation.STATUS_FINISH:
                 return default_data, ErrorCode.INVALID_INPUT
             if not people_result.report_url:
-                people_result.report_url= settings.ROOT_HOST+'co2019/'+personal_result_id
+                people_result.report_url= settings.Reports['co2019'] % (personal_result_id)
                 people_result.report_status=PeopleSurveyRelation.STATUS_FINISH
                 people_result.save()
             people = People.objects.get(id=people_result.people_id)
@@ -1609,11 +1609,11 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                 "Dis": [
                 ],
             }}
-        
+        frontname = settings.DATABASES['front']['NAME']
         sql_query = "select b.tag_value ,a.score from\
                     (select question_id,LEAST(sum(answer_score),4) score\
-                    from " + settings.FRONT_HOST + ".front_peoplesurveyrelation a,\
-                    " + settings.FRONT_HOST + ".front_userquestionanswerinfo b\
+                    from " + frontname + ".front_peoplesurveyrelation a,\
+                    " + frontname + ".front_userquestionanswerinfo b\
                     where  a.id=%s and a.survey_id=b.survey_id and a.people_id=b.people_id\
                     and a.project_id=b.project_id and a.is_active=true and b.is_active=true\
                     group by b.question_id) a,research_questiontagrelation b\

@@ -105,7 +105,9 @@ DATABASES = {
          'PORT': '3306',
      },
 }
-
+Reports = {
+    'co2019':"http://blogtest.iwedoing.com:9090/api/render?url=http://blogtest.iwedoing.com:8090/?people_result_id=%s&emulateScreenMedia=false"
+}
 #
 # CLIENT_HOST = 'http://wd-user.exuetech.com'
 CLIENT_HOST = 'http://yx.iwedoing.com'
