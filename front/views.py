@@ -1399,6 +1399,10 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
         'YGZWTS': 'self.get_ygzwts_value',
         # 行为风格
         "BehavioralStyle": 'self.get_xwfg_value',
+        # 中高层180
+        "ZGC180": 'self.get_zgc180_value',
+        # 中高层90
+        "ZGC90": 'self.get_zgc90_value',        
         # 职业定向
         "ZYDX": 'self.get_zydx_value',
         # Personal EOI
@@ -2983,6 +2987,415 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                         break
         except Exception, e:
             err_logger.error("get report data error, msg: %s" % e)
+            return default_data, ErrorCode.INVALID_INPUT
+        return default_data, ErrorCode.SUCCESS
+
+    # 中高层180
+    def get_zgc180_value(self, personal_result_id):
+        u"""中高层180算法"""
+        default_data = {
+            "report_type": "中高层180模板",
+            "msg": {
+                "Name": "666",
+                "Sex": "男",
+                "Age": "25",
+                "TestTime": "2018.10.12",
+                # "chart11": [{"name": "积极进取", "score": 2},
+                #             {"name": "勇于担当", "score": 2},
+                #             {"name": "正直诚信", "score": 2},
+                #             {"name": "系统思维", "score": 3},
+                #             {"name": "变革管理", "score": 2},
+                #             {"name": "客户导向", "score": 2},
+                #             {"name": "创新优化", "score": 3},
+                #             {"name": "团队领导", "score": 3},
+                #             {"name": "跨界协同", "score": 4},
+                #             {"name": "资源整合", "score": 2},
+                #             ],
+                # 自评原始维度
+                "chart11": [{"name": "积极进取", "score": 2},
+                            {"name": "勇于担当", "score": 2},
+                            {"name": "正直诚信", "score": 2},
+                            {"name": "系统思维", "score": 3},
+                            {"name": "变革管理", "score": 2},
+                            {"name": "客户导向", "score": 2},
+                            {"name": "创新优化", "score": 3},
+                            {"name": "团队领导", "score": 3},
+                            {"name": "跨界协同", "score": 4},
+                            {"name": "资源整合", "score": 2},
+                            ],
+                # 他评原始维度
+                # name  维度名称，score: 维度分    他评
+                "chart12": [{"name": "积极进取", "score": 2},
+                            {"name": "勇于担当", "score": 2},
+                            {"name": "正直诚信", "score": 3},
+                            {"name": "系统思维", "score": 3},
+                            {"name": "变革管理", "score": 4},
+                            {"name": "客户导向", "score": 2},
+                            {"name": "创新优化", "score": 3},
+                            {"name": "团队领导", "score": 3},
+                            {"name": "跨界协同", "score": 2},
+                            {"name": "资源整合", "score": 2},
+                            ],
+
+                # name  维度名称，score: 维度分    自评
+                "chart": [
+                    {"name": u"积极进取", "score": 2},
+                    {"name": u"勇于担当", "score": 2},
+                    {"name": u"正直诚信", "score": 2},
+                    {"name": u"系统思维", "score": 3},
+                    {"name": u"变革管理", "score": 2},
+                    {"name": u"客户导向", "score": 2},
+                    {"name": u"创新优化", "score": 3},
+                    {"name": u"团队领导", "score": 3},
+                    {"name": u"跨界协同", "score": 4},
+                    {"name": u"资源整合", "score": 2},
+                      ],
+                # name  维度名称，score: 维度分     他评
+                "chart1": [
+                    {"name": u"积极进取", "score": 2},
+                    {"name": u"勇于担当", "score": 2},
+                    {"name": u"正直诚信", "score": 3},
+                    {"name": u"系统思维", "score": 3},
+                    {"name": u"变革管理", "score": 4},
+                    {"name": u"客户导向", "score": 2},
+                    {"name": u"创新优化", "score": 3},
+                    {"name": u"团队领导", "score": 3},
+                    {"name": u"跨界协同", "score": 2},
+                    {"name": u"资源整合", "score": 2},
+                       ],
+                # name1  维度名称，name  指标（即行为）   score: 指标分     自评
+                "chart2": [
+                    {"name1": u"积极进取", 'name': u'为自己设置挑战性目标', "score": 2},
+                    {"name1": u"积极进取", 'name': u'自我激发，从内心寻求动力', "score": 2},
+                    {"name1": u"积极进取", 'name': u'会付出额外的努力', "score": 2},
+                    {"name1": u"积极进取", 'name': u'积极寻求解决办法，坚持不懈', "score": 2},
+
+                    {"name1": u"勇于担当", 'name': u'明确职责，主动承担责任', "score": 2},
+                    {"name1": u"勇于担当", 'name': u'以目标为导向，完成工作', "score": 2},
+                    {"name1": u"勇于担当", 'name': u'有责无疆，积极推进', "score": 2},
+                    {"name1": u"勇于担当", 'name': u'挺身而出，成为依靠', "score": 2},
+
+                    {"name1": u"正直诚信", 'name': u'做事规范坦率真诚', "score": 3},
+                    {"name1": u"正直诚信", 'name': u'言行一致遵守承诺', "score": 3},
+                    {"name1": u"正直诚信", 'name': u'处事公平公正', "score": 3},
+                    {"name1": u"正直诚信", 'name': u'敢于当面直谏', "score": 3},
+
+                    {"name1": u"系统思维", 'name': u'原因识别及构建解决方案', "score": 3},
+                    {"name1": u"系统思维", 'name': u'过程管控与跟踪', "score": 3},
+                    {"name1": u"系统思维", 'name': u'前瞻性分析', "score": 3},
+                    {"name1": u"系统思维", 'name': u'问题发现及分析', "score": 3},
+
+                    {"name1": u"变革管理", 'name': u'理解变革', "score": 2},
+                    {"name1": u"变革管理", 'name': u'愿景塑造', "score": 2},
+                    {"name1": u"变革管理", 'name': u'管理阻抗', "score": 2},
+                    {"name1": u"变革管理", 'name': u'捍卫变革', "score": 2},
+
+                    {"name1": u"客户导向", 'name': u'换位思考，构建解决方案', "score": 2},
+                    {"name1": u"客户导向", 'name': u'倾听并及时反馈', "score": 2},
+                    {"name1": u"客户导向", 'name': u'主动关注提升满意度', "score": 2},
+                    {"name1": u"客户导向", 'name': u'协调资源超越期望', "score": 2},
+
+                    {"name1": u"创新优化", 'name': u'打造创新机制及氛围', "score": 3},
+                    {"name1": u"创新优化", 'name': u'主动关注新事物', "score": 3},
+                    {"name1": u"创新优化", 'name': u'勇于尝试持续创新', "score": 3},
+                    {"name1": u"创新优化", 'name': u'借鉴经验，快速有效优化', "score": 3},
+
+                    {"name1": u"团队领导", 'name': u'理解高效团队的重要性', "score": 3},
+                    {"name1": u"团队领导", 'name': u'高效合理授权', "score": 3},
+                    {"name1": u"团队领导", 'name': u'塑造团队文化', "score": 3},
+                    {"name1": u"团队领导", 'name': u'多形式学习交流', "score": 3},
+
+                    {"name1": u"跨界协同", 'name': u'调节冲突，达至双赢', "score": 2},
+                    {"name1": u"跨界协同", 'name': u'建立合作机制，实现效能最大化', "score": 2},
+                    {"name1": u"跨界协同", 'name': u'理解其他部门需求及利益', "score": 2},
+                    {"name1": u"跨界协同", 'name': u'换位思考，促进协作', "score": 2},
+
+                    {"name1": u"资源整合", 'name': u'主动共享信息', "score": 2},
+                    {"name1": u"资源整合", 'name': u'形成固有并可持续的模式', "score": 2},
+                    {"name1": u"资源整合", 'name': u'主动争取和协调资源', "score": 2},
+                    {"name1": u"资源整合", 'name': u'转变思维，扩展资源渠道', "score": 2},
+                ],
+                # name1  维度名称，name  指标（即行为）   score: 指标分     他评
+                "chart3": [
+                    {"name1": u"积极进取", 'name': u'为自己设置挑战性目标', "score": 2},
+                    {"name1": u"积极进取", 'name': u'自我激发，从内心寻求动力', "score": 2},
+                    {"name1": u"积极进取", 'name': u'会付出额外的努力', "score": 2},
+                    {"name1": u"积极进取", 'name': u'积极寻求解决办法，坚持不懈', "score": 2},
+
+                    {"name1": u"勇于担当", 'name': u'明确职责，主动承担责任', "score": 2},
+                    {"name1": u"勇于担当", 'name': u'以目标为导向，完成工作', "score": 2},
+                    {"name1": u"勇于担当", 'name': u'有责无疆，积极推进', "score": 2},
+                    {"name1": u"勇于担当", 'name': u'挺身而出，成为依靠', "score": 2},
+
+                    {"name1": u"正直诚信", 'name': u'做事规范坦率真诚', "score": 3},
+                    {"name1": u"正直诚信", 'name': u'言行一致遵守承诺', "score": 3},
+                    {"name1": u"正直诚信", 'name': u'处事公平公正', "score": 3},
+                    {"name1": u"正直诚信", 'name': u'敢于当面直谏', "score": 3},
+
+                    {"name1": u"系统思维", 'name': u'原因识别及构建解决方案', "score": 3},
+                    {"name1": u"系统思维", 'name': u'过程管控与跟踪', "score": 3},
+                    {"name1": u"系统思维", 'name': u'前瞻性分析', "score": 3},
+                    {"name1": u"系统思维", 'name': u'问题发现及分析', "score": 3},
+
+                    {"name1": u"变革管理", 'name': u'理解变革', "score": 2},
+                    {"name1": u"变革管理", 'name': u'愿景塑造', "score": 2},
+                    {"name1": u"变革管理", 'name': u'管理阻抗', "score": 2},
+                    {"name1": u"变革管理", 'name': u'捍卫变革', "score": 2},
+
+                    {"name1": u"客户导向", 'name': u'换位思考，构建解决方案', "score": 2},
+                    {"name1": u"客户导向", 'name': u'倾听并及时反馈', "score": 2},
+                    {"name1": u"客户导向", 'name': u'主动关注提升满意度', "score": 2},
+                    {"name1": u"客户导向", 'name': u'协调资源超越期望', "score": 2},
+
+                    {"name1": u"创新优化", 'name': u'打造创新机制及氛围', "score": 3},
+                    {"name1": u"创新优化", 'name': u'主动关注新事物', "score": 3},
+                    {"name1": u"创新优化", 'name': u'勇于尝试持续创新', "score": 3},
+                    {"name1": u"创新优化", 'name': u'借鉴经验，快速有效优化', "score": 3},
+
+                    {"name1": u"团队领导", 'name': u'理解高效团队的重要性', "score": 3},
+                    {"name1": u"团队领导", 'name': u'高效合理授权', "score": 3},
+                    {"name1": u"团队领导", 'name': u'塑造团队文化', "score": 3},
+                    {"name1": u"团队领导", 'name': u'多形式学习交流', "score": 3},
+
+                    {"name1": u"跨界协同", 'name': u'调节冲突，达至双赢', "score": 2},
+                    {"name1": u"跨界协同", 'name': u'建立合作机制，实现效能最大化', "score": 2},
+                    {"name1": u"跨界协同", 'name': u'理解其他部门需求及利益', "score": 2},
+                    {"name1": u"跨界协同", 'name': u'换位思考，促进协作', "score": 2},
+
+                    {"name1": u"资源整合", 'name': u'主动共享信息', "score": 2},
+                    {"name1": u"资源整合", 'name': u'形成固有并可持续的模式', "score": 2},
+                    {"name1": u"资源整合", 'name': u'主动争取和协调资源', "score": 2},
+                    {"name1": u"资源整合", 'name': u'转变思维，扩展资源渠道', "score": 2},
+                ],
+            }
+        }
+        try:
+            dimension_id_name_map = {}
+            people_result = PeopleSurveyRelation.objects.get(
+                id=personal_result_id
+            )
+            if people_result.status != PeopleSurveyRelation.STATUS_FINISH:
+                return default_data, ErrorCode.INVALID_INPUT
+            # if not people_result.dimension_score or not people_result.substandard_score:
+                # SurveyAlgorithm.algorithm_gzjzg(personal_result_id)
+            time.sleep(0.3)
+            SurveyAlgorithm.algorithm_zgc180(personal_result_id, form_type=Survey.FORM_TYPE_NORMAL)
+            # 算完分都重定义被评价人
+            psr_qs = PeopleSurveyRelation.objects.get(id=personal_result_id)
+            o_qs = PeopleSurveyRelation.objects.filter(project_id=psr_qs.project_id,
+                                                       evaluated_people_id=psr_qs.evaluated_people_id,
+                                                       people_id=psr_qs.evaluated_people_id,
+                                                       status=PeopleSurveyRelation.STATUS_FINISH)
+            if not o_qs.exists():
+                # 该他评没有自评
+                logger.info("%s for ZGC180 not self ZGC180" % personal_result_id)
+                return
+            else:
+
+                personal_result_id = o_qs[0].id
+
+
+            people_result = PeopleSurveyRelation.objects.get(id=personal_result_id)
+            people = People.objects.get(id=people_result.people_id)
+            default_data["msg"]["Name"] = people.display_name
+            default_data["msg"]["Sex"] = people.get_info_value(u"性别", u"未知")
+            default_data["msg"]["Age"] = people.get_info_value(u"年龄", u"未知")
+            if type(default_data["msg"]["Age"]) == int:
+                default_data["msg"]["Age"] = "{}".format(default_data["msg"]["Age"])
+            if people_result.finish_time:
+                default_data["msg"]["TestTime"] = time_format4(people_result.finish_time)
+            else:
+                default_data["msg"]["TestTime"] = time_format4(datetime.datetime.now())
+            # 自评维度
+            dimension_score_map = people_result.dimension_score_map["self"]
+            for info in default_data["msg"]["chart"]:
+                for dimension_id in dimension_score_map:
+                    if dimension_score_map[dimension_id]["name"][0:2] == info["name"][0:2]:
+                        dimension_id_name_map[dimension_id] = dimension_score_map[dimension_id]["name"]
+                        info["score"] = dimension_score_map[dimension_id]["score"]
+                        break
+            #  自评维度原始
+            for info in default_data["msg"]["chart11"]:
+                for dimension_id in dimension_score_map:
+                    if dimension_score_map[dimension_id]["name"][0:2] == info["name"][0:2]:
+                        # dimension_id_name_map[dimension_id] = dimension_score_map[dimension_id]["name"]
+                        info["score"] = dimension_score_map[dimension_id]["row_score"]
+                        break
+            # 自评子标
+            substandard_score_map = people_result.substandard_score_map["self"]
+            for info in default_data["msg"]["chart2"]:
+                for substandard_id in substandard_score_map:
+                    if substandard_score_map[substandard_id]["name"][0:3] == info["name"][0:3] and info["name1"][0:2] == substandard_score_map[substandard_id]["name1"][0:2]:
+                    # if substandard_score_map[substandard_id]["name"][0:4] == info["name"]:
+                        info["score"] = substandard_score_map[substandard_id]["score"]
+                        # info["name1"] = dimension_id_name_map[str(substandard_score_map[substandard_id]["dimension_id"])]
+                        break
+            # # 他评维度
+            dimension_score_map = people_result.dimension_score_map["others"]
+            for info in default_data["msg"]["chart1"]:
+                for dimension_id in dimension_score_map:
+                    if dimension_score_map[dimension_id]["name"][0:2] == info["name"][0:2]:
+                        dimension_id_name_map[dimension_id] = dimension_score_map[dimension_id]["name"]
+                        info["score"] = round(dimension_score_map[dimension_id]["score"])
+                        break
+            # 他评维度原始
+            for info in default_data["msg"]["chart12"]:
+                for dimension_id in dimension_score_map:
+                    if dimension_score_map[dimension_id]["name"][0:2] == info["name"][0:2]:
+                        # dimension_id_name_map[dimension_id] = dimension_score_map[dimension_id]["name"]
+                        info["score"] = dimension_score_map[dimension_id]["score"]
+                        break
+            # # 他评子标
+            substandard_score_map = people_result.substandard_score_map["others"]
+            for info in default_data["msg"]["chart3"]:
+                for substandard_id in substandard_score_map:
+                    if substandard_score_map[substandard_id]["name"][0:3] == info["name"][0:3] and info["name1"][0:2] == substandard_score_map[substandard_id]["name1"][0:2]:
+                    # if substandard_score_map[substandard_id]["name"] == info["name"]:
+                        info["score"] = substandard_score_map[substandard_id]["score"]
+                        # info["name1"] = dimension_id_name_map[str(substandard_score_map[substandard_id]["dimension_id"])]
+                        break
+        except Exception, e:
+            logger.error("get report data error, msg: %s" % e)
+            return default_data, ErrorCode.INVALID_INPUT
+        return default_data, ErrorCode.SUCCESS
+
+    # 中高层90
+    def get_zgc90_value(self, personal_result_id):
+        u"""中高层90算法"""
+        default_data = {
+            "report_type": "中高层90模板",
+            "msg": {
+                "Name": "666",
+                "Sex": "男",
+                "Age": "25",
+                "TestTime": "2018.10.12",
+                # name  维度名称，score: 维度分    自评 ， 新增维度原始分
+                "chart11": [{"name": "积极进取", "score": 2},
+                            {"name": "勇于担当", "score": 2},
+                            {"name": "正直诚信", "score": 2},
+                            {"name": "系统思维", "score": 3},
+                            {"name": "变革管理", "score": 2},
+                            {"name": "客户导向", "score": 2},
+                            {"name": "创新优化", "score": 3},
+                            {"name": "团队领导", "score": 3},
+                            {"name": "跨界协同", "score": 4},
+                            {"name": "资源整合", "score": 2},
+                            ],
+
+                # name  维度名称，score: 维度分    自评
+                "chart": [
+                    {"name": u"积极进取", "score": 2},
+                    {"name": u"勇于担当", "score": 2},
+                    {"name": u"正直诚信", "score": 2},
+                    {"name": u"系统思维", "score": 3},
+                    {"name": u"变革管理", "score": 2},
+                    {"name": u"客户导向", "score": 2},
+                    {"name": u"创新优化", "score": 3},
+                    {"name": u"团队领导", "score": 3},
+                    {"name": u"跨界协同", "score": 4},
+                    {"name": u"资源整合", "score": 2},
+                ],
+            # name1  维度名称，name  指标（即行为）   score: 指标分     自评
+                "chart2": [
+                    {"name1": u"积极进取", 'name': u'为自己设置挑战性目标', "score": 2},
+                    {"name1": u"积极进取", 'name': u'自我激发，从内心寻求动力', "score": 2},
+                    {"name1": u"积极进取", 'name': u'会付出额外的努力', "score": 2},
+                    {"name1": u"积极进取", 'name': u'积极寻求解决办法，坚持不懈', "score": 2},
+
+                    {"name1": u"勇于担当", 'name': u'明确职责，主动承担责任', "score": 2},
+                    {"name1": u"勇于担当", 'name': u'以目标为导向，完成工作', "score": 2},
+                    {"name1": u"勇于担当", 'name': u'有责无疆，积极推进', "score": 2},
+                    {"name1": u"勇于担当", 'name': u'挺身而出，成为依靠', "score": 2},
+
+                    {"name1": u"正直诚信", 'name': u'做事规范坦率真诚', "score": 3},
+                    {"name1": u"正直诚信", 'name': u'言行一致遵守承诺', "score": 3},
+                    {"name1": u"正直诚信", 'name': u'处事公平公正', "score": 3},
+                    {"name1": u"正直诚信", 'name': u'敢于当面直谏', "score": 3},
+
+                    {"name1": u"系统思维", 'name': u'原因识别及构建解决方案', "score": 3},
+                    {"name1": u"系统思维", 'name': u'过程管控与跟踪', "score": 3},
+                    {"name1": u"系统思维", 'name': u'前瞻性分析', "score": 3},
+                    {"name1": u"系统思维", 'name': u'问题发现及分析', "score": 3},
+
+                    {"name1": u"变革管理", 'name': u'理解变革', "score": 2},
+                    {"name1": u"变革管理", 'name': u'愿景塑造', "score": 2},
+                    {"name1": u"变革管理", 'name': u'管理阻抗', "score": 2},
+                    {"name1": u"变革管理", 'name': u'捍卫变革', "score": 2},
+
+                    {"name1": u"客户导向", 'name': u'换位思考，构建解决方案', "score": 2},
+                    {"name1": u"客户导向", 'name': u'倾听并及时反馈', "score": 2},
+                    {"name1": u"客户导向", 'name': u'主动关注提升满意度', "score": 2},
+                    {"name1": u"客户导向", 'name': u'协调资源超越期望', "score": 2},
+
+                    {"name1": u"创新优化", 'name': u'打造创新机制及氛围', "score": 3},
+                    {"name1": u"创新优化", 'name': u'主动关注新事物', "score": 3},
+                    {"name1": u"创新优化", 'name': u'勇于尝试持续创新', "score": 3},
+                    {"name1": u"创新优化", 'name': u'借鉴经验，快速有效优化', "score": 3},
+
+                    {"name1": u"团队领导", 'name': u'理解高效团队的重要性', "score": 3},
+                    {"name1": u"团队领导", 'name': u'高效合理授权', "score": 3},
+                    {"name1": u"团队领导", 'name': u'塑造团队文化', "score": 3},
+                    {"name1": u"团队领导", 'name': u'多形式学习交流', "score": 3},
+
+                    {"name1": u"跨界协同", 'name': u'调节冲突，达至双赢', "score": 2},
+                    {"name1": u"跨界协同", 'name': u'建立合作机制，实现效能最大化', "score": 2},
+                    {"name1": u"跨界协同", 'name': u'理解其他部门需求及利益', "score": 2},
+                    {"name1": u"跨界协同", 'name': u'换位思考，促进协作', "score": 2},
+
+                    {"name1": u"资源整合", 'name': u'主动共享信息', "score": 2},
+                    {"name1": u"资源整合", 'name': u'形成固有并可持续的模式', "score": 2},
+                    {"name1": u"资源整合", 'name': u'主动争取和协调资源', "score": 2},
+                    {"name1": u"资源整合", 'name': u'转变思维，扩展资源渠道', "score": 2},
+                ],
+            }
+        }
+        try:
+            dimension_id_name_map = {}
+            people_result = PeopleSurveyRelation.objects.get(
+                id=personal_result_id
+            )
+            if people_result.status != PeopleSurveyRelation.STATUS_FINISH:
+                return default_data, ErrorCode.INVALID_INPUT
+            # if not people_result.dimension_score or not people_result.substandard_score:
+                # SurveyAlgorithm.algorithm_gzjzg(personal_result_id)
+            time.sleep(0.3)
+            # SurveyAlgorithm.algorithm_zgc(personal_result_id, form_type=Survey.FORM_TYPE_NORMAL)
+            SurveyAlgorithm.algorithm_zgc(personal_result_id)
+            people_result = PeopleSurveyRelation.objects.get(id=personal_result_id)
+            people = People.objects.get(id=people_result.people_id)
+            default_data["msg"]["Name"] = people.display_name
+            default_data["msg"]["Sex"] = people.get_info_value(u"性别", "未知")
+            default_data["msg"]["Age"] = people.get_info_value(u"年龄", "未知")
+            if type(default_data["msg"]["Age"]) == int:
+                default_data["msg"]["Age"] = "{}".format(default_data["msg"]["Age"])
+            if people_result.finish_time:
+                default_data["msg"]["TestTime"] = time_format4(people_result.finish_time)
+            else:
+                default_data["msg"]["TestTime"] = time_format4(datetime.datetime.now())
+            dimension_score_map = people_result.dimension_score_map["self"]
+            # 新增 维度原始分
+            for info in default_data["msg"]["chart11"]:
+                for dimension_id in dimension_score_map:
+                    if dimension_score_map[dimension_id]["name"][:2] == info["name"][:2]:
+                        # dimension_id_name_map[dimension_id] = dimension_score_map[dimension_id]["name"]
+                        info["score"] = dimension_score_map[dimension_id]["row_score"]
+                        break
+            # 原来维度转换分维度
+            for info in default_data["msg"]["chart"]:
+                for dimension_id in dimension_score_map:
+                    if dimension_score_map[dimension_id]["name"][:2] == info["name"][:2]:
+                        dimension_id_name_map[dimension_id] = dimension_score_map[dimension_id]["name"]
+                        info["score"] = dimension_score_map[dimension_id]["score"]
+                        break
+            substandard_score_map = people_result.substandard_score_map["self"]
+            for info in default_data["msg"]["chart2"]:
+                for substandard_id in substandard_score_map:
+                    if substandard_score_map[substandard_id]["name"][0:3] == info["name"][0:3] and info["name1"][0:2] == substandard_score_map[substandard_id]["name1"][0:2]:
+                        info["score"] = substandard_score_map[substandard_id]["score"]
+                        # info["name1"] = dimension_id_name_map[str(substandard_score_map[substandard_id]["dimension_id"])]
+                        break
+        except Exception, e:
+            logger.error("get report data error, msg: %s" % e)
             return default_data, ErrorCode.INVALID_INPUT
         return default_data, ErrorCode.SUCCESS
 
