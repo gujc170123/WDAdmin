@@ -1244,6 +1244,7 @@ class UserAnswerQuestionView(WdCreateAPIView):
             )
 
     def finish_survey(self, people):
+        reports = {100:'co2019',89:'disc2019',96:'mbti2019'}
         if self.block_id == 0:
             qs = PeopleSurveyRelation.objects.filter_active(
                 people_id=people.id,
@@ -1252,14 +1253,22 @@ class UserAnswerQuestionView(WdCreateAPIView):
                 role_type=self.role_type,
                 evaluated_people_id=self.evaluated_people_id
             )
-            qs.update(
-                status=PeopleSurveyRelation.STATUS_FINISH,
-                report_status=PeopleSurveyRelation.REPORT_GENERATING,
-                finish_time=datetime.datetime.now()
-            )
-            if self.survey_id!=164:                
+            if self.survey_id in [89,96,100]:
                 for o in qs:
-                    algorithm_task.delay(o.id)
+                    o.status=PeopleSurveyRelation.STATUS_FINISH
+                    o.report_status=PeopleSurveyRelation.STATUS_FINISH
+                    o.finish_time=datetime.datetime.now()
+                    o.report_url=settings.Reports[reports[self.survey_id]] % (o.id)
+                    o.save()
+            else:
+                qs.update(
+                    status=PeopleSurveyRelation.STATUS_FINISH,
+                    report_status=PeopleSurveyRelation.REPORT_GENERATING,
+                    finish_time=datetime.datetime.now()
+                )
+                if self.survey_id!=164:
+                    for o in qs:
+                        algorithm_task.delay(o.id)
         else:
             survey_info_qs = SurveyInfo.objects.filter_active(survey_id=self.survey_id, project_id=self.project_id)
             if survey_info_qs.exists():
@@ -1291,14 +1300,22 @@ class UserAnswerQuestionView(WdCreateAPIView):
                         role_type=self.role_type,
                         evaluated_people_id=self.evaluated_people_id
                     )
-                    qs.update(
-                        status=PeopleSurveyRelation.STATUS_FINISH,
-                        report_status=PeopleSurveyRelation.REPORT_GENERATING,
-                        finish_time=datetime.datetime.now()
-                    )
-                    if self.survey_id!=164:
+                    if self.survey_id in [89,96,100]:
                         for o in qs:
-                            algorithm_task.delay(o.id)
+                            o.status=PeopleSurveyRelation.STATUS_FINISH
+                            o.report_status=PeopleSurveyRelation.STATUS_FINISH
+                            o.finish_time=datetime.datetime.now()
+                            o.report_url=settings.Reports[reports[self.survey_id]] % (o.id)
+                            o.save()
+                    else:
+                        qs.update(
+                            status=PeopleSurveyRelation.STATUS_FINISH,
+                            report_status=PeopleSurveyRelation.REPORT_GENERATING,
+                            finish_time=datetime.datetime.now()
+                        )
+                        if self.survey_id!=164:
+                            for o in qs:
+                                algorithm_task.delay(o.id)
         # 判断该用户的该项目中的问卷是不是已经全部做完，返回项目跳转链接
         people_survey_list = PeopleSurveyRelation.objects.filter_active(project_id=self.project_id, people_id=people.id)
         for people_survey in people_survey_list:
@@ -1943,6 +1960,10 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             people_result = PeopleSurveyRelation.objects.get(id=personal_result_id)
             if people_result.status != PeopleSurveyRelation.STATUS_FINISH:
                 return default_data, ErrorCode.INVALID_INPUT
+            if not people_result.report_url:
+                people_result.report_url= settings.Reports['disc2019'] % (personal_result_id)
+                people_result.report_status=PeopleSurveyRelation.STATUS_FINISH
+                people_result.save()
             if not people_result.substandard_score:
                 SurveyAlgorithm.algorithm_disc(personal_result_id)
                 people_result = PeopleSurveyRelation.objects.get(id=personal_result_id)
@@ -1999,7 +2020,6 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
         for item in disc:
             name_score_list = disc.get(item)
             name_score_list.sort(key=lambda x: x[1], reverse=True)
-            # statement_key = disc.get(item)
             statement_key = ''.join([i[0] for i in name_score_list])
             if not statement_key:
                 statement_key = u'下移位'
@@ -2620,7 +2640,10 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             )
             if people_result.status != PeopleSurveyRelation.STATUS_FINISH:
                 return default_data, ErrorCode.INVALID_INPUT
-
+            if not people_result.report_url:
+                people_result.report_url= settings.Reports['mbti2019'] % (personal_result_id)
+                people_result.report_status=PeopleSurveyRelation.STATUS_FINISH
+                people_result.save()
             SurveyAlgorithm.algorithm_xwfg(personal_result_id, form_type=Survey.FORM_TYPE_NORMAL)
             people_result = PeopleSurveyRelation.objects.get(id=personal_result_id)
             people = People.objects.get(id=people_result.people_id)
