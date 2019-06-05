@@ -44,6 +44,7 @@ from wduser.user_utils import UserAccountUtils
 from utils.math_utils import normsdist
 from django.db import connection
 import numpy as np
+from django.db.models import Count
 
 
 def str_check(str_obj):
@@ -1964,34 +1965,33 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                 people_result.report_url= settings.Reports['disc2019'] % (personal_result_id)
                 people_result.report_status=PeopleSurveyRelation.STATUS_FINISH
                 people_result.save()
-            if not people_result.substandard_score:
-                SurveyAlgorithm.algorithm_disc(personal_result_id)
-                people_result = PeopleSurveyRelation.objects.get(id=personal_result_id)
             people = People.objects.get(id=people_result.people_id)
             default_data["msg"]["Name"] = people.display_name
             default_data["msg"]["Sex"] = people.get_info_value(u"性别", u"未知")
             default_data["msg"]["Age"] = people.get_info_value(u"年龄", u"未知")
-            substandard_score_map = people_result.substandard_score_map
             if people_result.finish_time:
                 default_data["msg"]["CompleteTime"] = time_format4(people_result.finish_time)
             else:
                 default_data["msg"]["CompleteTime"] = time_format4(datetime.datetime.now())
 
-            # difference
-            for info in default_data["msg"]["ChartSelfImage_Indicator"]:
-                if "difference" in substandard_score_map and info["name"] in substandard_score_map["difference"]:
-                    info["score"] = substandard_score_map["difference"][info["name"]]
-            # like
-            for info in default_data["msg"]["ChartWorkMask_Indicator"]:
-                if "like" in substandard_score_map and info["name"] in substandard_score_map["like"]:
-                    info["score"] = substandard_score_map["like"][info["name"]]
-            # not_like
-            for info in default_data["msg"]["ChartBR_UnderStress_Indicator"]:
-                # 兼容错误key
-                if "not_lie" in substandard_score_map and info["name"] in substandard_score_map["not_lie"]:
-                    info["score"] = substandard_score_map["not_lie"][info["name"]]
-                if "not_like" in substandard_score_map and info["name"] in substandard_score_map["not_like"]:
-                    info["score"] = substandard_score_map["not_like"][info["name"]]
+            score_count_query_dict = UserQuestionAnswerInfo.objects.filter(
+                project_id=people_result.project_id,
+                survey_id=people_result.survey_id,
+                people_id=people_result.people_id,
+                is_active=True
+            ).values_list('answer_score').annotate(c=Count("id"))
+            score_count = list(score_count_query_dict)
+            score_count.sort()  # [(0.0, 13), (1.0, 2), (2.0, 3), (4.0, 3), ..., (64.0, 2), (128.0, 5)]
+            count = [i[1] for i in score_count]  # [13, 2, 3, 3, ..., 2, 5]
+            mask = count[1: 5]
+            under_stress = count[5:]
+            self_image = [mask[j] - under_stress[j] for j in xrange(4)]
+            for index, dic in enumerate(default_data["msg"]["ChartWorkMask_Indicator"]):
+                default_data["msg"]["ChartWorkMask_Indicator"][index]['score'] = mask[index]
+            for index, dic in enumerate(default_data["msg"]["ChartBR_UnderStress_Indicator"]):
+                default_data["msg"]["ChartBR_UnderStress_Indicator"][index]['score'] = under_stress[index]
+            for index, dic in enumerate(default_data["msg"]["ChartSelfImage_Indicator"]):
+                default_data["msg"]["ChartSelfImage_Indicator"][index]['score'] = self_image[index]
         except Exception, e:
             err_logger.error("get report data error, msg: %s " % e)
             return default_data, ErrorCode.INVALID_INPUT
