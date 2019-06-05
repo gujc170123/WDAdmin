@@ -10,15 +10,17 @@ import functools
 from utils.logger import get_logger
 from celery import shared_task
 from collections import OrderedDict
+from workspace.models import FactOEI
 from workspace.util.redispool import redis_pool
 reload(sys)
 sys.setdefaultencoding('utf8')
 
-logger = get_logger("sql_transfer")
+logger = get_logger("etl")
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 etl_data_dir = os.path.join(os.path.dirname(BASE_DIR), 'etl_data')
 if not os.path.exists(etl_data_dir):
     os.mkdir(etl_data_dir)
+
 
 def try_catch(func):
     @functools.wraps(func)
@@ -32,9 +34,6 @@ def try_catch(func):
         except Exception, e:
             logger.error(u"执行%s出错" % name)
             redis_pool.rpush(redis_key, time.time(), 2)
-            for arg in args:
-                data_file = os.path.join(etl_data_dir, "%s_%s.json" % (func.__name__, arg))
-                json.dump(args[0], open(data_file, 'w'))
             raise e
 
     return inner
@@ -201,12 +200,31 @@ def statistics_base_info(rows, name):
     return res
 
 
+# Filter rows -> 转置 -> Select values 3 -> Sort rows
+@try_catch
+def direct_transpose(rows, name):
+    res = []
+    target = [u"年龄", u"性别", u"岗位序列", u"司龄", u"层级"]
+    profile = ['people_id', 'username']
+    profile.extend(target)
+    for i in rows:
+        if i[2]:  # Filter rows
+            personal_info = [i[0], i[1]]
+            dict_lists = json.loads(i[2])
+            dict_item = {i['key_name']: i['key_value'] for i in dict_lists}
+            for property_key in target:
+                property_value = dict_item.get(property_key)
+                personal_info.append(property_value)
+            res.append(personal_info)
+    res.sort(key=lambda x: (x[0], x[1]))
+    return profile, res
+
+
 # 转置 and Select values 3   ** people_id, username,...
 @try_catch
 def transpose(lst, name):
     res = OrderedDict()
     target = [u"年龄", u"性别", u"岗位序列", u"司龄", u"层级"]
-    global profile
     profile = []
     for i in lst:  # [people_id, username, property_key, property_value]
         key = "%s-%s" % (unicode(i[0]), i[1])
@@ -265,15 +283,7 @@ def merge(left, right, lindex, rindex, how='inner', on=None, left_on=None, right
 
 def line1(conn, aid):
     column_index, base_info = people_base_info(conn, aid, name=u"人员基础信息")
-    # Filter rows
-    filter_row = filter_rows(base_info, name=u"过滤more_info为空的数据")
-    statistic_base_info = statistics_base_info(filter_row, name=u"合计人员基础信息")
-    # 排序
-    statistic_base_info.sort(key=lambda x: (x[0], x[1]))
-    # 转置 and Select values 3  ********************
-    column_index_sv3, select_values_3 = transpose(statistic_base_info, name=u"转置、Select values 3")
-
-    select_values_3.sort(key=lambda x: x[0])
+    column_index_sv3, select_values_3 = direct_transpose(base_info, name=u"转置")
     column_index_pr, people_relation = people_relationship(conn, name=u"组织人员关系")
     column_index_mj_32, merge_join_32 = merge(select_values_3, people_relation, lindex=column_index_sv3,
                                               rindex=column_index_pr, on=["people_id"], name='merge_join_32')
@@ -444,7 +454,8 @@ def statistics(score):
 
 # 计算所有分数
 @try_catch
-def compute_all(all_score, col_index, assessID, **kwargs):
+def compute_all(all_score, col_index, assessID, hidden_people_id, reference, **kwargs):
+    fact_list = []
     for person_score_list in all_score:
         personal_res = OrderedDict()
         for i in xrange(16):
@@ -453,12 +464,38 @@ def compute_all(all_score, col_index, assessID, **kwargs):
         statistic = statistics(score)
         personal_res["score"] = score
         personal_res["statistics"] = statistic
+        # 计算mask1-4
+        mask_score = [person_score_list[col_index.index('MASK%s' % k)] for k in xrange(1, 5)]
+        mask = filter_mask(mask_score, reference)
+        x_dict = get_X(col_index, person_score_list)
+        fact_obj = db_create(personal_res, assessID, x_dict, hidden_people_id, mask)
+        fact_list.append(fact_obj)
+    FactOEI.objects.bulk_create(fact_list)
 
-        db_create(personal_res, assessID)
+
+def filter_mask(mask_score, reference):
+    if reference == 1:
+        reference = 4.0
+    elif reference == 2:
+        reference = 4.5
+    else:
+        reference = 4.8
+    if None in mask_score:
+        return True
+    if sum(mask_score) >= reference*4:
+        return True
+    return False
 
 
-def db_create(res, assessID):
-    from workspace.models import FactOEI
+def get_X(col_index, person_score_list):
+    x = ['X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7', 'X8', 'X9', 'X10',
+         'X11', 'X12', 'X13', 'X14', 'X15', 'X16', 'X17', 'X18']
+    x_index = [col_index.index(i) for i in x]
+    x_value = [person_score_list[j] for j in x_index]
+    return dict(zip(x, x_value))
+
+
+def db_create(res, assessID, x_dict, hidden_people_id, mask):
     score_dict = {
         'AssessKey': assessID,
         'DW_Person_ID': res['people_id'],
@@ -482,8 +519,8 @@ def db_create(res, assessID):
         'dimension6': res["statistics"][u'组织卓越'],
         'dimension7': res["statistics"][u'个人幸福能力'],
         'scale1': res["statistics"][u'幸福效能'],
-        'scale2': 0,
-        'scale3': 0,
+        'scale2': res["statistics"].get(u'岗位压力', 0),
+        'scale3': res["statistics"].get(u'幸福度', 0),
         'quota1': res["score"].get(u'安全健康', 0),
         'quota2': res["score"][u'环境舒适'],
         'quota3': res["score"][u'条件支持'],
@@ -538,15 +575,32 @@ def db_create(res, assessID):
         'quota52': res["score"][u'自信坚韧'],
         'quota53': res["score"][u'合理归因'],
         'quota54': res["score"][u'灵活变通'],
+        'hidden': mask,
     }
-    try:
-        FactOEI.objects.create(**score_dict)
-    except Exception, e:
-        logger.error(e)
+    score_dict.update(x_dict)
+    if res['people_id'] in hidden_people_id:
+        score_dict['hidden'] = True
+    # try:
+    #     FactOEI.objects.create(**score_dict)
+    # except Exception, e:
+    #     logger.error(e)
+    return FactOEI(**score_dict)
+
+
+def get_avg_answer_time(conn, project_id, survey_id):
+    sql = """
+        select people_id, AVG(answer_time)
+        from front_userquestionanswerinfo
+        where project_id=%s and survey_id=%s and is_active=true
+        group by people_id
+    """
+    res = conn.get_data(sql, project_id, survey_id)
+    hidden_people_id = [i[0] for i in res if res[1] < 3]
+    return hidden_people_id
 
 
 @shared_task
-def main(AssessID, SurveyID):
+def main(AssessID, SurveyID, reference=3):
     assess_id = project_id = AssessID  # 191
     survey_id = SurveyID  # 132
     tag_id = 54
@@ -578,7 +632,8 @@ def main(AssessID, SurveyID):
     column_index_mj33, merge_join_3_3 = merge(sort_select_values_2, sort_rows_4, column_index_mj3, column_index_l3,
                                               how='left', on=["people_id"], name='merge_join_3_3')
 
-    compute_all(merge_join_3_3, column_index_mj33, AssessID, name=u'计算各项维度分')
+    hidden_pid = get_avg_answer_time(front_conn, project_id, survey_id)
+    compute_all(merge_join_3_3, column_index_mj33, AssessID, hidden_pid, reference, name=u'计算各项维度分')
 
     sql_conn.cursor.callproc('CalculateFacet', (assess_id, survey_id))
 

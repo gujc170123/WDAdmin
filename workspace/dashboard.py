@@ -643,10 +643,11 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         )
         org_list = org.split('.')
         query_dict = dict(zip(organization, org_list))
-        query_dict.update({'AssessKey': self.assess_id})
+        query_dict.update({'AssessKey': self.assess_id, 'hidden': False})
         return query_dict, org_list
 
     def get_child_org(self, query_dict):
+        del query_dict['hidden']
         len_query = len(query_dict)
         if len_query == 2:
             child_org = FactOEI.objects.complex_filter(query_dict).values_list("organization1",

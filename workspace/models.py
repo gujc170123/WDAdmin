@@ -134,6 +134,7 @@ class FactOEI(models.Model):
     X16 = models.DecimalField(max_digits=5, decimal_places=2)
     X17 = models.DecimalField(max_digits=5, decimal_places=2)
     X18 = models.DecimalField(max_digits=5, decimal_places=2)
+    hidden = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ("DW_Person_ID", "AssessKey")
