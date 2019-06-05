@@ -3493,11 +3493,53 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                     } 
                }
 
+        happy_ability_config_map = {
+            "自主定向": {
+                 "average_value": 62.64,
+                 "standard_diff_value": 18.09},
+            "意义寻求": {
+                "average_value": 74.13,
+                "standard_diff_value": 18.87},
+            "自我悦纳": {
+                "average_value": 73.43,
+                "standard_diff_value": 18.67},
+            "自我拓展": {
+                "average_value": 69.75,
+                "standard_diff_value": 17.14},
+            "情绪调节": {
+                "average_value": 72.1,
+                "standard_diff_value": 19.24},
+            "专注投入": {
+                "average_value": 66.86,
+                "standard_diff_value": 18.92},
+            "亲和利他": {
+                "average_value": 60.94,
+                "standard_diff_value": 16.8},
+            "包容差异": {
+                "average_value": 73.23,
+                "standard_diff_value": 20.86},
+            "乐观积极": {
+                "average_value": 73.53,
+                "standard_diff_value": 19.6},
+            "自信坚韧": {
+                "average_value": 71.59,
+                "standard_diff_value": 21.68},
+            "合理归因": {
+                "average_value": 71.96,
+                "standard_diff_value": 18.47},
+            "灵活变通": {
+                "average_value": 68.62,
+                "standard_diff_value": 18.6}
+        }
+
         average_value = 69.898
         standard_diff_value = 18.912
         positive_comments = []
         negative_comments = []
         negative_quotas = []
+        substandard_score_map = {}
+        normdist_score_map = {}
+        dimension_score = 0.00
 
         try:
             #get personal assess status info
@@ -3507,14 +3549,62 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             if people_result.status != PeopleSurveyRelation.STATUS_FINISH:
                 return data, ErrorCode.INVALID_INPUT
 
-            #calculate peoi when calculation not ready
-            if not people_result.dimension_score or not people_result.substandard_score:
-                SurveyAlgorithm.algorithm_xfzs(personal_result_id)
-                people_result = PeopleSurveyRelation.objects.get(id=personal_result_id)
+            frontname = settings.DATABASES['front']['NAME']
+            sql_query = "select b.tag_value ,a.score from\
+                (select question_id,answer_score score\
+                from " + frontname + ".front_peoplesurveyrelation a,\
+                " + frontname + ".front_userquestionanswerinfo b\
+                where  a.id=%s and a.survey_id=b.survey_id and a.people_id=b.people_id\
+                and a.project_id=b.project_id and a.is_active=true and b.is_active=true) a,research_questiontagrelation b\
+                where a.question_id=b.object_id and b.tag_id=54\
+                and b.is_active=True"
             
-            #initialize score map
-            dimension_score_map = people_result.dimension_score_map
-            substandard_score_map = people_result.substandard_score_map
+            with connection.cursor() as cursor:
+                cursor.execute(sql_query, [personal_result_id])
+                columns = [col[0] for col in cursor.description]
+                dictscore = {}
+                for row in cursor.fetchall():
+                    if dictscore.has_key(row[0]):
+                        dictscore[row[0]]=dictscore[row[0]]+row[1]
+                    else:
+                        dictscore[row[0]]=row[1]
+            
+            weight=12.50
+            substandard_score_map['自主定向']=(dictscore['N1']+dictscore['N2'])*weight
+            substandard_score_map['意义寻求']=(dictscore['N3']+dictscore['N4'])*weight
+            substandard_score_map['自我悦纳']=(dictscore['N5']+dictscore['N6'])*weight
+            substandard_score_map['自我拓展']=(dictscore['N7']+dictscore['N8'])*weight
+            substandard_score_map['情绪调节']=(dictscore['N9']+dictscore['N10'])*weight
+            substandard_score_map['专注投入']=(dictscore['N11']+dictscore['N12'])*weight
+            substandard_score_map['亲和利他']=(dictscore['N13']+dictscore['N14'])*weight
+            substandard_score_map['包容差异']=(dictscore['N15']+dictscore['N16'])*weight
+            substandard_score_map['乐观积极']=(dictscore['N17']+dictscore['N18'])*weight
+            substandard_score_map['自信坚韧']=(dictscore['N19']+dictscore['N20'])*weight
+            substandard_score_map['合理归因']=(dictscore['N21']+dictscore['N22'])*weight
+            substandard_score_map['灵活变通']=(dictscore['N23']+dictscore['N24'])*weight
+
+            dimension_score = (\
+                substandard_score_map['自主定向']+substandard_score_map['意义寻求']+\
+                substandard_score_map['自我悦纳']+substandard_score_map['自我拓展']+\
+                substandard_score_map['情绪调节']+substandard_score_map['专注投入']+\
+                substandard_score_map['亲和利他']+substandard_score_map['包容差异']+\
+                substandard_score_map['乐观积极']+substandard_score_map['自信坚韧']+\
+                substandard_score_map['合理归因']+substandard_score_map['灵活变通'])/12.00
+
+            normdist_score_map['自主定向']=normsdist((substandard_score_map['自主定向']-happy_ability_config_map['自主定向']['average_value'])/happy_ability_config_map['自主定向']['standard_diff_value'])*100
+            normdist_score_map['意义寻求']=normsdist((substandard_score_map['意义寻求']-happy_ability_config_map['意义寻求']['average_value'])/happy_ability_config_map['意义寻求']['standard_diff_value'])*100
+            normdist_score_map['自我悦纳']=normsdist((substandard_score_map['自我悦纳']-happy_ability_config_map['自我悦纳']['average_value'])/happy_ability_config_map['自我悦纳']['standard_diff_value'])*100
+            normdist_score_map['自我拓展']=normsdist((substandard_score_map['自我拓展']-happy_ability_config_map['自我拓展']['average_value'])/happy_ability_config_map['自我拓展']['standard_diff_value'])*100
+            normdist_score_map['情绪调节']=normsdist((substandard_score_map['情绪调节']-happy_ability_config_map['情绪调节']['average_value'])/happy_ability_config_map['情绪调节']['standard_diff_value'])*100
+            normdist_score_map['专注投入']=normsdist((substandard_score_map['专注投入']-happy_ability_config_map['专注投入']['average_value'])/happy_ability_config_map['专注投入']['standard_diff_value'])*100
+            normdist_score_map['亲和利他']=normsdist((substandard_score_map['亲和利他']-happy_ability_config_map['亲和利他']['average_value'])/happy_ability_config_map['亲和利他']['standard_diff_value'])*100
+            normdist_score_map['包容差异']=normsdist((substandard_score_map['包容差异']-happy_ability_config_map['包容差异']['average_value'])/happy_ability_config_map['包容差异']['standard_diff_value'])*100
+            normdist_score_map['乐观积极']=normsdist((substandard_score_map['乐观积极']-happy_ability_config_map['乐观积极']['average_value'])/happy_ability_config_map['乐观积极']['standard_diff_value'])*100
+            normdist_score_map['自信坚韧']=normsdist((substandard_score_map['自信坚韧']-happy_ability_config_map['自信坚韧']['average_value'])/happy_ability_config_map['自信坚韧']['standard_diff_value'])*100
+            normdist_score_map['合理归因']=normsdist((substandard_score_map['合理归因']-happy_ability_config_map['合理归因']['average_value'])/happy_ability_config_map['合理归因']['standard_diff_value'])*100
+            normdist_score_map['灵活变通']=normsdist((substandard_score_map['灵活变通']-happy_ability_config_map['灵活变通']['average_value'])/happy_ability_config_map['灵活变通']['standard_diff_value'])*100
+
+
             people = People.objects.get(id=people_result.people_id)
             total_score = 100
             normsdist_score = 100
@@ -3525,13 +3615,9 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             if sex not in ["男", "女"]:
                 sex = "男"
 
-            #get dimension info
-            for dimension in dimension_score_map:
-                if dimension_score_map[dimension]["name"] == "个人幸福能力":
-                    total_score = round(dimension_score_map[dimension]["score"], 2)
-                    normsdist_score = normsdist(((total_score - average_value) *1.00)/total_score*1.00) * 100
-                    data["msg"]["total"] = total_score
-                    break
+            total_score = round(dimension_score, 2)
+            normsdist_score = normsdist(((total_score - average_value) *1.00)/standard_diff_value*1.00) * 100
+            data["msg"]["total"] = total_score
 
             #get title and comment
             if normsdist_score >= 98:
@@ -3574,25 +3660,22 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
 
             #get quota info
             for info in data["msg"]["ChartEudaemonia"]:
-                for substandard_id in substandard_score_map:
-                    if substandard_score_map[substandard_id]["name"] == info["name"]:
-                        if substandard_score_map[substandard_id]["score"] > 100:
-                            comment = POSITIVE_COMMENTS[info["name"]].split('/')
-                            positive_comments.append(comment[random.randint(0,len(comment)-1)])
-                        elif substandard_score_map[substandard_id]["score"] < 75:
-                            comment = NEGATIVE_COMMENTS[info["name"]].split('/')
-                            negative_comments.append(comment[random.randint(0,len(comment)-1)])
-                            negative_quotas.append(info["name"])
+                if substandard_score_map[info["name"]] >= 100:
+                    comment = POSITIVE_COMMENTS[info["name"]].split('/')
+                    positive_comments.append(comment[random.randint(0,len(comment)-1)])
+                elif substandard_score_map[info["name"]] < 75:
+                    comment = NEGATIVE_COMMENTS[info["name"]].split('/')
+                    negative_comments.append(comment[random.randint(0,len(comment)-1)])
+                    negative_quotas.append(info["name"])
 
-                        percentage_score = round(substandard_score_map[substandard_id].get("normsdist_score", 0), 2)
-                        if percentage_score > 100:
-                            info["score"] = 10
-                        else:
-                            for index, index_score in enumerate(SCORE_MAP):
-                                if percentage_score <= index_score:
-                                    info["score"] = index + 1
-                                    break
-                        break
+                percentage_score = round(normdist_score_map[info["name"]], 2)
+                if percentage_score > 100:
+                    info["score"] = 10
+                else:
+                    for index, index_score in enumerate(SCORE_MAP):
+                        if percentage_score <= index_score:
+                            info["score"] = index + 1
+                            break
 
             #get comments
             if not positive_comments:
