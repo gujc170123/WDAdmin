@@ -42,7 +42,6 @@ class Dedication(AuthenticationExceptView, WdListCreateAPIView):
             if select_id in ('profile1', 'profile2', 'profile4') and not department:
                 types_tpl = FactOEI.objects.complex_filter(query_dict).values_list(select_id).distinct()
                 types = self.sort_types(types_tpl)
-                print 'types, ', types
                 for tp in types:
                     from copy import deepcopy
                     qd = deepcopy(query_dict)
@@ -50,11 +49,9 @@ class Dedication(AuthenticationExceptView, WdListCreateAPIView):
                     query_dicts[tp] = qd
             for key in query_dicts:
                 res = FactOEI.objects.complex_filter(query_dicts[key]).values_list('quota39')
-                print 'query_dicts[key], ', query_dicts[key]
                 if res.exists():
                     total = res.count()
                     group_res = res.annotate(c=Count('id'))
-                    print 'group_res, ', group_res
                     numbers = [0 for i in xrange(6)]
                     for tpl in group_res:
                         score, count = tpl
@@ -188,6 +185,7 @@ class Dedication(AuthenticationExceptView, WdListCreateAPIView):
 
     @staticmethod
     def get_child_org(query_dict):
+        del query_dict['hidden']
         len_query = len(query_dict)
         if len_query == 2:
             child_org = FactOEI.objects.complex_filter(query_dict).values_list("organization1",
@@ -219,7 +217,7 @@ class Dedication(AuthenticationExceptView, WdListCreateAPIView):
         if not isinstance(org, list):
             org = org.split('.')
         query_dict = dict(zip(organization, org))
-        query_dict.update({'AssessKey': self.assess_id})
+        query_dict.update({'AssessKey': self.assess_id, 'hidden': False})
         return query_dict, org
 
     def post(self, request, *args, **kwargs):
