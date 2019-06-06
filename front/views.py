@@ -1983,8 +1983,10 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             score_count = list(score_count_query_dict)
             score_count.sort()  # [(0.0, 13), (1.0, 2), (2.0, 3), (4.0, 3), ..., (64.0, 2), (128.0, 5)]
             count = [0 for x in xrange(9)]
+            position = [0, 1, 2, 4, 8, 16, 32, 64, 128]
             for tpl in score_count:
-                count[int(tpl[0])] = tpl[1]
+                idx = int(tpl[0])
+                count[position.index(idx)] = tpl[1]
             mask = count[1: 5]
             under_stress = count[5:]
             self_image = [mask[j] - under_stress[j] for j in xrange(4)]
