@@ -2414,11 +2414,11 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                 finally_score = test_job[title][name][score]
                 dic["finally"] = finally_score
                 if finally_score >= 14.5:
-                    res["disc"][title].append([name, score])
+                    res["disc"][title].append([name, score, finally_score])
 
         for item in disc:
             name_score_list = disc.get(item)
-            name_score_list.sort(key=lambda x: x[1], reverse=True)
+            name_score_list.sort(key=lambda x: x[2], reverse=True)
             statement_key = ''.join([i[0] for i in name_score_list])
             if not statement_key:
                 statement_key = u'下移位'
