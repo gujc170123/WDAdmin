@@ -188,6 +188,7 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
     '''person detail management'''
     model = AuthUser
     serializer_class = UserSerializer
+    POST_CHECK_REQUEST_PARAMETER = ("organization",)
 
     def post(self, request, *args, **kwargs):
         '''update user's profile, password ,email ,phone and organization'''
@@ -195,7 +196,7 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
 
         phone = request.data.get('phone', None)
         email = request.data.get('email', None)
-        account_name = request.data.get('account_name', None)
+        account_name = request.data.get('account_name', '').strip()
         nickname = request.data.get('nickname', None)
         pwd = request.data.get('password', None)
         password = get_mima(pwd) if pwd else None
@@ -216,7 +217,7 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
                                        organization__is_active=True).exists(): 
                 return general_json_response(status.HTTP_200_OK,
                                              ErrorCode.USER_ACCOUNT_NAME_ERROR,
-                                             {'msg': u'账户在本企业已存在'})
+                                             {'msg': u'工号在本企业已存在'})
 
         #check user phone
         if phone and (phone != user.phone):
@@ -240,6 +241,9 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
                                        organization__is_active=True).exists(): 
                     return general_json_response(status.HTTP_200_OK, ErrorCode.USER_PHONE_USED_ERROR,
                                              {'msg': u'邮箱已被使用'})
+        if not email and not phone and not account_name:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.USER_PHONE_USED_ERROR,
+                                             {'msg': u'必须填写手机，工号，邮箱中任一项信息作为登录帐号'})
         #user entity
         user.account_name = account_name
         user.nickname = nickname
