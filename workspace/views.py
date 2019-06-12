@@ -1,5 +1,6 @@
 # -*- coding:utf-8 -*-
 from __future__ import unicode_literals
+import hashlib
 import base64
 from urllib import quote
 from django.db.models import F,Q
@@ -18,7 +19,8 @@ from workspace.serializers import UserSerializer,BaseOrganizationSerializer,Asse
 from utils.regular import RegularUtils
 from assessment.views import get_mima, get_random_char, get_active_code
 from wduser.models import AuthUser, BaseOrganization, People, EnterpriseAccount, Organization, \
-                          BaseOrganizationPaths
+                          BaseOrganizationPaths, EnterpriseInfo
+from wduser.serializers import EnterpriseBasicSerializer                          
 from assessment.models import AssessProject, AssessSurveyRelation, AssessProjectSurveyConfig, \
                               AssessSurveyUserDistribute,AssessUser, AssessOrganization
 from survey.models import Survey
@@ -276,12 +278,20 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
 class AssessShareView(AuthenticationExceptView,WdCreateAPIView):
-    model = None
-    serializer_class = None
+    model = EnterpriseInfo
+    serializer_class = EnterpriseBasicSerializer
 
     def get(self, request, *args, **kwargs):
-        project_id_bs64 = quote(base64.b64encode(str(self.kwargs.get('pk'))))
-        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,{'url':settings.CLIENT_HOST + '/people/join-project/?ba=%s&bs=0' % project_id_bs64})
+        enterprise_obj = self.get_object()
+        if not enterprise_obj.enterprise_dedicated_link:
+            id_str = "%10d" % enterprise_obj.id
+            sha1 = hashlib.sha1()
+            sha1.update(id_str)
+            enterprise_dedicated_link = sha1.hexdigest()
+            enterprise_obj.enterprise_dedicated_link = enterprise_dedicated_link
+            enterprise_obj.save()
+
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,{'url':settings.CLIENT_HOST + "/#/enterprise" + "/" + str(enterprise_obj.enterprise_dedicated_link)})
 
 class UserBatchDeleteView(AuthenticationExceptView,WdDestroyAPIView):
     model = None
