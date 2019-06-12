@@ -728,6 +728,8 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
     def get_report(self, **kwargs):
         assess_id = kwargs.get("assess_id")
         survey_id = kwargs.get("survey_id")
+        stime = kwargs.get("stime")
+        reference = kwargs.get("reference")
         if not assess_id or not survey_id:
             return {}, ErrorCode.NOT_EXISTED
         redis_key = 'etl_%s_%s' % (assess_id, survey_id)
@@ -735,9 +737,9 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         if redis_value and redis_value[-1] == '0':
             return {'msg': u'正在生成报告，请稍后访问。', 'status': 2}, ErrorCode.SUCCESS
         elif redis_value and redis_value[-1] == '1':
-            return {'msg': u'报告完成。', 'status':1}, ErrorCode.SUCCESS
+            return {'msg': u'报告完成。', 'status': 1}, ErrorCode.SUCCESS
         else:
-            main.delay(assess_id, survey_id)
+            main.delay(assess_id, survey_id, stime, reference)
             redis_pool.rpush(redis_key, time.time(), 0)
             if not redis_value:
                 return {'msg': u'开始生成报告。', 'status': 0}, ErrorCode.SUCCESS
@@ -754,6 +756,8 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         select_id = self.request.data.get("select", None)
         assess_id = self.request.data.get("assess", None)
         survey_id = self.request.data.get("survey", None)
+        stime = self.request.data.get("stime", 3)
+        reference = self.request.data.get("reference", 4.8)
 
         try:
             if api_id == 'get_assess':
@@ -776,7 +780,9 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                                                                 scale_id=scale_id,
                                                                 select_id=select_id,
                                                                 assess_id=assess_id,
-                                                                survey_id=survey_id,)
+                                                                survey_id=survey_id,
+                                                                stime=stime,
+                                                                reference=reference)
             if err_code != ErrorCode.SUCCESS:
                 return general_json_response(status.HTTP_200_OK, ErrorCode.INVALID_INPUT, {"msg": err_code})
             else:
