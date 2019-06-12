@@ -21,7 +21,7 @@ def userimport_task(file_data, file_name, enterprise_id ,total,delimiter):
     keycols = [u"工号",u"手机号",u"邮箱"]
     codedict = {u"性别":[u"男",u"女"],u"层级":[u"高级",u"中级",u"初级"],
               u"序列":[u"管理",u"职能",u"技术",u"营销",u"操作"],
-              u"是否为部门主管":[u"是",u"否"],u"婚姻":[u"已婚",u"单身"]}
+              u"是否为部门主管":[u"是",u"否"],u"婚姻":[u"已婚",u"未婚"]}
     typedict = {u"邮箱":np.str,u"工号":np.str,u"手机号":np.str,u"姓名":np.str,u"出生年月":np.str,u"性别":np.str,
                 u"所属部门":np.str,u"是否为部门主管":np.str,u"层级":np.str,u"入职时间":np.str,u"序列":np.str,u"婚姻":np.str} 
     res,data,error = read_file(filepath,targetcols,typedict,mustcolsset,mustcols,keycols,codedict)
@@ -60,7 +60,7 @@ def preparedata(data,enterprise_id,delimiter):
                  u"层级":pandas.DataFrame({u"层级":[u"高级",u"中级",u"初级"],'rank':[3,2,1]}),
                  u"序列":pandas.DataFrame({u"序列":[u"管理",u"职能",u"技术",u"营销",u"操作"],'sequence':[1,2,3,4,5]}),
                  u"是否为部门主管":pandas.DataFrame({u"是否为部门主管":[u"是",u"否"],'role_type':[200,100]}),
-                 u"婚姻":pandas.DataFrame({u"婚姻":[u"已婚",u"单身"],'marriage':[1,2]})}
+                 u"婚姻":pandas.DataFrame({u"婚姻":[u"已婚",u"未婚"],'marriage':[1,2]})}
     res = orgmerge
     for k,v in  codedict.items():
         res = pandas.merge(res,codedict[k],left_on=k,right_on=k,how='left')
