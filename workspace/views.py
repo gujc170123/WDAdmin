@@ -166,7 +166,7 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
         endPos = startPos + pagesize
        
         
-        alluser = AuthUser.objects.filter(is_active=True,organization__childorg__parent_id=org,organization__is_active=True)
+        alluser = AuthUser.objects.filter(is_active=True,organization__childorg__parent_id=org,organization__is_active=True,is_staff=True)
         if keyword:
             alluser = alluser.filter(Q(nickname__contains=keyword) | Q(phone__contains=keyword) | Q(email__contains=keyword))
         

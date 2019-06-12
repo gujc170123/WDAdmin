@@ -45,14 +45,14 @@ def preparedata(data,enterprise_id,delimiter):
     #get original users info
     datausers = pandas.read_sql("select a.account_name,a.phone,a.email,b.enterprise_id from wduser_authuser a, wduser_baseorganization b \
                                 where a.organization_id=b.id and a.is_active=true and b.is_active=true \
-                                and b.enterprise_id=%s and a.account_name is not null and a.phone is not null and a.email is not null ",connection,params=[enterprise_id])
-    duplicated = pandas.merge(data,datausers,left_on=u'工号',right_on='account_name')['indice'].tolist()
+                                and b.enterprise_id=%s",connection,params=[enterprise_id])
+    duplicated = pandas.merge(data,datausers.notnull,left_on=u'工号',right_on='account_name')['indice'].tolist()
     if len(duplicated):
         return False,[],u"导入人员信息中的工号已在系统中登记"
-    duplicated = pandas.merge(data,datausers,left_on=u'邮箱',right_on='email')['indice'].tolist()
+    duplicated = pandas.merge(data,datausers.notnull,left_on=u'邮箱',right_on='email')['indice'].tolist()
     if len(duplicated):
         return False,[],u"导入人员信息中的邮箱已在系统中登记"
-    duplicated = pandas.merge(data,datausers,left_on=u'手机号',right_on='phone')['indice'].tolist()
+    duplicated = pandas.merge(data,datausers.notnull,left_on=u'手机号',right_on='phone')['indice'].tolist()
     if len(duplicated):
         return False,[],u"导入人员信息中的手机号已在系统中登记"
     
@@ -85,10 +85,11 @@ def importdata(data):
     UserList = []
     batchsize = 5000
     register = 0
+    
     for index, row in data.iterrows():
         UserList.append(
             AuthUser(
-                    username=convertna2none(row[u"姓名"]),
+                    username=convertna2none(row[u"工号"])+convertna2none(row[u"手机号"])+convertna2none(row[u"邮箱"]),
                     account_name=convertna2none(row[u"工号"]),
                     nickname=convertna2none(row[u"姓名"]),
                     password=get_mima('123456'),
