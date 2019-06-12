@@ -45,7 +45,7 @@ def preparedata(data,enterprise_id,delimiter):
     #get original users info
     datausers = pandas.read_sql("select a.account_name,a.phone,a.email,b.enterprise_id from wduser_authuser a, wduser_baseorganization b \
                                 where a.organization_id=b.id and a.is_active=true and b.is_active=true \
-                                and b.enterprise_id=%s ",connection,params=[enterprise_id])
+                                and b.enterprise_id=%s and a.account_name is not null and a.phone is not null and a.email is not null ",connection,params=[enterprise_id])
     duplicated = pandas.merge(data,datausers,left_on=u'工号',right_on='account_name')['indice'].tolist()
     if len(duplicated):
         return False,[],u"导入人员信息中的工号已在系统中登记"
