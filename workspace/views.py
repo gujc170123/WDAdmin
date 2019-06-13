@@ -15,7 +15,7 @@ from wduser.user_utils import UserAccountUtils
 from utils.logger import err_logger, info_logger
 from workspace.helper import OrganizationHelper
 from workspace.serializers import UserSerializer,BaseOrganizationSerializer,AssessSerializer,\
-                                  AssessListSerializer,SurveyListSerializer
+                                  AssessListSerializer,SurveyListSerializer,UserDetailSerializer
 from utils.regular import RegularUtils
 from assessment.views import get_mima, get_random_char, get_active_code
 from wduser.models import AuthUser, BaseOrganization, People, EnterpriseAccount, Organization, \
@@ -189,8 +189,8 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
 class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyAPIView):
     '''person detail management'''
     model = AuthUser
-    serializer_class = UserSerializer
-    POST_CHECK_REQUEST_PARAMETER = ("organization",)
+    serializer_class = UserDetailSerializer
+    POST_CHECK_REQUEST_PARAMETER = ("organization",)    
 
     def post(self, request, *args, **kwargs):
         '''update user's profile, password ,email ,phone and organization'''

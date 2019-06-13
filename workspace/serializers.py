@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 from __future__ import unicode_literals
 from rest_framework import serializers
-from wduser.models import AuthUser, EnterpriseAccount, People, BaseOrganization
+from wduser.models import AuthUser, EnterpriseAccount, People, BaseOrganization,BaseOrganizationPaths
 from assessment.models import AssessProject
 from survey.models import Survey
 import json
@@ -50,6 +50,26 @@ class UserSerializer(serializers.ModelSerializer):
                   'gender','rank','marriage','organization','enteprise',
                   'sequence_name','gender_name','rank_name','marriage_name',
                   'organization_name','birthday','hiredate','account_name')
+
+class UserDetailSerializer(serializers.ModelSerializer):
+    """user serializer"""
+    sequence_name = serializers.CharField(source='sequence.value', read_only=True)
+    gender_name = serializers.CharField(source='gender.value', read_only=True)
+    rank_name = serializers.CharField(source='rank.value', read_only=True)
+    marriage_name = serializers.CharField(source='marriage.value', read_only=True)
+    organization_name = serializers.CharField(source='organization.name', read_only=True)
+    enteprise = serializers.IntegerField(source='organization.enterprise_id', read_only=True)
+    fullorg = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AuthUser
+        fields = ('id', 'nickname','role_type','phone','email','sequence',
+                  'gender','rank','marriage','organization','enteprise',
+                  'sequence_name','gender_name','rank_name','marriage_name',
+                  'organization_name','birthday','hiredate','account_name','fullorg')
+
+    def get_fullorg(self, obj):        
+        return BaseOrganizationPaths.objects.filter(child_id=obj.organization).order_by('depth').values_list('parent_id',flat=True)        
 
 class AssessSerializer(serializers.ModelSerializer):
     '''Assessment Serializer'''
