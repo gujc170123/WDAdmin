@@ -3947,6 +3947,10 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             #exit when not completed
             if people_result.status != PeopleSurveyRelation.STATUS_FINISH:
                 return data, ErrorCode.INVALID_INPUT
+            if not people_result.report_url:
+                people_result.report_url= settings.Reports['peoi2019'] % (personal_result_id)
+                people_result.report_status=PeopleSurveyRelation.STATUS_FINISH
+                people_result.save()
 
             frontname = settings.DATABASES['front']['NAME']
             sql_query = "select b.tag_value ,a.score from\
