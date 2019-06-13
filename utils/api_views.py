@@ -96,7 +96,7 @@ class VerifyCodeView(AuthenticationExceptView, WdListAPIView):
                 send_general_code.delay(code, phone=self.account)
                 # Sms.send_general_code(code, [self.account])
             elif RegularUtils.email_check(self.account):
-                send_general_code.delay(code, email=self.account)
+                send_general_code(code, email=self.account)
                 # EmailUtils().send_general_code(code, self.account)
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
