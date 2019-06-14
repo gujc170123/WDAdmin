@@ -212,8 +212,11 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
         is_staff = request.data.get('is_staff', True)
         role_type = request.data.get('role_type', AuthUser.ROLE_NORMAL)
 
+        organization = BaseOrganization.objects.get(pk=organization_id)
+        enterprise_id = organization.enterprise_id
+
         if account_name and (account_name != user.account_name):
-            if AuthUser.objects.filter(organization_id=organization_id,
+            if AuthUser.objects.filter(organization__enterprise_id=enterprise_id,
                                        is_active=True,
                                        account_name=account_name,
                                        organization__is_active=True,
@@ -227,7 +230,7 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
             if not RegularUtils.phone_check(phone):
                 return general_json_response(status.HTTP_200_OK, ErrorCode.USER_PHONE_REGUL_ERROR,
                                              {'msg': u'手机格式有误'})
-            if AuthUser.objects.filter(organization_id=organization_id,
+            if AuthUser.objects.filter(organization__enterprise_id=enterprise_id,
                                        is_active=True,
                                        phone=phone,
                                        organization__is_active=True).exclude(id=user.id).exists():  
@@ -238,7 +241,7 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
             if not RegularUtils.email_check(email):
                 return general_json_response(status.HTTP_200_OK, ErrorCode.USER_EMAIL_REGUL_ERROR,
                                              {'msg': u'邮箱格式有误'})
-            if AuthUser.objects.filter(organization_id=organization_id,
+            if AuthUser.objects.filter(organization__enterprise_id=enterprise_id,
                                        is_active=True,
                                        email=email,
                                        organization__is_active=True).exclude(id=user.id).exists(): 
