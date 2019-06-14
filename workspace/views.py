@@ -216,7 +216,8 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
             if AuthUser.objects.filter(organization_id=organization_id,
                                        is_active=True,
                                        account_name=account_name,
-                                       organization__is_active=True).exists(): 
+                                       organization__is_active=True,
+                                       ).exclude(id=user.id).exists(): 
                 return general_json_response(status.HTTP_200_OK,
                                              ErrorCode.USER_ACCOUNT_NAME_ERROR,
                                              {'msg': u'工号在本企业已存在'})
@@ -229,7 +230,7 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
             if AuthUser.objects.filter(organization_id=organization_id,
                                        is_active=True,
                                        phone=phone,
-                                       organization__is_active=True).exists():  
+                                       organization__is_active=True).exclude(id=user.id).exists():  
                 return general_json_response(status.HTTP_200_OK, ErrorCode.USER_PHONE_USED_ERROR,
                                                 {'msg': u'手机已被使用'})
         #check user email
@@ -240,7 +241,7 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
             if AuthUser.objects.filter(organization_id=organization_id,
                                        is_active=True,
                                        email=email,
-                                       organization__is_active=True).exists(): 
+                                       organization__is_active=True).exclude(id=user.id).exists(): 
                     return general_json_response(status.HTTP_200_OK, ErrorCode.USER_PHONE_USED_ERROR,
                                              {'msg': u'邮箱已被使用'})
         if not email and not phone and not account_name:
