@@ -138,7 +138,9 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
                 return general_json_response(status.HTTP_200_OK,
                                              ErrorCode.USER_EMAIL_USED_ERROR,
                                              {'msg': u'新增用户失败，邮箱已被使用'})
-
+        if not email and not phone and not account_name:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.USER_PHONE_USED_ERROR,
+                                             {'msg': u'必须填写手机，工号，邮箱中任一项信息作为登录帐号'})
         try:
             user = CreateNewUser(username,account_name,nickname,pwd,phone,email,is_superuser,
                           role_type,is_staff,sequence,gender,birthday,rank,hiredate,marriage,
@@ -493,7 +495,7 @@ class AssessCreateView(AuthenticationExceptView, WdListCreateAPIView):
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,{'id':assess.id})
     
     def get(self, request, *args, **kwargs):
-        assesses = AssessProject.objects.filter_active(enterprise_id=self.enterprise).order_by('-id')
+        assesses = AssessProject.objects.filter_active(enterprise_id=self.enterprise,has_distributed=True).order_by('-id')
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,AssessListSerializer(assesses,many=True).data)
 
 class SurveyListView(AuthenticationExceptView, WdListCreateAPIView):
