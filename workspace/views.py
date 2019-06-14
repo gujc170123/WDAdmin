@@ -94,9 +94,9 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
         gender = convertempty2none(request.data.get('gender', None))
         sequence = convertempty2none(request.data.get('sequence', None))
         marriage = convertempty2none(request.data.get('marriage', None))
-        is_staff = convertempty2none(request.data.get('is_staff', True))
+        is_staff = request.data.get('is_staff', True)
         role_type = convertempty2none(request.data.get('role_type', AuthUser.ROLE_NORMAL))
-        is_superuser = convertempty2none(request.data.get('is_superuser', False))
+        is_superuser = request.data.get('is_superuser', False)
         username = nickname + get_random_char(6)
         active_code = get_active_code()
         
@@ -209,8 +209,9 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
         gender = convertempty2none(request.data.get('gender', None))
         sequence = convertempty2none(request.data.get('sequence', None))
         marriage = convertempty2none(request.data.get('marriage', None))
-        is_staff = convertempty2none(request.data.get('is_staff', True))
+        is_staff = request.data.get('is_staff', True)
         role_type = convertempty2none(request.data.get('role_type', AuthUser.ROLE_NORMAL))
+        is_superuser = request.data.get('is_superuser', False)
 
         organization = BaseOrganization.objects.get(pk=organization_id)
         enterprise_id = organization.enterprise_id
@@ -266,6 +267,7 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
         user.is_staff = is_staff
         user.role_type = role_type
         user.organization_id = organization_id
+        user.is_superuser = is_superuser
 
         try:
             user.save()
