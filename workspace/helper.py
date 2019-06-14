@@ -57,6 +57,15 @@ def is_valid_date(str):
   except:
     return False
 
+def convertempty2none(obj):
+    if obj is None:
+        return obj
+    else:
+        if not obj:
+            return None
+    return obj
+        
+
 def convertna2none(obj):
     if obj:
         if pandas.isnull(obj):

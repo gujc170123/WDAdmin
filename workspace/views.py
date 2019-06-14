@@ -13,7 +13,7 @@ from utils.response import general_json_response, ErrorCode
 from rest_framework.response import Response
 from wduser.user_utils import UserAccountUtils
 from utils.logger import err_logger, info_logger
-from workspace.helper import OrganizationHelper
+from workspace.helper import OrganizationHelper,convertempty2none
 from workspace.serializers import UserSerializer,BaseOrganizationSerializer,AssessSerializer,\
                                   AssessListSerializer,SurveyListSerializer,UserDetailSerializer
 from utils.regular import RegularUtils
@@ -83,20 +83,20 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
 
     def post(self, request, *args, **kwargs):
         pwd = request.data.get('password', None)
-        phone = request.data.get('phone', None)
-        email = request.data.get('email', None)
-        nickname = request.data.get('nickname', None)
-        account_name = request.data.get('account_name', None)
-        organization_id = request.data.get('organization', None)
-        hiredate = request.data.get('hiredate', None)
-        rank = request.data.get('rank', None)
-        birthday = request.data.get('birthday', None)
-        gender = request.data.get('gender', None)
-        sequence = request.data.get('sequence', None)
-        marriage = request.data.get('marriage', None)
-        is_staff = request.data.get('is_staff', True)
-        role_type = request.data.get('role_type', AuthUser.ROLE_NORMAL)
-        is_superuser = request.data.get('is_superuser', False)
+        phone = convertempty2none(request.data.get('phone', None))
+        email = convertempty2none(request.data.get('email', None))
+        nickname = convertempty2none(request.data.get('nickname', None))
+        account_name = convertempty2none(request.data.get('account_name', None))
+        organization_id = convertempty2none(request.data.get('organization', None))
+        hiredate = convertempty2none(request.data.get('hiredate', None))
+        rank = convertempty2none(request.data.get('rank', None))
+        birthday = convertempty2none(request.data.get('birthday', None))
+        gender = convertempty2none(request.data.get('gender', None))
+        sequence = convertempty2none(request.data.get('sequence', None))
+        marriage = convertempty2none(request.data.get('marriage', None))
+        is_staff = convertempty2none(request.data.get('is_staff', True))
+        role_type = convertempty2none(request.data.get('role_type', AuthUser.ROLE_NORMAL))
+        is_superuser = convertempty2none(request.data.get('is_superuser', False))
         username = nickname + get_random_char(6)
         active_code = get_active_code()
         
@@ -196,21 +196,21 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
         '''update user's profile, password ,email ,phone and organization'''
         user = self.get_object()
 
-        phone = request.data.get('phone', None)
-        email = request.data.get('email', None)
-        account_name = request.data.get('account_name', '').strip()
-        nickname = request.data.get('nickname', None)
-        pwd = request.data.get('password', None)
+        phone = convertempty2none(request.data.get('phone', None))
+        email = convertempty2none(request.data.get('email', None))
+        account_name = convertempty2none(request.data.get('account_name', '').strip())
+        nickname = convertempty2none(request.data.get('nickname', None))
+        pwd = convertempty2none(request.data.get('password', None))
         password = get_mima(pwd) if pwd else None
-        organization_id = request.data.get('organization', None)
-        hiredate = request.data.get('hiredate', None)
-        rank = request.data.get('rank', None)
-        birthday = request.data.get('birthday', None)
-        gender = request.data.get('gender', None)
-        sequence = request.data.get('sequence', None)
-        marriage = request.data.get('marriage', None)
-        is_staff = request.data.get('is_staff', True)
-        role_type = request.data.get('role_type', AuthUser.ROLE_NORMAL)
+        organization_id = convertempty2none(request.data.get('organization', None))
+        hiredate = convertempty2none(request.data.get('hiredate', None))
+        rank = convertempty2none(request.data.get('rank', None))
+        birthday = convertempty2none(request.data.get('birthday', None))
+        gender = convertempty2none(request.data.get('gender', None))
+        sequence = convertempty2none(request.data.get('sequence', None))
+        marriage = convertempty2none(request.data.get('marriage', None))
+        is_staff = convertempty2none(request.data.get('is_staff', True))
+        role_type = convertempty2none(request.data.get('role_type', AuthUser.ROLE_NORMAL))
 
         organization = BaseOrganization.objects.get(pk=organization_id)
         enterprise_id = organization.enterprise_id
