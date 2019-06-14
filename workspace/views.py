@@ -65,7 +65,7 @@ class UserLoginView(AuthenticationExceptView, WdCreateAPIView):
         user_info = UserSerializer(instance=user, context=self.get_serializer_context())
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, user_info.data)
 
-class LogoutView(WdCreateAPIView):
+class LogoutView(AuthenticationExceptView, WdCreateAPIView):
     u"""Web登出"""
     def post(self, request, *args, **kwargs):
         try:
