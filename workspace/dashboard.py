@@ -66,7 +66,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             return res, ErrorCode.INTERNAL_ERROR
 
     def get_feature(self, **kwargs):
-        res = {}
+        res = OrderedDict()
         org = kwargs.get("org_id")
         if not org:
             return res, ErrorCode.INVALID_INPUT
@@ -78,7 +78,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             )
             if res2:
                 res[u"企业幸福指数"] = round(res2["model__avg"], 2)
-                res[u"压力指数"] = round(res2["quota41__avg"], 2)
+                res[u"压力承受"] = round(res2["quota41__avg"], 2)
                 res[u"工作投入"] = round(res2["dimension1__avg"], 2)
                 res[u"生活愉悦"] = round(res2["dimension2__avg"], 2)
                 res[u"成长有力"] = round(res2["dimension3__avg"], 2)
@@ -123,16 +123,16 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                     "r5c1": 0, "r5c2": 0, "r5c3": 0, "r5c4": 0, "r5c5": 0, "r5c6": 0, "r5c7": 0,
                 }
                 for s, model in result:
-                    if scale == "scale1":
+                    if scale == "quota39":
                         res1 = self.get_dedication_res(s, model, res1)
                     else:
                         res2 = self.get_stress_res(s, model, res2)
-                res = res1 if scale == "scale1" else res2
+                res = res1 if scale == "quota39" else res2
                 for i in res:
                     res[i] = round(res[i] * 100 / total, 2)
                 high = res['r1c1'] + res['r1c2'] + res['r2c1'] + res['r2c2']
                 res['high'] = round(high, 2)
-                if scale == 'scale1':
+                if scale == 'quota39':
                     low = res["r6c6"] + res["r6c7"] + res["r7c6"] + res["r7c7"]
                 else:
                     low = res["r4c6"] + res["r4c7"] + res["r5c6"] + res["r5c7"]
@@ -541,7 +541,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             res.append(rate)
         ret_arr = np.array(res)
         ret = ret_arr.transpose().tolist()
-        title = [u"企业幸福指数", u"压力指数", u"工作投入", u"生活愉悦", u"成长有力", u"人际和谐",
+        title = [u"企业幸福指数", u"压力承受", u"工作投入", u"生活愉悦", u"成长有力", u"人际和谐",
                  u"领导激发", u"组织卓越", u"员工幸福能力"]
         return [title, ret], ErrorCode.SUCCESS
 
@@ -728,6 +728,8 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
     def get_report(self, **kwargs):
         assess_id = kwargs.get("assess_id")
         survey_id = kwargs.get("survey_id")
+        stime = kwargs.get("stime")
+        reference = kwargs.get("reference")
         if not assess_id or not survey_id:
             return {}, ErrorCode.NOT_EXISTED
         redis_key = 'etl_%s_%s' % (assess_id, survey_id)
@@ -735,9 +737,9 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         if redis_value and redis_value[-1] == '0':
             return {'msg': u'正在生成报告，请稍后访问。', 'status': 2}, ErrorCode.SUCCESS
         elif redis_value and redis_value[-1] == '1':
-            return {'msg': u'报告完成。', 'status':1}, ErrorCode.SUCCESS
+            return {'msg': u'报告完成。', 'status': 1}, ErrorCode.SUCCESS
         else:
-            main.delay(assess_id, survey_id)
+            main.delay(assess_id, survey_id, stime, reference)
             redis_pool.rpush(redis_key, time.time(), 0)
             if not redis_value:
                 return {'msg': u'开始生成报告。', 'status': 0}, ErrorCode.SUCCESS
@@ -754,6 +756,8 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         select_id = self.request.data.get("select", None)
         assess_id = self.request.data.get("assess", None)
         survey_id = self.request.data.get("survey", None)
+        stime = self.request.data.get("stime", 3)
+        reference = self.request.data.get("reference", 4.8)
 
         try:
             if api_id == 'get_assess':
@@ -776,7 +780,9 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                                                                 scale_id=scale_id,
                                                                 select_id=select_id,
                                                                 assess_id=assess_id,
-                                                                survey_id=survey_id,)
+                                                                survey_id=survey_id,
+                                                                stime=stime,
+                                                                reference=reference)
             if err_code != ErrorCode.SUCCESS:
                 return general_json_response(status.HTTP_200_OK, ErrorCode.INVALID_INPUT, {"msg": err_code})
             else:
