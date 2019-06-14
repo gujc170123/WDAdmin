@@ -172,7 +172,7 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
         if keyword:
             alluser = alluser.filter(Q(nickname__contains=keyword) | Q(phone__contains=keyword) | Q(email__contains=keyword))
         
-        alluser = alluser.all().order_by('organization__id','id')
+        alluser = alluser.all().order_by('id','organization__id')
         allUserCounts =alluser.count()
         if allUserCounts>0:
             if endPos>allUserCounts:
