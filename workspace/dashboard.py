@@ -477,7 +477,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             res[i][u"区间"] = level
         types = [u"人数", u"区间", u"工作投入", u"生活愉悦", u"成长有力", u"人际和谐", u"领导激发", u"组织卓越"]
         rest = self.transe_list(res, types)
-        if not profile:
+        if profile not in types:
             t = [i.split('.')[-1] for i in rest[0]]
             rest[0] = t
         return rest, ErrorCode.SUCCESS
@@ -576,6 +576,8 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         else:
             child_org = self.get_child_org(query_dict)
             for i in child_org:
+                if not i[-1]:
+                    return {'': 0}, ErrorCode.SUCCESS
                 child_query_dict, org_list = self.get_organization('.'.join(i))
                 value_list = department.complex_filter(child_query_dict).values_list("model")
                 if select and select == "-":
@@ -585,8 +587,10 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                 res[org_list[-1]] = value_list
 
         total = sum([len(res[i]) for i in res])
-        for k in res:
-            res[k] = round(len(res[k]) * 100 / total, 2)
+        if not total:
+            res = {key: len(res[key]) for key in res}
+        else:
+            res = {key: round(len(res[key]) * 100 / total, 2) for key in res}
         return res, ErrorCode.SUCCESS
 
     def WDindex(self, **kwargs):
