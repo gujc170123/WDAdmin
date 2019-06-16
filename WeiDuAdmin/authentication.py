@@ -15,9 +15,7 @@ class WdSessionAuthentication(SessionAuthentication):
         # Unauthenticated, CSRF validation not required
         if not user or not user.is_active:
             return None
-        if not settings.DEBUG:  # or request.get_host().find(settings.CSRF_COOKIE_DOMAIN) > -1:
-            # TODO: DEBUG = False need test
-            self.enforce_csrf(request)
+        self.enforce_csrf(request)
 
         # CSRF passed with authenticated user
         return (user, None)
