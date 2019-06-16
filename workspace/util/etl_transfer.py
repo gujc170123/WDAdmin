@@ -13,6 +13,7 @@ from wduser.models import AuthUser
 from workspace.models import FactOEI
 from workspace.util.redispool import redis_pool
 from wduser.models import BaseOrganization, BaseOrganizationPaths
+from django.db import connection
 
 reload(sys)
 sys.setdefaultencoding('utf8')
@@ -555,8 +556,8 @@ def main(AssessID, SurveyID, stime, reference):
     hidden_pid = get_avg_answer_time(front_conn, project_id, survey_id, stime)
     compute_all(merge_join_3_3, AssessID, hidden_pid, reference, name=u'计算各项维度分')
 
-    sql_conn.cursor.callproc('CalculateFacet', (assess_id, survey_id))
-
+    with connection.cursor() as cursor:
+        ret = cursor.callproc("CalculateFacet", (assess_id, survey_id,))
     redis_pool.rpush(redis_key, time.time(), 1)
 
     sql_conn.close()
