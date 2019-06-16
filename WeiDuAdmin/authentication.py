@@ -14,8 +14,7 @@ class WdSessionAuthentication(SessionAuthentication):
 
         # Unauthenticated, CSRF validation not required
         if not user or not user.is_active:
-            return None
-        self.enforce_csrf(request)
+            return None        
 
         # CSRF passed with authenticated user
         return (user, None)
