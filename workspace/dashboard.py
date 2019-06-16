@@ -79,13 +79,13 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             if res2:
                 res[u"企业幸福指数"] = round(res2["model__avg"], 2)
                 res[u"压力承受"] = round(res2["quota41__avg"], 2)
-                res[u"工作投入"] = round(res2["dimension1__avg"], 2)
+                res[u"工作环境"] = round(res2["dimension1__avg"], 2)
                 res[u"生活愉悦"] = round(res2["dimension2__avg"], 2)
-                res[u"成长有力"] = round(res2["dimension3__avg"], 2)
-                res[u"人际和谐"] = round(res2["dimension4__avg"], 2)
-                res[u"领导激发"] = round(res2["dimension5__avg"], 2)
-                res[u"组织卓越"] = round(res2["dimension6__avg"], 2)
-                res[u"员工幸福能力"] = round(res2["dimension7__avg"], 2)
+                res[u"成长环境"] = round(res2["dimension3__avg"], 2)
+                res[u"人际环境"] = round(res2["dimension4__avg"], 2)
+                res[u"领导方式"] = round(res2["dimension5__avg"], 2)
+                res[u"组织环境"] = round(res2["dimension6__avg"], 2)
+                res[u"心理资本"] = round(res2["dimension7__avg"], 2)
                 return res, ErrorCode.SUCCESS
             else:
                 return res, ErrorCode.NOT_EXISTED
@@ -341,13 +341,13 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             query_dict, org_list = self.get_organization(org)
             if dimension:
                 dimension_dict = {
-                    u"工作投入": "dimension1",
+                    u"工作环境": "dimension1",
                     u"生活愉悦": "dimension2",
-                    u"成长有力": "dimension3",
-                    u"人际和谐": "dimension4",
-                    u"领导激发": "dimension5",
-                    u"组织卓越": "dimension6",
-                    u"员工幸福能力": "dimension7",
+                    u"成长环境": "dimension3",
+                    u"人际环境": "dimension4",
+                    u"领导方式": "dimension5",
+                    u"组织环境": "dimension6",
+                    u"心理资本": "dimension7",
                 }
                 company = FactOEI.objects.complex_filter(query_dict).aggregate(Avg(dimension_dict[dimension]))
             else:
@@ -365,13 +365,13 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                     child_query_dict, child_org_list = self.get_organization(i)
                     if dimension:
                         dimension_dict = {
-                            u"工作投入": "dimension1",
+                            u"工作环境": "dimension1",
                             u"生活愉悦": "dimension2",
-                            u"成长有力": "dimension3",
-                            u"人际和谐": "dimension4",
-                            u"领导激发": "dimension5",
-                            u"组织卓越": "dimension6",
-                            u"员工幸福能力": "dimension7",
+                            u"成长环境": "dimension3",
+                            u"人际环境": "dimension4",
+                            u"领导方式": "dimension5",
+                            u"组织环境": "dimension6",
+                            u"心理资本": "dimension7",
                         }
                         child_depart = FactOEI.objects.complex_filter(child_query_dict).aggregate(
                             Avg(dimension_dict[dimension]))
@@ -467,15 +467,15 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             res[i][u"人数"] = type_obj.count()
             scores = type_obj.aggregate(Avg("dimension1"), Avg("dimension2"), Avg("dimension3"), Avg("dimension4"),
                                         Avg("dimension5"), Avg("dimension6"), Avg("model"))
-            res[i][u"工作投入"] = round(scores["dimension1__avg"], 2)
+            res[i][u"工作环境"] = round(scores["dimension1__avg"], 2)
             res[i][u"生活愉悦"] = round(scores["dimension2__avg"], 2)
-            res[i][u"成长有力"] = round(scores["dimension3__avg"], 2)
-            res[i][u"人际和谐"] = round(scores["dimension4__avg"], 2)
-            res[i][u"领导激发"] = round(scores["dimension5__avg"], 2)
-            res[i][u"组织卓越"] = round(scores["dimension6__avg"], 2)
+            res[i][u"成长环境"] = round(scores["dimension3__avg"], 2)
+            res[i][u"人际环境"] = round(scores["dimension4__avg"], 2)
+            res[i][u"领导方式"] = round(scores["dimension5__avg"], 2)
+            res[i][u"组织环境"] = round(scores["dimension6__avg"], 2)
             level = self.get_level(scores["model__avg"])
             res[i][u"区间"] = level
-        types = [u"人数", u"区间", u"工作投入", u"生活愉悦", u"成长有力", u"人际和谐", u"领导激发", u"组织卓越"]
+        types = [u"人数", u"区间", u"工作环境", u"生活愉悦", u"成长环境", u"人际环境", u"领导方式", u"组织环境"]
         rest = self.transe_list(res, types)
         if profile not in types:
             t = [i.split('.')[-1] for i in rest[0]]
@@ -541,8 +541,8 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             res.append(rate)
         ret_arr = np.array(res)
         ret = ret_arr.transpose().tolist()
-        title = [u"企业幸福指数", u"压力承受", u"工作投入", u"生活愉悦", u"成长有力", u"人际和谐",
-                 u"领导激发", u"组织卓越", u"员工幸福能力"]
+        title = [u"企业幸福指数", u"压力承受", u"工作环境", u"生活愉悦", u"成长环境", u"人际环境",
+                 u"领导方式", u"组织环境", u"心理资本"]
         return [title, ret], ErrorCode.SUCCESS
 
     def get_business_index(self, **kwargs):

@@ -13,6 +13,7 @@ from wduser.models import AuthUser
 from workspace.models import FactOEI
 from workspace.util.redispool import redis_pool
 from wduser.models import BaseOrganization, BaseOrganizationPaths
+
 reload(sys)
 sys.setdefaultencoding('utf8')
 
@@ -136,7 +137,8 @@ def row_denormaliser(value_lists, name):
         'L18', 'L19', 'L20',
         'Z1', 'Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7', 'Z8', 'Z9', 'Z10', 'Z11', 'Z12', 'Z13', 'Z14', 'Z15', 'Z16', 'Z17',
         'Z18', 'Z19', 'Z20', 'Z21', 'Z22', 'Z23',
-        'X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7', 'X8', 'X9', 'X10', 'X11', 'X12', 'X13', 'X14', 'X15', 'X16', 'X17','X18',
+        'X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7', 'X8', 'X9', 'X10', 'X11', 'X12', 'X13', 'X14', 'X15', 'X16', 'X17',
+        'X18',
         'BENM1', 'BENM2',
         'MASK1', 'MASK2', 'MASK3', 'MASK4',
         'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 'N8', 'N9', 'N10', 'N11', 'N12', 'N13', 'N14', 'N15', 'N16', 'N17',
@@ -181,7 +183,8 @@ def line3(conn, pro_id, sur_id, t_id, *args):
 
 
 @try_catch
-def merge(left, right, lindex, rindex, how='inner', on=None, left_on=None, right_on=None, del_column=None, axis=1, **kwargs):
+def merge(left, right, lindex, rindex, how='inner', on=None, left_on=None, right_on=None, del_column=None, axis=1,
+          **kwargs):
     # 转DataFrame对象，设置列索引
     if not isinstance(left, list):
         left = list(left)
@@ -228,7 +231,7 @@ def cal_year(date):
         return None
     ts = time.mktime(date.timetuple())  # timestamp
     s = time.time() - ts
-    return int(s/(365*24*60*60))
+    return int(s / (365 * 24 * 60 * 60))
 
 
 def get_user_info(user_ids):
@@ -330,7 +333,7 @@ def compute_all(all_score, assessID, hidden_people_id, reference, **kwargs):
 
 
 def filter_mask(mask_score, reference):
-    if sum(mask_score) >= reference*4:
+    if sum(mask_score) >= reference * 4:
         return True
     return False
 
@@ -389,8 +392,18 @@ def get_scale_and_dimension(person_score_list):
     return scale1, scale2, scale3, dimension1, dimension2, dimension3, dimension4, dimension5, dimension6, dimension7
 
 
+def merge_quota(person_score_list):
+    quota55 = (sum(person_score_list[118: 122]) + sum(person_score_list[124: 126]) +
+               sum(person_score_list[128: 130])) * 25 / 2 / 4
+    quota56 = (sum(person_score_list[126: 128]) + sum(person_score_list[134: 140])) * 25 / 2 / 4
+    quota57 = (sum(person_score_list[122: 124]) + sum(person_score_list[130: 134]) +
+               sum(person_score_list[140:])) * 25 / 2 / 4
+    return quota55, quota56, quota57
+
+
 def model_obj_create(person_score_list, assessID, x_dict, hidden_people_id, mask):
     scale1, scale2, scale3, dimension1, dimension2, dimension3, dimension4, dimension5, dimension6, dimension7 = get_scale_and_dimension(person_score_list)
+    quota55, quota56, quota57 = merge_quota(person_score_list)
     score_dict = {
         'AssessKey': assessID,
         'DW_Person_ID': person_score_list[0],
@@ -418,7 +431,7 @@ def model_obj_create(person_score_list, assessID, x_dict, hidden_people_id, mask
         'dimension7': dimension7,  # 个人幸福能力
 
         # 幸福总分
-        'model': (dimension1 + dimension2 + dimension3 + dimension4 + dimension5 + dimension6)/6*0.8 + dimension7*0.2,
+        'model': (dimension1 + dimension2 + dimension3 + dimension4 + dimension5 + dimension6) / 6 * 0.8 + dimension7 * 0.2,
 
         'quota1': (person_score_list[16] + person_score_list[17]) * 20 / 2,  # G1-2 安全健康
         'quota2': person_score_list[18] * 20,  # G3 环境舒适
@@ -482,6 +495,9 @@ def model_obj_create(person_score_list, assessID, x_dict, hidden_people_id, mask
         'quota52': (person_score_list[136] + person_score_list[137]) * 25 / 2,  # N19 - 20 自信坚韧
         'quota53': (person_score_list[138] + person_score_list[139]) * 25 / 2,  # N21 - 22 合理归因
         'quota54': (person_score_list[140] + person_score_list[141]) * 25 / 2,  # N23 - 24 灵活变通
+        'quota55': quota55,
+        'quota56': quota56,
+        'quota57': quota57,
         'hidden': mask,
     }
     score_dict.update(x_dict)
