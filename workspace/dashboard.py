@@ -18,6 +18,7 @@ from django.shortcuts import HttpResponse
 import numpy as np
 from django.db.models import Count
 from collections import OrderedDict
+from django.db import connection
 
 
 class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
@@ -596,14 +597,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
     def WDindex(self, **kwargs):
         org = kwargs.get("org_id")
         assess = kwargs.get("assess_id")
-        conn = pymysql.connect(
-            host=DATABASES["default"]["HOST"],
-            port=int(DATABASES["default"]["PORT"]),
-            database=DATABASES["default"]["NAME"],
-            user=DATABASES["default"]["USER"],
-            password=DATABASES["default"]["PASSWORD"]
-        )
-        cursor = conn.cursor()
+        cursor = connection.cursor()
         sql = """
             select m3.name,m3.description,m1.name,m2.name,c.mean
             from 

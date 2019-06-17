@@ -13,7 +13,7 @@ from wduser.models import AuthUser
 from workspace.models import FactOEI
 from workspace.util.redispool import redis_pool
 from wduser.models import BaseOrganization, BaseOrganizationPaths
-from django.db import connection
+from django.db import connection, connections
 
 reload(sys)
 sys.setdefaultencoding('utf8')
@@ -524,19 +524,12 @@ def main(AssessID, SurveyID, stime, reference):
     assess_id = project_id = AssessID  # 191
     survey_id = SurveyID  # 132
     tag_id = 54
-    HOST = "rm-bp1i2yah9e5d27k26.mysql.rds.aliyuncs.com"
-    PORT = 3306
-    DB_admin = "wdadmin_uat"
-    DB_front = "wdfront_uat"
-    DB_user = "appserver"
-    DB_pwd = "AS@wdadmin"
     global redis_key
     redis_key = 'etl_%s_%s' % (assess_id, survey_id)
     redis_pool.rpush(redis_key, time.time(), 3)
 
-    sql_conn = MySqlConn(HOST, PORT, DB_admin, DB_user, DB_pwd)
-    front_conn = MySqlConn(HOST, PORT, DB_front, DB_user, DB_pwd)
-
+    sql_conn = connections['default']
+    front_conn = connections['front']
     redis_pool.rpush(redis_key, time.time(), 0)
 
     # Sort rows 3
