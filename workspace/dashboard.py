@@ -628,6 +628,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         order_res.sort(key=lambda x: x[4], reverse=True)
         advantage = order_res[:5]
         disadvantage = order_res[-5:]
+        disadvantage.reverse()
         keys = ['gm', 'behavior', 'index', 'dimension', 'score']
         adv_dic = [dict(zip(keys, adv)) for adv in advantage]
         disadv_dic = [dict(zip(keys, disadv)) for disadv in disadvantage]
