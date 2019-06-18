@@ -632,7 +632,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         adv_dic = [dict(zip(keys, adv)) for adv in advantage]
         disadv_dic = [dict(zip(keys, disadv)) for disadv in disadvantage]
         cursor.close()
-        conn.close()
+        connection.close()
         return {'advantage': adv_dic, 'disadvantage': disadv_dic}, ErrorCode.SUCCESS
 
     def get_organization(self, org):

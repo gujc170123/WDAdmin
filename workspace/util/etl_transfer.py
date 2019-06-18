@@ -528,21 +528,21 @@ def main(AssessID, SurveyID, stime, reference):
     redis_key = 'etl_%s_%s' % (assess_id, survey_id)
     redis_pool.rpush(redis_key, time.time(), 3)
 
-    sql_conn = connections['default']
+    admin_conn = connections['default']
     front_conn = connections['front']
     redis_pool.rpush(redis_key, time.time(), 0)
 
     # Sort rows 3
-    column_index_sr3, sort_rows_3 = line1(sql_conn, assess_id)
+    column_index_sr3, sort_rows_3 = line1(admin_conn, assess_id)
 
-    column_index_sr2, sort_rows_2 = line2(sql_conn, assess_id)
+    column_index_sr2, sort_rows_2 = line2(admin_conn, assess_id)
 
     column_index_mj3, merge_join_3 = merge(sort_rows_3, sort_rows_2, column_index_sr3, column_index_sr2,
                                            how='left', on='org_id', del_column="org_id", name='merge_join_3')
     sort_select_values_2 = merge_join_3
     column_index_mj3[column_index_mj3.index('username')] = u'姓名'
 
-    column_index_l3, sort_rows_4 = line3(front_conn, project_id, survey_id, tag_id, sql_conn)
+    column_index_l3, sort_rows_4 = line3(front_conn, project_id, survey_id, tag_id, admin_conn)
     column_index_mj33, merge_join_3_3 = merge(sort_select_values_2, sort_rows_4, column_index_mj3, column_index_l3,
                                               how='left', on=["people_id"], name='merge_join_3_3')
 
@@ -553,5 +553,5 @@ def main(AssessID, SurveyID, stime, reference):
         ret = cursor.callproc("CalculateFacet", (assess_id, survey_id,))
     redis_pool.rpush(redis_key, time.time(), 1)
 
-    sql_conn.close()
+    admin_conn.close()
     front_conn.close()
