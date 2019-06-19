@@ -13,6 +13,7 @@ from wduser.models import AuthUser
 from workspace.models import FactOEI
 from workspace.util.redispool import redis_pool
 from wduser.models import BaseOrganization, BaseOrganizationPaths
+from django.db import connection, connections
 
 reload(sys)
 sys.setdefaultencoding('utf8')
@@ -523,41 +524,34 @@ def main(AssessID, SurveyID, stime, reference):
     assess_id = project_id = AssessID  # 191
     survey_id = SurveyID  # 132
     tag_id = 54
-    HOST = "rm-bp1i2yah9e5d27k26.mysql.rds.aliyuncs.com"
-    PORT = 3306
-    DB_admin = "wdadmin_uat"
-    DB_front = "wdfront_uat"
-    DB_user = "appserver"
-    DB_pwd = "AS@wdadmin"
     global redis_key
     redis_key = 'etl_%s_%s' % (assess_id, survey_id)
     redis_pool.rpush(redis_key, time.time(), 3)
 
-    sql_conn = MySqlConn(HOST, PORT, DB_admin, DB_user, DB_pwd)
-    front_conn = MySqlConn(HOST, PORT, DB_front, DB_user, DB_pwd)
-
+    admin_conn = connections['default']
+    front_conn = connections['front']
     redis_pool.rpush(redis_key, time.time(), 0)
 
     # Sort rows 3
-    column_index_sr3, sort_rows_3 = line1(sql_conn, assess_id)
+    column_index_sr3, sort_rows_3 = line1(admin_conn, assess_id)
 
-    column_index_sr2, sort_rows_2 = line2(sql_conn, assess_id)
+    column_index_sr2, sort_rows_2 = line2(admin_conn, assess_id)
 
     column_index_mj3, merge_join_3 = merge(sort_rows_3, sort_rows_2, column_index_sr3, column_index_sr2,
                                            how='left', on='org_id', del_column="org_id", name='merge_join_3')
     sort_select_values_2 = merge_join_3
     column_index_mj3[column_index_mj3.index('username')] = u'姓名'
 
-    column_index_l3, sort_rows_4 = line3(front_conn, project_id, survey_id, tag_id, sql_conn)
+    column_index_l3, sort_rows_4 = line3(front_conn, project_id, survey_id, tag_id, admin_conn)
     column_index_mj33, merge_join_3_3 = merge(sort_select_values_2, sort_rows_4, column_index_mj3, column_index_l3,
                                               how='left', on=["people_id"], name='merge_join_3_3')
 
     hidden_pid = get_avg_answer_time(front_conn, project_id, survey_id, stime)
     compute_all(merge_join_3_3, AssessID, hidden_pid, reference, name=u'计算各项维度分')
 
-    sql_conn.cursor.callproc('CalculateFacet', (assess_id, survey_id))
-
+    with connection.cursor() as cursor:
+        ret = cursor.callproc("CalculateFacet", (assess_id, survey_id,))
     redis_pool.rpush(redis_key, time.time(), 1)
 
-    sql_conn.close()
+    admin_conn.close()
     front_conn.close()
