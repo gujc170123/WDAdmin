@@ -11,7 +11,7 @@ import os
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # debug settings
-DEBUG = True
+DEBUG = False
 
 # allow host settings
 ALLOWED_HOSTS = ['assess.admin.iwedoing.com', 'assess.iwedoing.com']

@@ -37,6 +37,7 @@ from utils.regular import RegularUtils
 from utils.rpc_service.clientservice import ClientService
 from utils.response import ErrorCode
 from wduser.models import People, PeopleOrganization, AuthUser, Organization, EnterpriseAccount, PeopleAccount
+from celery.utils.log import get_task_logger
 
 
 DINGZHI_4_TYPE_ACCOUNT = ['4', '5', '1', '-1']  # 模板那边,导出这里,手动新增 共3处
@@ -45,6 +46,7 @@ DINGZHI_4_TYPE_ACCOUNT = ['4', '5', '1', '-1']  # 模板那边,导出这里,手�
 # 员工编号 3
 # 飞行网账号 4
 
+log = get_task_logger(__name__)
 
 def check_account_in_enterprise(account, all_user_account, new_account_name=[]):
     if account in all_user_account:

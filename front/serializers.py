@@ -13,7 +13,7 @@ from front.models import PeopleSurveyRelation, SurveyInfo, SurveyQuestionInfo, U
 from front.tasks import survey_sync, algorithm_task
 from research.models import ResearchModel, ResearchDimension
 from survey.models import Survey
-
+from wduser.models import People
 
 class SurveyInfoSerializer(serializers.ModelSerializer):
     u"""测验问卷信息序列化"""
@@ -194,6 +194,14 @@ class PeopleSurveySerializer(serializers.ModelSerializer):
         if obj_modify:
             # TODO: 异步实现
             obj.save()
+        psr_obj = obj
+        if psr_obj.evaluated_people_id and psr_obj.people_id:
+            if psr_obj.evaluated_people_id != psr_obj.people_id:
+                try:
+                    evaluated_people_name = People.objects.filter_active(id=psr_obj.evaluated_people_id)[0].username
+                except:
+                    evaluated_people_name = ""
+                survey_info["survey_name"] = survey_info["survey_name"] + " " + evaluated_people_name
         return survey_info
 
 
