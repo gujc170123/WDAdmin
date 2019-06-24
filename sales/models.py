@@ -4,7 +4,7 @@ from django.db import models
 from eav.models import BaseEntity, BaseSchema, BaseAttribute
 from wduser.models import EnterpriseInfo
 
-class Category(models):
+class Category(models.Model):
 
     name = models.CharField(maxlength=100)
 
@@ -13,7 +13,7 @@ class Schema(BaseSchema):
     category = models.ForeignKey(Category)
     addable = models.BooleanField(default=True)
 
-class Product(models):
+class Product(models.Model):
 
     category = models.ForeignKey(Category)
     name = models.CharField(maxlength=100)
@@ -27,7 +27,7 @@ class Attr(BaseAttribute):
 
     schema = models.ForeignKey(Schema, related_name='attrs')
 
-class Order(models):
+class Order(models.Model):
 
     UNIT_CHOICES=(
             (1,'Time'),
@@ -48,7 +48,7 @@ class Order(models):
     paid_date = models.DateTimeField()
     delivered_date = models.DateTimeField()
 
-class OrderDetail(models):
+class OrderDetail(models.Model):
 
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
     sku = models.ForeignKey(Product_Specification)
@@ -60,14 +60,14 @@ class OrderDetail(models):
     subtotal = models.DecimalField(max_digits=12,decimal_places=2, default=0)
     remark = models.CharField(max_length=200, null=True)
 
-class Consume(models):
+class Consume(models.Model):
 
     enterprise = models.IntegerField(db_index=True)
     product = models.IntegerField(db_index=True)
     number = models.IntegerField()
     consume_date = models.DateTimeField(auto_now=True)
 
-class Balance(models):
+class Balance(models.Model):
 
     enterprise = models.IntegerField(db_index=True)
     sku = models.IntegerField(db_index=True)

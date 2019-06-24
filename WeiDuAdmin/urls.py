@@ -51,6 +51,7 @@ urlpatterns = [
     v1_url(r'console/', include('console.urls')),
     # workspace api
     ws_url(r'workspace/', include('workspace.urls')),
+    ws_url(r'application/', include('application.urls')),
     # front api 
     client_url(r'front/', include('front.urls')),
 ]

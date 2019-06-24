@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 from django.db import models
 
-class Event(models):
+class Event(models.Model):
         
     STATUS_CHOICES=(
             (1,'NotOpen'),
@@ -16,20 +16,7 @@ class Event(models):
     status = models.IntegerField(verbose_name='Event Status', choices=STATUS_CHOICES , default=1)
     memo = models.CharField(verbose_name='Memo' , max_length=200)
 
-class Application(models):
-
-    PROGRESS_CHOICES = (
-            (1,u'审核中'),
-            (2,u'审核通过'),
-            (3,u'审核未通过'),)
-
-    Event = models.ForeignKey(Event, verbose_name='Event ID', on_delete=models.CASCADE)
-    ApplyDate = models.DateTimeField(verbose_name='Apply Date')
-    Applier = models.ForeignKey(Applier, verbose_name='Applier ID', on_delete=models.CASCADE)
-    Progress = models.IntegerField(verbose_name='Application Progress', choices=PROGRESS_CHOICES , default=1) 
-    RejectReason = models.CharField(verbose_name='Enterprise Title', max_length=100, db_index=True)
-
-class Applier(models):
+class Applier(models.Model):
 
     SIZE_CHOICES = (
             (1,'<500'),
@@ -83,3 +70,17 @@ class Applier(models):
     Size = models.IntegerField(verbose_name='Enterprise Size', choices=SIZE_CHOICES , default=1)
     Industry = models.IntegerField(verbose_name='Enterprise Industry', choices=INDUSTRY_CHOICES , default=1)
     Source = models.IntegerField(verbose_name='Info Source', choices=SOURCE_CHOICES , default=1)
+
+class Application(models.Model):
+
+    PROGRESS_CHOICES = (
+            (1,u'审核中'),
+            (2,u'审核通过'),
+            (3,u'审核未通过'),)
+
+    Event = models.ForeignKey(Event, verbose_name='Event ID', on_delete=models.CASCADE)
+    ApplyDate = models.DateTimeField(verbose_name='Apply Date')
+    Applier = models.ForeignKey(Applier, verbose_name='Applier ID', on_delete=models.CASCADE)
+    Progress = models.IntegerField(verbose_name='Application Progress', choices=PROGRESS_CHOICES , default=1) 
+    RejectReason = models.CharField(verbose_name='Enterprise Title', max_length=100, db_index=True)
+

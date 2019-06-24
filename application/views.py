@@ -1,11 +1,12 @@
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, viewsets
+from rest_framework.generics import GenericAPIView
 from application import models,serializers
 
 class ChoiceView(GenericAPIView):
 
     available_dicts = {
-        "status": models.Application.STATUS_CHOICES,
+        "status": models.Event.STATUS_CHOICES,
         "progress": models.Application.PROGRESS_CHOICES,
         "industry": models.Applier.INDUSTRY_CHOICES,
         "size": models.Applier.SIZE_CHOICES,
@@ -25,17 +26,17 @@ class ChoiceView(GenericAPIView):
         else:
             return Response({"Error": "Empty or invalid option given"}, status=status.HTTP_400_BAD_REQUEST)
 
-class ApplicationModelViewset(ModelViewSet):
+class ApplicationModelViewset(viewsets.ModelViewSet):
 
     queryset = models.Application
     serializer_class = serializers.ApplicationSerializer
 
-class ApplierModelViewset(ModelViewSet):
+class ApplierModelViewset(viewsets.ModelViewSet):
 
     queryset = models.Applier
     serializer_class = serializers.ApplierSerializer
 
-class EventModelViewset(ModelViewSet):
+class EventModelViewset(viewsets.ModelViewSet):
 
     queryset = models.Event.objects.all()
     serializer_class = serializers.EventSerializer
