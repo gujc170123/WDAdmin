@@ -53,19 +53,24 @@ class OrderDetail(models):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
     sku = models.ForeignKey(Product_Specification)
     sku_name = models.CharField(max_length=150)
+    price = models.DecimalField(max_digits=12,decimal_places=2)
     discount_rate = models.DecimalField(max_digits=5,decimal_places=2, default=0)
     discount_amount = models.DecimalField(max_digits=8,decimal_places=2, default=0)
-    number = models.IntegerField(default=0)
+    number = models.IntegerField(default=1)
     subtotal = models.DecimalField(max_digits=12,decimal_places=2, default=0)
     remark = models.CharField(max_length=200, null=True)
 
 class Consume(models):
 
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    enterprise = models.ForeignKey(EnterpriseInfo, on_delete=models.CASCADE)
-    num = models.IntegerField()
-    consume_date = models.DateTimeField()
+    enterprise = models.IntegerField(db_index=True)
+    product = models.IntegerField(db_index=True)
+    number = models.IntegerField()
+    consume_date = models.DateTimeField(auto_now=True)
 
-class Balance(BaseEntity):
+class Balance(models):
 
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    enterprise = models.IntegerField(db_index=True)
+    sku = models.IntegerField(db_index=True)
+    number = models.IntegerField()
+    validfrom = models.DateTimeField()
+    validto = models.DateTimeField()
