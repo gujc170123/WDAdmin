@@ -117,11 +117,11 @@ class FactOEI(models.Model):
     quota53 = models.DecimalField(max_digits=5, decimal_places=2, verbose_name="合理归因")
     quota54 = models.DecimalField(max_digits=5, decimal_places=2, verbose_name="灵活变通")
     # 自主定向、意义寻求、专注投入、自我拓展 合并  43+44+46+48
-    quota55 = models.DecimalField(max_digits=5, decimal_places=2, verbose_name="解决问题")
+    quota55 = models.DecimalField(max_digits=5, decimal_places=2, verbose_name="解决问题",default=0)
     # 乐观积极、自信坚韧、合理归因、情绪调节 合并 47+51+52+53
-    quota56 = models.DecimalField(max_digits=5, decimal_places=2, verbose_name="追求发展")
+    quota56 = models.DecimalField(max_digits=5, decimal_places=2, verbose_name="追求发展",default=0)
     # 包容差异、亲和利他、灵活变通、自我悦纳 合并 45+49+50+54
-    quota57 = models.DecimalField(max_digits=5, decimal_places=2, verbose_name="适应环境")
+    quota57 = models.DecimalField(max_digits=5, decimal_places=2, verbose_name="适应环境",default=0)
     X1 = models.DecimalField(max_digits=5, decimal_places=2,default=0)
     X2 = models.DecimalField(max_digits=5, decimal_places=2,default=0)
     X3 = models.DecimalField(max_digits=5, decimal_places=2,default=0)
