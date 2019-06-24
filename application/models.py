@@ -14,7 +14,7 @@ class Event(models.Model):
     datefrom = models.DateTimeField(verbose_name='Date From', db_index=True)
     dateto = models.DateTimeField(verbose_name='Date To', db_index=True)
     status = models.IntegerField(verbose_name='Event Status', choices=STATUS_CHOICES , default=1)
-    memo = models.CharField(verbose_name='Memo' , max_length=200)
+    memo = models.CharField(verbose_name='Memo' , max_length=200,null=True)
 
 class Applier(models.Model):
 
@@ -63,13 +63,13 @@ class Applier(models.Model):
             (3,u'好友推荐'),
             (4,u'其他'),)
 
-    Title = models.CharField(verbose_name='Enterprise Title', max_length=100, db_index=True)
-    ApplierName = models.CharField(verbose_name='Applier Name', max_length=20, null=True,  db_index=True)
-    Phone = models.CharField(verbose_name='Applier Mobi Phone', max_length=20, null=True,  db_index=True)
-    Mail = models.CharField(verbose_name='Applier Mail', max_length=50,  db_index=True)
-    Size = models.IntegerField(verbose_name='Enterprise Size', choices=SIZE_CHOICES , default=1)
-    Industry = models.IntegerField(verbose_name='Enterprise Industry', choices=INDUSTRY_CHOICES , default=1)
-    Source = models.IntegerField(verbose_name='Info Source', choices=SOURCE_CHOICES , default=1)
+    title = models.CharField(verbose_name='Enterprise Title', max_length=100, db_index=True)
+    appliername = models.CharField(verbose_name='Applier Name', max_length=20, null=True,  db_index=True)
+    phone = models.CharField(verbose_name='Applier Mobi Phone', max_length=20, null=True,  db_index=True)
+    mail = models.CharField(verbose_name='Applier Mail', max_length=50,  db_index=True)
+    size = models.IntegerField(verbose_name='Enterprise Size', choices=SIZE_CHOICES , default=1)
+    industry = models.IntegerField(verbose_name='Enterprise Industry', choices=INDUSTRY_CHOICES , default=1)
+    source = models.IntegerField(verbose_name='Info Source', choices=SOURCE_CHOICES , default=1)
 
 class Application(models.Model):
 
@@ -78,9 +78,9 @@ class Application(models.Model):
             (2,u'审核通过'),
             (3,u'审核未通过'),)
 
-    Event = models.ForeignKey(Event, verbose_name='Event ID', on_delete=models.CASCADE)
-    ApplyDate = models.DateTimeField(verbose_name='Apply Date')
-    Applier = models.ForeignKey(Applier, verbose_name='Applier ID', on_delete=models.CASCADE)
-    Progress = models.IntegerField(verbose_name='Application Progress', choices=PROGRESS_CHOICES , default=1) 
-    RejectReason = models.CharField(verbose_name='Enterprise Title', max_length=100, db_index=True)
+    event = models.ForeignKey(Event, verbose_name='Event ID', on_delete=models.CASCADE)
+    applydate = models.DateTimeField(verbose_name='Apply Date',auto_now_add=True)
+    applier = models.ForeignKey(Applier, verbose_name='Applier ID', on_delete=models.CASCADE)
+    progress = models.IntegerField(verbose_name='Application Progress', choices=PROGRESS_CHOICES , default=1) 
+    rejectreason = models.CharField(verbose_name='Enterprise Title', max_length=100, null=True)
 

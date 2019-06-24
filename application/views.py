@@ -28,12 +28,12 @@ class ChoiceView(GenericAPIView):
 
 class ApplicationModelViewset(viewsets.ModelViewSet):
 
-    queryset = models.Application
+    queryset = models.Application.objects.all()
     serializer_class = serializers.ApplicationSerializer
 
 class ApplierModelViewset(viewsets.ModelViewSet):
 
-    queryset = models.Applier
+    queryset = models.Applier.objects.all()
     serializer_class = serializers.ApplierSerializer
 
 class EventModelViewset(viewsets.ModelViewSet):

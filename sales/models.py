@@ -65,7 +65,7 @@ class Consume(models.Model):
     enterprise = models.IntegerField(db_index=True)
     product = models.IntegerField(db_index=True)
     number = models.IntegerField()
-    consume_date = models.DateTimeField(auto_now=True)
+    consume_date = models.DateTimeField(auto_now_add=True)
 
 class Balance(models.Model):
 
