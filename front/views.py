@@ -728,7 +728,7 @@ class PeopleSurveyReportListView(WdListAPIView):
     def qs_filter(self, qs):
         user_id = self.request.user.id
         people_ids = People.objects.filter_active(user_id=user_id).values_list("id", flat=True)
-        qs = qs.filter(people_id__in=list(people_ids), status__gt=PeopleSurveyRelation.STATUS_DOING)
+        qs = qs.filter(evaluated_people_id__in=list(people_ids), status__gt=PeopleSurveyRelation.STATUS_DOING)
         qs = qs.filter(report_status__gt=PeopleSurveyRelation.REPORT_INIT)
         return super(PeopleSurveyReportListView, self).qs_filter(qs)
 
