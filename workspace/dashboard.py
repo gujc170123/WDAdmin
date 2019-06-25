@@ -428,9 +428,9 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         profile_dict = {u"年龄": "profile1", u"性别": "profile2", u"序列": "profile3", u"司龄": "profile4", u"层级": "profile5"}
 
         query_dict, org_list = self.get_organization(org)
-        company_obj = FactOEI.objects.complex_filter(query_dict)
+        company_obj = FactOEI.objects.complex_filter(query_dict).filter(model__lt=65)
         if not company_obj.exists():
-            return {}, ErrorCode.NOT_EXISTED
+            return {}, ErrorCode.SUCCESS
         res = OrderedDict()
         if profile in profile_dict:
             types_tpl = company_obj.values_list(profile_dict[profile]).distinct()
