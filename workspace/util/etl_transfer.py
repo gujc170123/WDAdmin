@@ -42,18 +42,24 @@ def try_catch(func):
     return inner
 
 
-class MySqlConn:
-    def __init__(self, host, port, db, user, pwd):
-        self.conn = pymysql.connect(host=host, port=port, database=db, user=user, password=pwd)
-        self.cursor = self.conn.cursor()
+def get_data(conn, sql, *args):
+    cursor = conn.cursor()
+    cursor.execute(sql, args)
+    return cursor.fetchall()
 
-    def get_data(self, sql, *args):
-        rows = self.cursor.execute(sql, args)
-        return self.cursor.fetchall()
 
-    def close(self):
-        self.cursor.close()
-        self.conn.close()
+# class MySqlConn:
+#     def __init__(self, host, port, db, user, pwd):
+#         self.conn = pymysql.connect(host=host, port=port, database=db, user=user, password=pwd)
+#         self.cursor = self.conn.cursor()
+#
+#     def get_data(self, sql, *args):
+#         rows = self.cursor.execute(sql, args)
+#         return self.cursor.fetchall()
+#
+#     def close(self):
+#         self.cursor.close()
+#         self.conn.close()
 
 
 # 人员列表
@@ -69,7 +75,7 @@ def list_people(conn, pro_id, sur_id, name):
         and survey_id=%s
         order by people_id
         """
-    res = ['people_id'], conn.get_data(sql, pro_id, sur_id)
+    res = ['people_id'], get_data(conn, sql, pro_id, sur_id)
     return res
 
 
@@ -88,7 +94,7 @@ def get_answer(conn, pro_id, sur_id, name):
             group by people_id,question_id
             order by people_id,question_id
         """
-    res = conn.get_data(sql, pro_id, sur_id)
+    res = get_data(conn, sql, pro_id, sur_id)
     # ((people_id, question_id, sum(answer_score)), (people_id, question_id, sum(answer_score)), ...)
     return ['people_id', 'question_id', 'answer_score'], res
 
@@ -105,7 +111,7 @@ def question_tag(conn, t_id, name):
         and tag_id=%s
         order by object_id
         """
-    res = conn.get_data(sql, t_id)
+    res = get_data(conn, sql, t_id)
     return ['object_id', 'tag_value'], res  # ((object_id, tag_value), )
 
 
@@ -221,7 +227,7 @@ def query_user_id(conn, aid, name):
         and c.assess_id=a.id) b
         where a.is_active=true and a.id=b.people_id
         """
-    res = conn.get_data(sql, aid)
+    res = get_data(conn, sql, aid)
     user_id = [i[0] for i in res]
     user_people_index = ['user_id', 'people_id']
     return user_id, res, user_people_index
@@ -278,7 +284,7 @@ def list_org(conn, aid, name):  # orgname, orgcode
             from wduser_organization
             where is_active=true and assess_id=%s
             """
-    res = conn.get_data(sql, aid)  # res = (('org_id'), ('org_id'), )
+    res = get_data(conn, sql, aid)  # res = (('org_id'), ('org_id'), )
     org_name_id = []
     for i in res:
         orgname = get_org_siblings(i[0])
@@ -514,7 +520,7 @@ def get_avg_answer_time(conn, project_id, survey_id, stime):
         where project_id=%s and survey_id=%s and is_active=true
         group by people_id
     """
-    res = conn.get_data(sql, project_id, survey_id)
+    res = get_data(conn, sql, project_id, survey_id)
     hidden_people_id = [i[0] for i in res if i[1] < stime]
     return hidden_people_id
 
@@ -553,5 +559,3 @@ def main(AssessID, SurveyID, stime, reference):
         ret = cursor.callproc("CalculateFacet", (assess_id, survey_id,))
     redis_pool.rpush(redis_key, time.time(), 1)
 
-    admin_conn.close()
-    front_conn.close()
