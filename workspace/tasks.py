@@ -46,15 +46,16 @@ def preparedata(data,enterprise_id,delimiter):
     datausers = pandas.read_sql("select a.account_name,a.phone,a.email,b.enterprise_id from wduser_authuser a, wduser_baseorganization b \
                                 where a.organization_id=b.id and a.is_active=true and b.is_active=true \
                                 and b.enterprise_id=%s",connection,params=[enterprise_id])
-    duplicated = pandas.merge(data,datausers.notnull,left_on=u'工号',right_on='account_name')['indice'].tolist()
-    if len(duplicated):
-        return False,[],u"导入人员信息中的工号已在系统中登记"
-    duplicated = pandas.merge(data,datausers.notnull,left_on=u'邮箱',right_on='email')['indice'].tolist()
-    if len(duplicated):
-        return False,[],u"导入人员信息中的邮箱已在系统中登记"
-    duplicated = pandas.merge(data,datausers.notnull,left_on=u'手机号',right_on='phone')['indice'].tolist()
-    if len(duplicated):
-        return False,[],u"导入人员信息中的手机号已在系统中登记"
+    if not datausers.empty:
+        duplicated = pandas.merge(data,datausers.notnull,left_on=u'工号',right_on='account_name')['indice'].tolist()
+        if len(duplicated):
+            return False,[],u"导入人员信息中的工号已在系统中登记"
+        duplicated = pandas.merge(data,datausers.notnull,left_on=u'邮箱',right_on='email')['indice'].tolist()
+        if len(duplicated):
+            return False,[],u"导入人员信息中的邮箱已在系统中登记"
+        duplicated = pandas.merge(data,datausers.notnull,left_on=u'手机号',right_on='phone')['indice'].tolist()
+        if len(duplicated):
+            return False,[],u"导入人员信息中的手机号已在系统中登记"
     
     codedict = {u"性别":pandas.DataFrame({u"性别":[u"男",u"女"],'gender':[1,2]}),
                  u"层级":pandas.DataFrame({u"层级":[u"高级",u"中级",u"初级"],'rank':[3,2,1]}),

@@ -1,5 +1,7 @@
 from django.conf.urls import url, include
-import xadmin
+from django.contrib import admin
+from django.conf import settings
+from django.views.static import serve
 
 V1_URL_PREFIX = 'api/v1/'
 CLIENT_URL_PREFIX = 'api/client/v1/'
@@ -23,7 +25,7 @@ def ws_url(regex, view, kwargs=None, name=None):
 
 urlpatterns = [
     
-    url(r'^xadmin/', xadmin.site.urls),
+    url(r'^admin/', admin.site.urls),
     url(r'people/', include('front.template_urls')),
     url(r'operation/', include('wduser.template_urls')),
     # admin api
@@ -39,4 +41,5 @@ urlpatterns = [
     ws_url(r'application/', include('application.urls')),
     # front api 
     client_url(r'front/', include('front.urls')),
+    url(r'^static/(?P<path>.*)$',serve,{'document_root':settings.STATIC_ROOT}),
 ]

@@ -15,8 +15,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
-    'xadmin',
-    'crispy_forms',
     'wduser',
     'assessment',
     'research',
@@ -102,6 +100,7 @@ USE_L10N = True
 USE_TZ = False
 
 STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 CSRF_COOKIE_NAME = global_settings.CSRF_COOKIE_NAME
 CSRF_HEADER_NAME = global_settings.CSRF_HEADER_NAME
