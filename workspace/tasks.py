@@ -47,13 +47,13 @@ def preparedata(data,enterprise_id,delimiter):
                                 where a.organization_id=b.id and a.is_active=true and b.is_active=true \
                                 and b.enterprise_id=%s",connection,params=[enterprise_id])
     if not datausers.empty:
-        duplicated = pandas.merge(data,datausers.notnull,left_on=u'工号',right_on='account_name')['indice'].tolist()
+        duplicated = pandas.merge(data,datausers[datausers['account_name'].notnull()],left_on=u'工号',right_on='account_name')['indice'].tolist()
         if len(duplicated):
             return False,[],u"导入人员信息中的工号已在系统中登记"
-        duplicated = pandas.merge(data,datausers.notnull,left_on=u'邮箱',right_on='email')['indice'].tolist()
+        duplicated = pandas.merge(data,datausers[datausers['email'].notnull()],left_on=u'邮箱',right_on='email')['indice'].tolist()
         if len(duplicated):
             return False,[],u"导入人员信息中的邮箱已在系统中登记"
-        duplicated = pandas.merge(data,datausers.notnull,left_on=u'手机号',right_on='phone')['indice'].tolist()
+        duplicated = pandas.merge(data,datausers[datausers['phone'].notnull()],left_on=u'手机号',right_on='phone')['indice'].tolist()
         if len(duplicated):
             return False,[],u"导入人员信息中的手机号已在系统中登记"
     
