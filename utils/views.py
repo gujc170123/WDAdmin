@@ -10,7 +10,7 @@ from django.db.models import Q
 from django.db.models.query import RawQuerySet
 from django.http import FileResponse
 from django.http import HttpResponseRedirect
-from rest_framework import status, exceptions
+from rest_framework import status, exceptions,viewsets
 from rest_framework.exceptions import NotFound
 from rest_framework.generics import ListAPIView, CreateAPIView, UpdateAPIView, RetrieveAPIView, GenericAPIView, \
     DestroyAPIView
@@ -572,3 +572,44 @@ class WdExeclExportView(WdAPIView):
         r = FileResponse(open(file_full_path, "rb"))
         r['Content-Disposition'] = 'attachment; filename=%s' % self.default_export_file_name
         return r
+
+class CustomModelViewSet(viewsets.ModelViewSet):
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        is_valid = serializer.is_valid(raise_exception=False)
+        if not is_valid:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, serializer.errors)            
+        self.perform_create(serializer)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)
+    
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        is_valid = serializer.is_valid(raise_exception=False)
+        if not is_valid:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, serializer.errors)           
+        self.perform_update(serializer)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)
+    
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)            
+
+        serializer = self.get_serializer(queryset, many=True)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)  
