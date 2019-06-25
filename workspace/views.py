@@ -309,7 +309,7 @@ class UserBatchDeleteView(AuthenticationExceptView,WdDestroyAPIView):
     def post(self, request, *args, **kwargs):
         '''batch delete'''
         users = self.request.data.get("users")
-        AuthUser.objects.filter(id__in=users.split(","),is_active=True).update(is_active=False)
+        AuthUser.objects.filter(id__in=users.split(","),is_active=True,is_staff=True).update(is_active=False)
 
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
@@ -441,7 +441,7 @@ class OrganizationlUsersDestroyView(AuthenticationExceptView,WdDestroyAPIView):
             return general_json_response(status.HTTP_200_OK, ErrorCode.NOT_EXISTED)
 
         #delete all organizations only when no active member exists
-        alluser = AuthUser.objects.filter(is_active=True,organization__childorg__parent_id=org,organization__is_active=True)
+        alluser = AuthUser.objects.filter(is_active=True,organization__childorg__parent_id=org,organization__is_active=True,is_staff=True)
         alluser.update(is_active=False)
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
