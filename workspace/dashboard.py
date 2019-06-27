@@ -434,7 +434,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         res = OrderedDict()
         if profile in profile_dict:
             types_tpl = company_obj.values_list(profile_dict[profile]).distinct()
-            if profile == u'年龄':
+            if profile in (u'年龄', u"司龄"):
                 types, types2 = [], []
                 for tpl in types_tpl:
                     if len(tpl[0].split('-')[0]) > 1:

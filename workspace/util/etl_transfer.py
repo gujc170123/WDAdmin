@@ -35,7 +35,7 @@ def try_catch(func):
             logger.info(u"%s结束" % name)
             return ret
         except Exception, e:
-            logger.error(u"执行%s出错" % name)
+            logger.error(u"执行%s出错，error info：%s" % (name, e))
             redis_pool.rpush(redis_key, time.time(), 2)
             raise e
 
@@ -234,11 +234,55 @@ def query_user_id(conn, aid, name):
 
 
 def cal_year(date):
-    if not date:
-        return None
     ts = time.mktime(date.timetuple())  # timestamp
     s = time.time() - ts
     return int(s / (365 * 24 * 60 * 60))
+
+
+def cal_seniority(date):
+    if not date:
+        return u'未知'
+    seniority = cal_year(date)
+    if seniority < 1:
+        res = u'0-1年'
+    elif seniority < 3:
+        res = u'1-3年'
+    elif seniority < 5:
+        res = u'3-5年'
+    elif seniority < 8:
+        res = u'5-8年'
+    elif seniority < 10:
+        res = u'8-10年'
+    elif seniority < 15:
+        res = u'10-15年'
+    else:
+        res = u'15年以上'
+    return res
+
+
+def cal_age(date):
+    if not date:
+        return u'未知'
+    age = cal_year(date)
+    if age <= 25:
+        res = u'25岁及以下'
+    elif 26 <= age <= 30:
+        res = u'26-30岁'
+    elif 31 <= age <= 35:
+        res = u'31-35岁'
+    elif 36 <= age <= 40:
+        res = u'36-40岁'
+    elif 41 <= age <= 45:
+        res = u'41-45岁'
+    elif 46 <= age <= 50:
+        res = u'46-50岁'
+    else:
+        res = u'50岁以上'
+    return res
+
+
+def check_null(data):
+    return data if data else u'未知'
 
 
 def get_user_info(user_ids):
@@ -247,8 +291,8 @@ def get_user_info(user_ids):
         "id", "username", "birthday", "gender__value", "sequence__value", "hiredate", "rank__value", "organization_id"
     )
     for personal in people_info:
-        info = [personal[0], personal[1], cal_year(personal[2]), personal[3],
-                personal[4], cal_year(personal[5]), personal[6], personal[7]]
+        info = [personal[0], personal[1], cal_age(personal[2]), check_null(personal[3]),
+                check_null(personal[4]), cal_seniority(personal[5]), check_null(personal[6]), personal[7]]
         res.append(info)
     res.sort(key=lambda x: x[0])
     index = ['user_id', 'username', u"年龄", u"性别", u"岗位序列", u"司龄", u"层级", 'org_id']
