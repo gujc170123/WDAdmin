@@ -1,3 +1,6 @@
 from django.contrib import admin
+from application import models
 
-# Register your models here.
+admin.site.register(models.Application)
+admin.site.register(models.Applier)
+admin.site.register(models.Event)

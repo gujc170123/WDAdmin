@@ -19,7 +19,7 @@ class ChoiceView(GenericAPIView):
         option = request.GET.get("option", None)
         if option is not None and option in self.available_dicts:
             result_list = []
-            chosen_dict = available_dicts[option]
+            chosen_dict = self.available_dicts[option]
             for i in chosen_dict:
                 key, value = i
                 tmp = {"key": key, "value": value}

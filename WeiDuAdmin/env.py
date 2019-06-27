@@ -10,7 +10,7 @@ deploy in production env, need replaced with env_pro.py
 import os
 
 # debug settings
-DEBUG = False
+DEBUG = True
 
 # allow host settings
 ALLOWED_HOSTS = ['*']

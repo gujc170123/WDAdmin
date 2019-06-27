@@ -14,7 +14,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'corsheaders',
+    'corsheaders',    
     'wduser',
     'assessment',
     'research',
@@ -25,6 +25,8 @@ INSTALLED_APPS = [
     'console',
     'workspace',
     'application',
+    'sales',
+    'useroperate',
 ]
 DATABASE_ROUTERS = ['WeiDuAdmin.db_router.DbRouter']
 MIDDLEWARE_CLASSES = [

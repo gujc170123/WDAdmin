@@ -56,7 +56,8 @@ MySQL-python = "==1.2.5"
 social-auth-app-django = "*"
 unicodecsv = "*"
 pymysql = "*"
-eav-django = "*"
+eav-django = {git = "https://github.com/interlegis/eav-django.git",editable = true}
+django-autoslug = "*"
 
 [requires]
 python_version = "2.7"

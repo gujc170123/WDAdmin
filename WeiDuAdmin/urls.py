@@ -39,6 +39,7 @@ urlpatterns = [
     # workspace api
     ws_url(r'workspace/', include('workspace.urls')),
     ws_url(r'application/', include('application.urls')),
+    ws_url(r'sales/', include('sales.urls')),
     # front api 
     client_url(r'front/', include('front.urls')),
     url(r'^static/(?P<path>.*)$',serve,{'document_root':settings.STATIC_ROOT}),
