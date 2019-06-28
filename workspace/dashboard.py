@@ -515,7 +515,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         company_query_set = FactOEI.objects.complex_filter(query_dict)
         if not company_query_set.exists():
             return {}, ErrorCode.NOT_EXISTED
-        target = ["model", "quota41", "dimension1", "dimension2", "dimension3", "dimension4",
+        target = ["model", "dimension1", "dimension2", "dimension3", "dimension4",
                   "dimension5", "dimension6", "dimension7"]
         res = []
         length = company_query_set.count()
@@ -542,7 +542,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             res.append(rate)
         ret_arr = np.array(res)
         ret = ret_arr.transpose().tolist()
-        title = [u"企业幸福指数", u"压力承受", u"工作环境", u"生活愉悦", u"成长环境", u"人际环境",
+        title = [u"企业幸福指数", u"工作环境", u"生活愉悦", u"成长环境", u"人际环境",
                  u"领导方式", u"组织环境", u"心理资本"]
         return [title, ret], ErrorCode.SUCCESS
 
