@@ -4,17 +4,11 @@ from rest_framework import serializers
 from sales import models
 from datetime import date
 
-class ProductSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = models.Product
-        fields = '__all__'
-
 class Product_SpecificationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Product_Specification
-        fields = '__all__'
+        fields = ('id','price','title','menu','category_id','is_platform')
 
 class BalanceSerializer(serializers.ModelSerializer):
 
@@ -22,10 +16,10 @@ class BalanceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Balance
-        fields = 'sku,number,validfrom,validto,remaindays'
+        fields = ('enterprise_id','sku','number','validfrom','validto','remaindays')
     
     def get_days_remain(self, obj):
-        dayCount = (self.validto - date.today()).days
+        dayCount = (obj.validto - date.today()).days
         if dayCount<0:
             return 0
         return dayCount
@@ -42,4 +36,10 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Order
+        fields = '__all__'
+
+class ConsumeSerializer(serializers.ModelSerializer):   
+
+    class Meta:
+        model = models.Consume
         fields = '__all__'

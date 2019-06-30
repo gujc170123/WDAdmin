@@ -20,6 +20,7 @@ class ErrorCode(object):
     METHOD_NOT_ALLOWED = 40405
     NONEMPTY_INPUT = 40406
 
+    OVERLIMIT = 99999
     # user
     USER_CODE = 41000
     USER_ACCOUNT_NOT_FOUND = USER_CODE + 1
@@ -198,7 +199,9 @@ class ErrorCode(object):
 
         # workspace
         WORKSPACE_ORG_MEMBEREXISTS: u"人员已存在，请在移除人员后再删除",
-        NONEMPTY_INPUT: u"请填写必填信息"
+        NONEMPTY_INPUT: u"请填写必填信息",
+
+        OVERLIMIT: u"已超过平台授权的注册用户上限"
     }
 
 

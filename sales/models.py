@@ -3,6 +3,8 @@ from __future__ import unicode_literals
 from django.db import models
 from eav.models import BaseChoice,BaseEntity, BaseSchema, BaseAttribute
 from wduser.models import EnterpriseInfo
+from django.db.models.signals import post_save,pre_save
+from django.dispatch import receiver
 import time
 
 def get_order_code():
@@ -24,26 +26,20 @@ class Schema(BaseSchema):
 class Choice(BaseChoice):
     schema = models.ForeignKey(Schema, related_name='choices')
 
-class Product(models.Model):
-
-    category = models.ForeignKey(Category)
-    name = models.CharField(max_length=100)
-
-    def __unicode__(self):
-        return self.name    
-
 class Product_Specification(BaseEntity):
 
-    product = models.ForeignKey(Product)
     price = models.DecimalField(max_digits=8,decimal_places=2,null=True)
     title = models.CharField(max_length=50)
+    menu = models.CharField(max_length=50)
+    category_id = models.IntegerField(db_index=True)
+    is_platform = models.BooleanField(default=False)
 
     @classmethod
     def get_schemata_for_model(self):
         return Schema.objects.all()
 
     def __unicode__(self):
-        return self.title    
+        return self.title
 
 class Attr(BaseAttribute):
 
@@ -85,15 +81,20 @@ class OrderDetail(models.Model):
 
 class Consume(models.Model):
 
-    enterprise = models.IntegerField(db_index=True)
-    product = models.IntegerField(db_index=True)
+    balance_id = models.IntegerField(db_index=True)
     number = models.IntegerField()
     consume_date = models.DateTimeField(auto_now_add=True)
 
 class Balance(models.Model):
 
-    enterprise = models.IntegerField(db_index=True)
+    enterprise_id = models.IntegerField(db_index=True)
     sku = models.IntegerField(db_index=True)
     number = models.IntegerField()
-    validfrom = models.DateTimeField()
-    validto = models.DateTimeField()
+    validfrom = models.DateField()
+    validto = models.DateField()
+
+@receiver(post_save, sender=Consume, dispatch_uid="update_balance")
+def update_balance(sender, instance, **kwargs):
+     balance = Balance.objects.get(id=instance.balance_id)
+     balance.number = balance.number - instance.number
+     balance.save()

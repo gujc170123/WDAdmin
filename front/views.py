@@ -11,12 +11,13 @@ import datetime
 from django.db.models import Q
 import operator
 import time
+from datetime import date 
 
 from django.contrib.auth import logout
 from django.contrib.auth.hashers import make_password
 from django.db.models import Q
 from rest_framework import status
-
+from sales.models import Balance,Consume
 from WeiDuAdmin import settings
 from assessment.models import AssessOrganization, AssessUser, AssessSurveyUser, AssessSurveyOrganization, AssessProject, \
     AssessGatherInfo, AssessSurveyRelation, AssessSurveyUserDistribute
@@ -262,6 +263,14 @@ class PeopleRegisterView(AuthenticationExceptView, WdCreateAPIView):
         assess_id = base64.b64decode(assess_id_base64)
         try:
             project = AssessProject.objects.get(id=assess_id)
+            #check register balance
+            balance = Balance.objects.filter(enterprise_id=project.enterprise_id,sku__lte=2,validto__gte=date.today()).first()
+            if balance:
+                if balance.number<1:
+                    return ErrorCode.OVERLIMIT
+                else:
+                    Consume.objects.create(balance_id=balance.id,
+                                           number=1)
         except:
             err_logger.error("project not found: %s" % assess_id)
             return ErrorCode.INVALID_INPUT

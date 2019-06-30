@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 from rest_framework import status
 from utils.views import CustomModelViewSet
 from sales import models,serializers
@@ -19,7 +20,7 @@ class OrderModelViewset(CustomModelViewSet):
         self.perform_create(serializer)
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)
 
-    def list(self, request, *args, **kwargs):        
+    def list(self, request, *args, **kwargs):
         enterprise_id = self.kwargs['enterprise_id']    
         queryset = models.Order.objects.filter(enterprise_id=enterprise_id)
         return super(OrderModelViewset, self).list(request, *args, **kwargs)
@@ -31,7 +32,7 @@ class OrderDetailModelViewset(CustomModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data
-        data['enterprise_id'] = self.kwargs['enterprise_id']    
+        data['enterprise_id'] = self.kwargs['enterprise_id']
         serializer = self.get_serializer(data=data)
         is_valid = serializer.is_valid(raise_exception=False)
         if not is_valid:
@@ -39,32 +40,47 @@ class OrderDetailModelViewset(CustomModelViewSet):
         self.perform_create(serializer)
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)
 
-    def list(self, request, *args, **kwargs):        
-        enterprise_id = self.kwargs['enterprise_id']    
+    def list(self, request, *args, **kwargs):
+        enterprise_id = self.kwargs['enterprise_id']
         queryset = models.OrderDetail.objects.filter(enterprise_id=enterprise_id)
         return super(OrderDetailModelViewset, self).list(request, *args, **kwargs)
 
 class BalanceModelViewset(CustomModelViewSet):
 
-    serializer_class = serializers.ProductSerializer
+    queryset = models.Balance.objects.all()
+    serializer_class = serializers.BalanceSerializer
 
-    def get_serializer_class(self):
-        if self.action == 'retrieve':
-            if hasattr(self, 'detail_serializer_class'):
-                return self.detail_serializer_class
-
-        return super(CustomModelViewSet, self).get_serializer_class()
-
-    def retrieve(self, request, *args, **kwargs):
-
-        return super(BalanceModelViewset, self).retrieve(request, *args, **kwargs)
+    def create(self, request, *args, **kwargs):
+        data = request.data
+        data['enterprise_id'] = self.kwargs['enterprise_id']
+        serializer = self.get_serializer(data=data)
+        is_valid = serializer.is_valid(raise_exception=False)
+        if not is_valid:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, serializer.errors)            
+        self.perform_create(serializer)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)
 
     def list(self, request, *args, **kwargs):
-        
-        enterprise_id = self.kwargs['enterprise_id']        
-        skulist = models.Balance.objects.filter(enterprise=enterprise_id,validto__gte=date.today()).values("sku")
-        # list all bought products except platform
-        queryset = models.Product_Specification.objects.filter(id__in=skulist).exclude(id=1)        
+        enterprise_id = self.kwargs['enterprise_id']
+        queryset = models.Balance.objects.filter(enterprise_id=enterprise_id)
+        return super(BalanceModelViewset, self).list(request, *args, **kwargs)
 
-        serializer = self.get_serializer(queryset, many=True)
-        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)            
+class ConsumeModelViewset(CustomModelViewSet):
+
+    queryset = models.Consume.objects.all()
+    serializer_class = serializers.ConsumeSerializer
+
+    def create(self, request, *args, **kwargs):
+        data = request.data
+        data['enterprise_id'] = self.kwargs['enterprise_id']
+        serializer = self.get_serializer(data=data)
+        is_valid = serializer.is_valid(raise_exception=False)
+        if not is_valid:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, serializer.errors)            
+        self.perform_create(serializer)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)
+
+    def list(self, request, *args, **kwargs):
+        enterprise_id = self.kwargs['enterprise_id']
+        queryset = models.Consume.objects.filter(enterprise_id=enterprise_id)
+        return super(ConsumeModelViewset, self).list(request, *args, **kwargs)
