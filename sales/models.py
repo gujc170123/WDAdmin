@@ -60,7 +60,7 @@ class Order(models.Model):
 
     order_no = models.CharField(max_length=30, db_index=True,default=get_order_code)
     order_status = models.IntegerField(choices=STATUS_CHOICES, default=1, db_index=True)
-    enterprise = models.ForeignKey(EnterpriseInfo, on_delete=models.CASCADE)
+    enterprise_id = models.ForeignKey(EnterpriseInfo, on_delete=models.CASCADE)
     product_amount = models.DecimalField(max_digits=12,decimal_places=2, default=0)
     order_amount = models.DecimalField(max_digits=12,decimal_places=2, default=0)
     order_date = models.DateTimeField(auto_now_add=True)
