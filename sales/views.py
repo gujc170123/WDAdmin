@@ -11,7 +11,7 @@ class OrderModelViewset(CustomModelViewSet):
     serializer_class = serializers.OrderSerializer
 
     def create(self, request, *args, **kwargs):
-        data = request.data
+        data = request.data.copy()
         data['enterprise_id'] = self.kwargs['enterprise_id']    
         serializer = self.get_serializer(data=data)
         is_valid = serializer.is_valid(raise_exception=False)
@@ -31,7 +31,7 @@ class OrderDetailModelViewset(CustomModelViewSet):
     serializer_class = serializers.OrderDetailSerializer
 
     def create(self, request, *args, **kwargs):
-        data = request.data
+        data = request.data.copy()
         data['enterprise_id'] = self.kwargs['enterprise_id']
         serializer = self.get_serializer(data=data)
         is_valid = serializer.is_valid(raise_exception=False)
@@ -51,7 +51,7 @@ class BalanceModelViewset(CustomModelViewSet):
     serializer_class = serializers.BalanceSerializer
 
     def create(self, request, *args, **kwargs):
-        data = request.data
+        data = request.data.copy()
         data['enterprise_id'] = self.kwargs['enterprise_id']
         serializer = self.get_serializer(data=data)
         is_valid = serializer.is_valid(raise_exception=False)
@@ -71,7 +71,7 @@ class ConsumeModelViewset(CustomModelViewSet):
     serializer_class = serializers.ConsumeSerializer
 
     def create(self, request, *args, **kwargs):
-        data = request.data
+        data = request.data.copy()
         data['enterprise_id'] = self.kwargs['enterprise_id']
         serializer = self.get_serializer(data=data)
         is_valid = serializer.is_valid(raise_exception=False)

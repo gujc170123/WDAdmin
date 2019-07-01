@@ -76,7 +76,7 @@ class MessagePushViewset(CustomModelViewSet):
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)
 
     def create(self, request, *args, **kwargs):
-        data = request.data
+        data = request.data.copy()
         data['enterprise_id'] = self.kwargs['enterprise_id']
         serializer = self.get_serializer(data=data)
         is_valid = serializer.is_valid(raise_exception=False)
@@ -108,7 +108,7 @@ class AssessViewset(CustomModelViewSet):
     def create(self, request, *args, **kwargs):
 
         #create assessproject
-        data = request.data
+        data = request.data.copy()
         data['enterprise_id'] = self.kwargs['enterprise_id']
         data['distribute_type'] = AssessProject.DISTRIBUTE_OPEN
         data['assess_type'] = AssessProject.TYPE_ORGANIZATION
