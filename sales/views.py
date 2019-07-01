@@ -12,7 +12,7 @@ class OrderModelViewset(CustomModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        data['enterprise_id'] = self.kwargs['enterprise_id']    
+        data['enterprise'] = self.kwargs['enterprise_id']    
         serializer = self.get_serializer(data=data)
         is_valid = serializer.is_valid(raise_exception=False)
         if not is_valid:
@@ -22,7 +22,7 @@ class OrderModelViewset(CustomModelViewSet):
 
     def list(self, request, *args, **kwargs):
         enterprise_id = self.kwargs['enterprise_id']    
-        queryset = models.Order.objects.filter(enterprise_id=enterprise_id)
+        self.queryset = models.Order.objects.filter(enterprise_id=enterprise_id)
         return super(OrderModelViewset, self).list(request, *args, **kwargs)
 
 class OrderDetailModelViewset(CustomModelViewSet):
@@ -42,7 +42,7 @@ class OrderDetailModelViewset(CustomModelViewSet):
 
     def list(self, request, *args, **kwargs):
         enterprise_id = self.kwargs['enterprise_id']
-        queryset = models.OrderDetail.objects.filter(enterprise_id=enterprise_id)
+        self.queryset = models.OrderDetail.objects.filter(enterprise_id=enterprise_id)
         return super(OrderDetailModelViewset, self).list(request, *args, **kwargs)
 
 class BalanceModelViewset(CustomModelViewSet):
@@ -62,7 +62,7 @@ class BalanceModelViewset(CustomModelViewSet):
 
     def list(self, request, *args, **kwargs):
         enterprise_id = self.kwargs['enterprise_id']
-        queryset = models.Balance.objects.filter(enterprise_id=enterprise_id)
+        self.queryset = models.Balance.objects.filter(enterprise_id=enterprise_id)
         return super(BalanceModelViewset, self).list(request, *args, **kwargs)
 
 class ConsumeModelViewset(CustomModelViewSet):
@@ -82,5 +82,5 @@ class ConsumeModelViewset(CustomModelViewSet):
 
     def list(self, request, *args, **kwargs):
         enterprise_id = self.kwargs['enterprise_id']
-        queryset = models.Consume.objects.filter(enterprise_id=enterprise_id)
+        self.queryset = models.Consume.objects.filter(enterprise_id=enterprise_id)
         return super(ConsumeModelViewset, self).list(request, *args, **kwargs)
