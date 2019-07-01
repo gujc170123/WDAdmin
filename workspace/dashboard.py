@@ -778,8 +778,14 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
 
     def get_overall(self, **kwargs):
         org = kwargs.get("org_id")
+        profile = kwargs.get("profile_id")
         query_dict = self.get_organization(org)[0]
         company_query_set = FactOEI.objects.complex_filter(query_dict)
+        profile_dict = {
+            u'年龄': 'profile1', u'性别': 'profile2', u'司龄': 'profile3', u'层级': 'profile4', u'序列': 'profile5',
+        }
+        if profile in profile_dict:
+            company_query_set = company_query_set.complex_filter({profile: profile_dict[profile]})
         if not company_query_set.exists():
             return {}, ErrorCode.NOT_EXISTED
         target = ["model", "dimension1", "dimension2", "dimension3", "dimension4",
