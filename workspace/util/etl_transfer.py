@@ -377,8 +377,7 @@ def compute_all(all_score, assessID, hidden_people_id, reference, **kwargs):
             # 计算mask1-4
             mask_score = person_score_list[114: 118]
             mask = filter_mask(mask_score, reference)
-            x_dict = get_X(person_score_list)
-            fact_obj = model_obj_create(person_score_list, assessID, x_dict, hidden_people_id, mask)
+            fact_obj = model_obj_create(person_score_list, assessID, hidden_people_id, mask)
             fact_list.append(fact_obj)
     FactOEI.objects.bulk_create(fact_list)
 
@@ -387,13 +386,6 @@ def filter_mask(mask_score, reference):
     if sum(mask_score) >= reference * 4:
         return True
     return False
-
-
-def get_X(person_score_list):
-    x = ['X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7', 'X8', 'X9', 'X10',
-         'X11', 'X12', 'X13', 'X14', 'X15', 'X16', 'X17', 'X18']
-    x_value = person_score_list[94: 112]
-    return dict(zip(x, x_value))
 
 
 def get_scale_and_dimension(person_score_list):
@@ -452,7 +444,25 @@ def merge_quota(person_score_list):
     return quota55, quota56, quota57
 
 
-def model_obj_create(person_score_list, assessID, x_dict, hidden_people_id, mask):
+# 所有指标分
+def get_indicators(person_score_list):
+    person_score_list = person_score_list[16:]  # 去掉个人信息，保留指标分
+    person_score_key = []
+
+    person_score_key.extend(['G%s' % g for g in xrange(1, 9)])
+    person_score_key.extend(['S%s' % s for s in xrange(1, 10)])
+    person_score_key.extend(['C%s' % c for c in xrange(1, 11)])
+    person_score_key.extend(['R%s' % r for r in xrange(1, 9)])
+    person_score_key.extend(['L%s' % l for l in xrange(1, 21)])
+    person_score_key.extend(['Z%s' % z for z in xrange(1, 24)])
+    person_score_key.extend(['X%s' % x for x in xrange(1, 19)])
+    person_score_key.extend(["BENM1", "BENM2"])
+    person_score_key.extend(["MASK1", "MASK2", "MASK3", "MASK4"])
+    person_score_key.extend(['N%s' % n for n in xrange(1, 25)])
+    return zip(person_score_key, person_score_list)
+
+
+def model_obj_create(person_score_list, assessID, hidden_people_id, mask):
     scale1, scale2, scale3, dimension1, dimension2, dimension3, dimension4, dimension5, dimension6, dimension7 = get_scale_and_dimension(person_score_list)
     quota55, quota56, quota57 = merge_quota(person_score_list)
     score_dict = {
@@ -551,7 +561,8 @@ def model_obj_create(person_score_list, assessID, x_dict, hidden_people_id, mask
         'quota57': quota57,
         'hidden': mask,
     }
-    score_dict.update(x_dict)
+    indicators_dict = get_indicators(person_score_list)
+    score_dict.update(indicators_dict)
     if person_score_list[0] in hidden_people_id:  # person_score_list[0] == people_id
         score_dict['hidden'] = True
     return FactOEI(**score_dict)
