@@ -6,9 +6,14 @@ from datetime import date
 
 class Product_SpecificationSerializer(serializers.ModelSerializer):
 
+    survey_id = serializers.SerializerMethodField()
+
     class Meta:
         model = models.Product_Specification
-        fields = ('id','price','title','menu','category_id','is_platform')
+        fields = ('id','price','title','menu','category_id','is_platform','survey_id')
+
+    def get_survey_id(self, obj):        
+        return obj.assess_surveys
 
 class BalanceSerializer(serializers.ModelSerializer):
 

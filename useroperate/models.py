@@ -21,6 +21,3 @@ class MessagePush(models.Model):
 
     def __unicode__(self):
         return self.pushdate
-
-
-

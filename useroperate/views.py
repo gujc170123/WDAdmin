@@ -5,10 +5,11 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.http import QueryDict
 from utils.views import CustomModelViewSet
 from useroperate import models, serializers
-from assessment.models import AssessProject,AssessSurveyRelation,AssessProjectSurveyConfig
-from assessment.serializers import AssessmentSurveyRelationDetailGetSerializer
+from assessment.models import AssessProject,AssessSurveyRelation,AssessProjectSurveyConfig,AssessJoinedOrganization
+from assessment.serializers import AssessmentBasicSerializer
 from sales.models import Balance,Product_Specification,Schema,OrderDetail
-from workspace.serializers import AssessListSerializer
+from wduser.models import BaseOrganization,BaseOrganizationPaths
+from workspace.serializers import BaseOrganizationSerializer
 from sales.serializers import Product_SpecificationSerializer
 from utils.response import general_json_response, ErrorCode
 from rest_framework import mixins,status,views
@@ -21,7 +22,7 @@ class MenuListView(views.APIView):
         enterprise_id = self.kwargs['enterprise_id']
         skulist = Balance.objects.filter(enterprise_id=enterprise_id,
                                         validto__gte=date.today(),
-                                        sku__gte=3).values("sku")
+                                        sku__gte=3).values_list("sku",flat=True)
 
         queryset = Product_Specification.objects.filter(id__in=skulist)
 
@@ -70,7 +71,7 @@ class MessagePushViewset(CustomModelViewSet):
     def get(self, request, *args, **kwargs):
         
         enterprise_id = self.kwargs['enterprise_id']
-        queryset = models.Message.objects.filter(enterprise_id=enterprise_id,is_read=False)
+        queryset = models.MessagePush.objects.filter(enterprise_id=enterprise_id,is_read=False).first()
 
         serializer =  self.get_serializer(queryset, many=True)
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)
@@ -85,10 +86,52 @@ class MessagePushViewset(CustomModelViewSet):
         self.perform_create(serializer)
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)
 
+class TrialOrganizationViewset(CustomModelViewSet):
+
+    queryset = BaseOrganization.objects.all()
+    serializer_class = BaseOrganizationSerializer
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)
+
+    def list(self, request, *args, **kwargs):
+        assess_id = self.kwargs['assess_id']
+        data = AssessJoinedOrganization.objects.filter(assess_id=assess_id,snapchildorg__level=1).values('organization_id','organization__name')
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,data)
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy()
+        enterprise_id = self.kwargs['enterprise_id']
+        data['enterprise_id'] = enterprise_id
+        top = BaseOrganization.objects.get(parent_id=0,is_active=True,enterprise_id=enterprise_id)
+        data['parent_id'] = top.id
+        serializer = self.get_serializer(data=data)
+        is_valid = serializer.is_valid(raise_exception=False)
+        if not is_valid:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, serializer.errors)
+        self.perform_create(serializer)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        is_valid = serializer.is_valid(raise_exception=False)
+        if not is_valid:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, serializer.errors)           
+        self.perform_update(serializer)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        BaseOrganization.objects.filter(pk=instance.id).update(is_active=False)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
+
 class AssessViewset(CustomModelViewSet):
 
-    serializer_class = AssessListSerializer
-    detail_serializer_class = AssessmentSurveyRelationDetailGetSerializer
+    queryset = AssessProject.objects.all()
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -97,12 +140,17 @@ class AssessViewset(CustomModelViewSet):
 
         return super(CustomModelViewSet, self).get_serializer_class()
 
-    def get(self, request, *args, **kwargs):
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = serializers.TrialAssessDetailSerializer(instance)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)
+
+    def list(self, request, *args, **kwargs):
         
         enterprise_id = self.kwargs['enterprise_id']
-        queryset = models.AssessProject.objects.filter(enterprise_id=enterprise_id,is_active=True).order_by('-id')
+        queryset = AssessProject.objects.filter(enterprise_id=enterprise_id,is_active=True).order_by('-id')        
 
-        serializer = self.get_serializer(queryset, many=True)
+        serializer = serializers.TrialAssessListSerializer(queryset, many=True)
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)
 
     def create(self, request, *args, **kwargs):
@@ -115,12 +163,15 @@ class AssessViewset(CustomModelViewSet):
         data['has_distributed'] = True
         data['finish_choices'] = AssessProject.FINISH_TXT
         data['finish_txt'] = u'<p>感谢您参与此次调研！<br></p>'
-        serializer = self.get_serializer(data=data)
+        serializer = AssessmentBasicSerializer(data=data)
         is_valid = serializer.is_valid(raise_exception=False)
         if not is_valid:
             return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, serializer.errors)
         if data['begin_time']>=data['end_time']:
             return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, u'结束时间必须晚于开始时间')
+        organizations = data['organizations'].split(',')
+        if len(organizations)<1:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, u'请添加机构')
         self.perform_create(serializer)
 
         surveys = data['survey_id'].split(',')
@@ -135,5 +186,11 @@ class AssessViewset(CustomModelViewSet):
                 x.id = None
                 x.assess_id=assess_id
             AssessProjectSurveyConfig.objects.bulk_create(qs)
+
+        top = BaseOrganization.objects.get(parent_id=0,is_active=True,enterprise_id=data['enterprise_id'])
+        AssessJoinedOrganization.objects.create(assess_id=assess_id,organization_id=top.id)
+
+        for org in organizations:
+            AssessJoinedOrganization.objects.create(assess_id=assess_id,organization_id=org)
 
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)

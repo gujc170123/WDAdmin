@@ -3,7 +3,11 @@ from __future__ import unicode_literals
 from django.db import models
 
 class Event(models.Model):
-        
+
+    class Meta:
+        verbose_name_plural=u'活动'
+        verbose_name=u'活动'
+
     STATUS_CHOICES=(
             (1,'NotOpen'),
             (2,'Open'),
@@ -16,7 +20,14 @@ class Event(models.Model):
     status = models.IntegerField(verbose_name='Event Status', choices=STATUS_CHOICES , default=1)
     memo = models.CharField(verbose_name='Memo' , max_length=200,null=True)
 
+    def __unicode__(self):
+        return self.title    
+
 class Applier(models.Model):
+
+    class Meta:
+        verbose_name_plural=u'申请人'
+        verbose_name=u'申请人'
 
     SIZE_CHOICES = (
             (1,'<500'),
@@ -71,7 +82,14 @@ class Applier(models.Model):
     industry = models.IntegerField(verbose_name='Enterprise Industry', choices=INDUSTRY_CHOICES , default=1)
     source = models.IntegerField(verbose_name='Info Source', choices=SOURCE_CHOICES , default=1)
 
+    def __unicode__(self):
+        return self.title + self.appliername
+
 class Application(models.Model):
+
+    class Meta:
+        verbose_name_plural=u'申请'
+        verbose_name=u'申请'
 
     PROGRESS_CHOICES = (
             (1,u'审核中'),
@@ -84,3 +102,5 @@ class Application(models.Model):
     progress = models.IntegerField(verbose_name='Application Progress', choices=PROGRESS_CHOICES , default=1) 
     rejectreason = models.CharField(verbose_name='Enterprise Title', max_length=100, null=True)
 
+    def __unicode__(self):
+        return self.applier

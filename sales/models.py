@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 from __future__ import unicode_literals
 
 from django.db import models
@@ -48,6 +49,10 @@ class Attr(BaseAttribute):
 
 class Order(models.Model):
 
+    class Meta:
+        verbose_name_plural=u'订单'
+        verbose_name=u'订单'
+
     UNIT_CHOICES=(
             (1,'Time'),
             (2,'Piece'))
@@ -67,7 +72,14 @@ class Order(models.Model):
     paid_date = models.DateTimeField(null=True)
     delivered_date = models.DateTimeField(null=True)
 
+    def __unicode__(self):
+        return self.order_no
+
 class OrderDetail(models.Model):
+
+    class Meta:
+        verbose_name_plural=u'订单明细'
+        verbose_name=u'订单明细'
 
     order = models.ForeignKey(Order, on_delete=models.CASCADE,related_name='details')
     sku = models.ForeignKey(Product_Specification)
@@ -79,6 +91,9 @@ class OrderDetail(models.Model):
     subtotal = models.DecimalField(max_digits=12,decimal_places=2, default=0)
     remark = models.CharField(max_length=200, null=True)
 
+    def __unicode__(self):
+        return self.sku_name
+
 class Consume(models.Model):
 
     balance_id = models.IntegerField(db_index=True)
@@ -87,11 +102,18 @@ class Consume(models.Model):
 
 class Balance(models.Model):
 
+    class Meta:
+        verbose_name_plural=u'财务余额'
+        verbose_name=u'财务余额'
+
     enterprise_id = models.IntegerField(db_index=True)
     sku = models.IntegerField(db_index=True)
     number = models.IntegerField()
     validfrom = models.DateField()
     validto = models.DateField()
+
+    def __unicode__(self):
+        return self.id
 
 @receiver(post_save, sender=Consume, dispatch_uid="update_balance")
 def update_balance(sender, instance, **kwargs):
