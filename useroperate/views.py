@@ -1,9 +1,11 @@
 # -*- coding:utf-8 -*-
 from __future__ import unicode_literals
 
+from urllib import quote,base64
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import QueryDict
 from utils.views import CustomModelViewSet
+from WeiDuAdmin import settings
 from useroperate import models, serializers
 from assessment.models import AssessProject,AssessSurveyRelation,AssessProjectSurveyConfig,AssessJoinedOrganization
 from assessment.serializers import AssessmentBasicSerializer
@@ -131,7 +133,11 @@ class TrialOrganizationViewset(CustomModelViewSet):
 
 class AssessViewset(CustomModelViewSet):
 
-    queryset = AssessProject.objects.all()
+    queryset = AssessProject.objects.all()    
+
+    def get_share_url(self,assess_id):
+        project_id_bs64 = quote(base64.b64encode(str(assess_id)))
+        return settings.CLIENT_HOST + '/people/join-project/?ba=%s&bs=0' % (project_id_bs64)
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -143,7 +149,9 @@ class AssessViewset(CustomModelViewSet):
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         serializer = serializers.TrialAssessDetailSerializer(instance)
-        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)
+        data = serializer.data.copy()
+        data['url'] = self.get_share_url(instance.id)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, data)
 
     def list(self, request, *args, **kwargs):
         
@@ -193,4 +201,6 @@ class AssessViewset(CustomModelViewSet):
         for org in organizations:
             AssessJoinedOrganization.objects.create(assess_id=assess_id,organization_id=org)
 
-        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)
+        data = serializer.data.copy()
+        data['url'] = self.get_share_url(assess_id)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, data)

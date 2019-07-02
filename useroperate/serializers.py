@@ -27,18 +27,19 @@ class TrialAssessListSerializer(serializers.ModelSerializer):
 
     organizations = serializers.SerializerMethodField()
     joined = serializers.SerializerMethodField()
+    url = serializers.SerializerMethodField()
 
     class Meta:
         model = AssessProject
-        fields = ('id','name','begin_time','end_time','organizations','joined')
+        fields = ('id','name','begin_time','end_time','organizations','joined','url')
     
     def get_organizations(self, obj):
         organizations = AssessJoinedOrganization.objects.filter(assess_id=obj.id,organization__parent_id__gt=0).values_list('organization__name', flat=True)
         return ','.join(str(n) for n in organizations)
 
     def get_joined(self, obj):
-        return PeopleSurveyRelation.objects.filter(project_id=obj.id,is_active=True).count()
-
+        return PeopleSurveyRelation.objects.filter(project_id=obj.id,is_active=True).count()    
+          
 
 class TrialAssessDetailSerializer(serializers.ModelSerializer):
 

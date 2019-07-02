@@ -743,7 +743,6 @@ class AssessSurveyRelationDistributeView(WdListCreateAPIView):
         return general_json_response(status.HTTP_200_OK, rst_code)
 
     def get_project_url(self):
-        # TODO: join-project interface
         project_id_bs64 = quote(base64.b64encode(str(self.assess_id)))
         return settings.CLIENT_HOST + '/people/join-project/?ba=%s&bs=0' % (project_id_bs64)
 

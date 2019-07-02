@@ -40,7 +40,7 @@ from utils.response import ErrorCode, general_json_response
 from utils.views import WdListCreateAPIView, WdListAPIView, WdCreateAPIView, AuthenticationExceptView, \
     WdRetrieveUpdateAPIView, WdRetrieveAPIView
 from wduser.models import AuthUser, People, PeopleOrganization, Organization, EnterpriseInfo, EnterpriseAccount, \
-    PeopleAccount
+    PeopleAccount, BaseOrganization
 from wduser.serializers import UserBasicSerializer, OrganizationBasicSerializer
 from wduser.user_utils import UserAccountUtils
 from utils.math_utils import normsdist
@@ -146,6 +146,8 @@ class PeopleLoginView(AuthenticationExceptView, WdCreateAPIView):
             try:                
                 project = AssessProject.objects.get(id=assess_id)
                 enterprise = project.enterprise_id
+                if not BaseOrganization.objects.filter(enterprise_id=enterprise).first():
+                    enterprise = 0
             except:
                 err_logger.error("project not found: %s" % assess_id)
                 return general_json_response(status.HTTP_200_OK, ErrorCode.INVALID_INPUT)
@@ -379,6 +381,8 @@ class PeopleRegisterView(AuthenticationExceptView, WdCreateAPIView):
         elif assess_id_base64:
             # 问卷连接注册
             rst_code, user, enterprise = self.survey_register_normal(account, pwd, survey_id_base64, assess_id_base64)
+            if not BaseOrganization.objects.filter(enterprise_id=enterprise).first():
+                enterprise = 0
         # 注册后返回用户信息以便直接跳转登陆
         try:
             # 理论成功创建用户应该都合法，err_code只是复用代码
