@@ -12,8 +12,6 @@ from django.db.models import Avg
 from assessment.models import AssessSurveyRelation
 from workspace.tasks import main
 from workspace.util.redispool import redis_pool
-from WeiDuAdmin.env import DATABASES
-import pymysql
 from django.shortcuts import HttpResponse
 import numpy as np
 from django.db.models import Count
@@ -46,7 +44,276 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         "get_report": "self.get_report",
 
         "get_assess": "self.get_assess_id",
+        # 整体特征与总行对比
+        "zhdb": "self.get_zhdb",
+        # 活力分布
+        "vitality_distribute": "self.get_vitality_distribute",
+        # 机构特征-分行机关
+        "jgtz": "self.get_jgtz_fhjg",
+        # 领导方式
+        "leadership_style": "self.get_leadership_style",
+        # 群体聚焦
+        "focus_group": "self.get_focus_group",
+        # 聚焦问题
+        "focus_problem": "self.get_focus_problem",
+        # 工作环境-群体分布
+        "qtfb": "self.get_qtfb",
     }
+
+    def get_qtfb(self, **kwargs):
+        res = {}
+        org = kwargs.get("org_id")
+        query_dict = self.get_organization(org)[0]
+        child_org = self.get_child_org(query_dict)
+        if child_org:
+            child_list = []
+            for tpl in child_org:
+                j = '.'.join([i for i in tpl if i])
+                if j not in child_list:
+                    child_list.append(j)
+            for child in child_list:
+                child_query_dict, child_name = self.get_organization(child)
+                total = FactOEI.objects.complex_filter(child_query_dict).count()
+                negative = FactOEI.objects.complex_filter(child_query_dict).filter(model__lt=65).count()
+                if total:
+                    res[child_name[-1]] = round(negative*100/total, 2)
+        return res, ErrorCode.SUCCESS
+
+    def get_focus_problem(self, **kwargs):
+        org = kwargs.get("org_id")
+        query_dict = self.get_organization(org)[0]
+        score = FactOEI.objects.complex_filter(query_dict).aggregate(
+            Avg('G2'), Avg('G8'),
+            Avg('S2'), Avg('S3'), Avg('S4'), Avg('S5'), Avg('S6'), Avg('S7'), Avg('S8'), Avg('S9'),
+            Avg('C1'), Avg('C2'), Avg('C3'), Avg('C4'), Avg('C5'), Avg('C6'), Avg('C7'), Avg('C8'), Avg('C9'),
+            Avg('C10'), Avg('L19'), Avg('Z7'), Avg('Z13'), Avg('Z14'),
+            Avg('N1'), Avg('N2'), Avg('N3'), Avg('N4'), Avg('N5'), Avg('N6'), Avg('N7'), Avg('N8'), Avg('N9'),
+            Avg('N10'), Avg('N11'), Avg('N12'), Avg('N13'), Avg('N14'), Avg('N15'), Avg('N16'), Avg('N17'),
+            Avg('N18'), Avg('N19'), Avg('N20'), Avg('N21'), Avg('N22'), Avg('N23'), Avg('N24')
+        )
+        # 成长开发
+        czkf = ['G8', 'N1', 'N2', 'C8', 'N7', 'N8', 'N23', 'N24', 'C2', 'C4', 'C10',
+                'C7', 'N3', 'N4', 'C1', 'C6', 'C3', 'C9', 'Z14', 'Z7', 'N19', 'N20',
+                'C5', 'N11', 'N12', 'Z13', 'N21', 'N22', 'N15', 'N16', 'L19', 'N5',
+                'N6', 'N13', 'N14', 'N9', 'N10', 'N17', 'N18']
+        # 深耕关爱
+        sgga = ['G2', 'S2', 'S8', 'S9', 'S4', 'S5', 'S3', 'S7', 'S6']
+        czkf_score_keys = ['%s__avg' % c for c in czkf]
+        sgga_score_keys = ['%s__avg' % s for s in sgga]
+
+        sgga_score = [round(score[s]*20, 2) for s in sgga_score_keys]
+        czkf_score_pre = [[round(score[c]*20, 2) for c in czkf_score_keys]]
+        n1 = [sum(czkf_score_pre[1: 3]) / 2]
+        n2 = [sum(czkf_score_pre[4: 6]) / 2, sum(czkf_score_pre[6: 8]) / 2]
+        n3 = [sum(czkf_score_pre[12: 14]) / 2]
+        n4 = [sum(czkf_score_pre[20: 22]) / 2]
+        n5 = [sum(czkf_score_pre[23: 25]) / 2]
+        n6 = [sum(czkf_score_pre[26: 28]) / 2, sum(czkf_score_pre[28: 30]) / 2]
+        n7 = [sum(czkf_score_pre[31: 33]) / 2, sum(czkf_score_pre[33: 35]) / 2, sum(czkf_score_pre[35: 37]) / 2, sum(czkf_score_pre[37:]) / 2]
+        czkf_score = czkf_score_pre[0] + n1 + czkf_score_pre[3: 5] + n2 + czkf_score_pre[8: 12] + n3 + \
+                     czkf_score_pre[14: 20] + n4 + czkf_score_pre[22] + n5 + czkf_score_pre[25] + \
+                     n6 + czkf_score_pre[30] + n7
+        from workspace.util.indicators import czkf_act, czkf_indi, sgga_act, sgga_indi
+        czkf_res = [czkf_indi, czkf_act, czkf_score]
+        sgga_res = [sgga_indi, sgga_act, sgga_score]
+        res = {'sgga': sgga_res, 'czkf': czkf_res}
+        return res, ErrorCode.SUCCESS
+
+    def get_focus_group(self, **kwargs):
+        org = kwargs.get("org_id")
+        profile = kwargs.get("profile_id")
+        if profile and profile == 'profile1':
+            select_profile = [u'26-30岁', u'31-35岁']
+        else:
+            select_profile = [u'初级管理人员']
+        query_dict = self.get_organization(org)[0]
+        score = FactOEI.objects.complex_filter(query_dict).filter(profile1__in=select_profile).aggregate(
+            Avg('G1'), Avg('G2'), Avg('G3'), Avg('G4'), Avg('G5'), Avg('G6'), Avg('G7'), Avg('G8'),
+            Avg('S1'), Avg('S2'), Avg('S3'), Avg('S4'), Avg('S5'), Avg('S6'), Avg('S7'), Avg('S8'), Avg('S9'),
+            Avg('C1'), Avg('C2'), Avg('C3'), Avg('C4'), Avg('C5'), Avg('C6'), Avg('C7'), Avg('C8'), Avg('C9'), Avg('C10'),
+            Avg('R1'), Avg('R2'), Avg('R3'), Avg('R4'), Avg('R5'), Avg('R6'), Avg('R7'), Avg('R8'),
+            Avg('L1'), Avg('L2'), Avg('L3'), Avg('L4'), Avg('L5'), Avg('L6'), Avg('L7'), Avg('L8'), Avg('L9'), Avg('L10'),
+            Avg('L11'), Avg('L12'), Avg('L13'), Avg('L14'), Avg('L15'), Avg('L16'), Avg('L17'), Avg('L18'), Avg('L19'), Avg('L20'),
+            Avg('Z1'), Avg('Z2'), Avg('Z3'), Avg('Z4'), Avg('Z5'), Avg('Z6'), Avg('Z7'), Avg('Z8'), Avg('Z9'),
+            Avg('Z10'), Avg('Z11'), Avg('Z12'), Avg('Z13'), Avg('Z14'), Avg('Z15'), Avg('Z16'), Avg('Z17'),
+            Avg('Z18'), Avg('Z19'), Avg('Z20'), Avg('Z21'),  Avg('Z22'), Avg('Z23'),
+            Avg('N1'), Avg('N2'), Avg('N3'), Avg('N4'), Avg('N5'), Avg('N6'), Avg('N7'), Avg('N8'), Avg('N9'),
+            Avg('N10'), Avg('N11'), Avg('N12'), Avg('N13'), Avg('N14'), Avg('N15'),  Avg('N16'), Avg('N17'),
+            Avg('N18'), Avg('N19'), Avg('N20'), Avg('N21'), Avg('N22'), Avg('N23'), Avg('N24')
+        )
+        G = ['G%s__avg' % g for g in xrange(1, 9)]
+        S = ['S%s__avg' % s for s in xrange(1, 10)]
+        C = ['C%s__avg' % c for c in xrange(1, 11)]
+        R = ['R%s__avg' % r for r in xrange(1, 9)]
+        L = ['L%s__avg' % l for l in xrange(1, 21)]
+        Z = ['Z%s__avg' % z for z in xrange(1, 24)]
+        N = ['N%s__avg' % n for n in xrange(1, 25)]
+        score_keys = G + S + C + R + L + Z
+        # 百分制7个维度的所有指标分
+        indicators_score = [u'得分']
+        indicators_score.extend([round(score[key]*20, 2) for key in score_keys])
+        indicators_score.extend([round(score[key]*25, 2) for key in N])
+        from workspace.util.indicators import indicator, action
+        res = [indicator, action, indicators_score]
+        return res, ErrorCode.SUCCESS
+
+    def get_leadership_style(self, **kwargs):
+        # 查下属机构，按model排名，取前5后5，然后取各自机构的领导激发维度下所有的指标分
+        res = {}
+        org = kwargs.get("org_id")
+        query_dict = self.get_organization(org)[0]
+        child_org = self.get_child_org(query_dict)
+        if child_org:
+            child_list = []
+            for tpl in child_org:
+                j = '.'.join([i for i in tpl if i])
+                if j not in child_list:
+                    child_list.append(j)
+            child_org_data = []
+            for i in child_list:
+                child_query_dict, child_org_list = self.get_organization(i)
+                child_org_name = i.split('.')[-1]  # 分行机关名字
+                scores = FactOEI.objects.complex_filter(child_query_dict).aggregate(
+                    Avg('model'), Avg('L1'), Avg('L2'), Avg('L3'), Avg('L4'), Avg('L5'),
+                    Avg('L6'), Avg('L7'), Avg('L8'), Avg('L9'), Avg('L10'),
+                    Avg('L11'), Avg('L12'), Avg('L13'), Avg('L14'), Avg('L15'),
+                    Avg('L16'), Avg('L17'), Avg('L18'), Avg('L19'), Avg('L20'),
+                )
+                org_res = [
+                    child_org_name,
+                    round(scores["model__avg"] * 20, 2), round(scores["L1__avg"] * 20, 2),
+                    round(scores["L2__avg"] * 20, 2),
+                    round(scores["L3__avg"] * 20, 2), round(scores["L4__avg"] * 20, 2),
+                    round(scores["L5__avg"] * 20, 2),
+                    round(scores["L6__avg"] * 20, 2), round(scores["L7__avg"] * 20, 2),
+                    round(scores["L8__avg"] * 20, 2),
+                    round(scores["L9__avg"] * 20, 2), round(scores["L10__avg"] * 20, 2),
+                    round(scores["L11__avg"] * 20, 2),
+                    round(scores["L12__avg"] * 20, 2), round(scores["L13__avg"] * 20, 2),
+                    round(scores["L14__avg"] * 20, 2),
+                    round(scores["L15__avg"] * 20, 2), round(scores["L16__avg"] * 20, 2),
+                    round(scores["L17__avg"] * 20, 2),
+                    round(scores["L18__avg"] * 20, 2), round(scores["L19__avg"] * 20, 2),
+                    round(scores["L20__avg"] * 20, 2)
+                ]
+                child_org_data.append(org_res)
+            child_org_data.sort(key=lambda x: x[1], reverse=True)
+            if len(child_org_data) > 10:
+                child_org_data = child_org_data[:5] + child_org_data[-5:]
+            # 处理数据
+            for data in child_org_data:
+                del data[1]  # 幸福指数分只用来排序
+            indicator = [u'指标', u'目标引领', u'目标引领', u'目标引领', u'系统把握', u'系统把握', u'激发信任',
+                         u'激发信任', u'激发信任', u'激发信任', u'激发信任', u'激发信任', u'激发信任', u'激发信任',
+                         u'读懂他人', u'读懂他人', u'释放潜能', u'释放潜能', u'释放潜能', u'促进成长', u'促进成长']
+            define = [u'行为', u'与团队一起讨论形成目标与思路', u'设置高目标并追求绩效改善的程度',
+                      u'帮助团队建立目标实现的共同意义', u'能够把握团队任务解决的关键问题',
+                      u'把注意力放到首要目标和节点的把握上', u'能与团队成员一起面对难题和挑战',
+                      u'主动承担团队工作失误中的责任', u'能根据标准和规则对待团队成员的关切',
+                      u'能及时兑现对员工的承诺，言行一致', u'能主动倾听团队成员心声并平等交流',
+                      u'能主动关心团队成员的困难并帮助和支持', u'向团队成员明确表达对其工作的期望',
+                      u'主动向团队成员分享各种变化和信息', u'能关注和把握团队成员的需求和特征',
+                      u'能根据团队成员需求和特征进行沟通和安排', u'员工的表现能够得到及时肯定和鼓励',
+                      u'给员工自主空间让员工成为工作主角', u'主动接纳员工不同意见和建议',
+                      u'能讨论团队成员的职业发展并予以鼓励', u'能定期给团队成员反馈和建设性辅导']
+            res_data = [indicator, define]
+            res_data.extend(child_org_data)
+            res = res_data
+
+        return res, ErrorCode.SUCCESS
+
+    def get_jgtz_fhjg(self, **kwargs):
+        res = {}
+        org = kwargs.get("org_id")
+        if not org:
+            return res, ErrorCode.INVALID_INPUT
+        query_dict = self.get_organization(org)[0]
+        child_org = self.get_child_org(query_dict)
+        if child_org:
+            child_list = []
+            for tpl in child_org:
+                j = '.'.join([i for i in tpl if i])
+                if j not in child_list:
+                    child_list.append(j)
+            child_org_data = []
+            for i in child_list:
+                child_query_dict, child_org_list = self.get_organization(i)
+                child_org_name = i[-1]  # 分行机关名字
+                child_org_qs = FactOEI.objects.complex_filter(child_query_dict)
+                # child_org_num = child_org_qs.count()  # 有效样本
+                scores = child_org_qs.aggregate(
+                    Avg('quota41'), Avg('model'), Avg('dimension1'), Avg('dimension2'), Avg('dimension3'),
+                    Avg('dimension4'), Avg('dimension5'), Avg('dimension6'), Avg('dimension7'), Count("id")
+                )
+                org_res = [
+                    '', child_org_name, scores['id__count'], round(scores['quota41__avg'], 2),
+                    round(scores['model__avg'], 2), 0, 0, round(scores['dimension1__avg'], 2),
+                    round(scores['dimension2__avg'], 2), round(scores['dimension3__avg'], 2),
+                    round(scores['dimension4__avg'], 2), round(scores['dimension5__avg'], 2),
+                    round(scores['dimension6__avg'], 2), round(scores['dimension7__avg'], 2),
+                ]
+                # 判断区间
+                org_res[0] = self.get_level(org_res[4])
+                child_org_data.append(org_res)
+            child_org_data.sort(key=lambda x: x[4], reverse=True)
+            if len(child_org_data) > 10:
+                child_org_data = child_org_data[:5] + child_org_data[-5:]
+            res = child_org_data
+
+        return res, ErrorCode.SUCCESS
+
+    def get_vitality_distribute(self, **kwargs):
+        # 查下属机构的平均幸福分
+        res = {}
+        org = kwargs.get("org_id")
+        query_dict = self.get_organization(org)[0]
+        child_org = self.get_child_org(query_dict)
+        if child_org:
+            child_list = []
+            for tpl in child_org:
+                j = '.'.join([i for i in tpl if i])
+                if j not in child_list:
+                    child_list.append(j)
+            model_score = []
+            for i in child_list:
+                child_query_dict, child_org_list = self.get_organization(i)
+                avg_model = FactOEI.objects.complex_filter(child_query_dict).aggregate(Avg("model"))
+                model_score.append(round(avg_model["model__avg"], 2))
+
+            types = [0 for num in xrange(6)]
+            for score in model_score:
+                if score <= 40:
+                    types[0] += 1
+                elif 40 < score <= 60:
+                    types[1] += 1
+                elif 60 < score < 65:
+                    types[2] += 1
+                elif 65 <= score < 70:
+                    types[3] += 1
+                elif 70 <= score < 75:
+                    types[4] += 1
+                elif 75 <= score < 80:
+                    types[5] += 1
+                else:
+                    types[6] += 1
+            length = sum(types)
+            rate = [round(i * 100 / length, 2) for i in types]
+            res['rate'] = rate
+            res['number'] = types
+        return res, ErrorCode.SUCCESS
+
+    def get_zhdb(self, **kwargs):
+        org = kwargs.get("org_id")
+        current_org_data = self.get_feature(org_id=org)[0]
+        company_name = org.split('.')[0]  # 总行
+        company_data = self.get_feature(org_id=company_name)[0]
+        title = current_org_data.keys()
+        current_res = current_org_data.values()
+        company_res = company_data.values()
+        res = [title, current_res, company_res]
+        res_arr = np.array(res)
+        res = res_arr.transpose().tolist()
+        return res, ErrorCode.SUCCESS
 
     def get_temperature(self, **kwargs):
         res = {}
@@ -511,8 +778,14 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
 
     def get_overall(self, **kwargs):
         org = kwargs.get("org_id")
+        profile = kwargs.get("profile_id")
         query_dict = self.get_organization(org)[0]
         company_query_set = FactOEI.objects.complex_filter(query_dict)
+        profile_dict = {
+            u'年龄': 'profile1', u'性别': 'profile2', u'司龄': 'profile3', u'层级': 'profile4', u'序列': 'profile5',
+        }
+        if profile in profile_dict:
+            company_query_set = company_query_set.complex_filter({profile: profile_dict[profile]})
         if not company_query_set.exists():
             return {}, ErrorCode.NOT_EXISTED
         target = ["model", "dimension1", "dimension2", "dimension3", "dimension4",
@@ -583,8 +856,10 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                 value_list = department.complex_filter(child_query_dict).values_list("model")
                 if select and select == "-":
                     value_list = [j[0] for j in value_list if j[0] and j[0] < 65]
-                else:
+                elif select and select == "+":
                     value_list = [j[0] for j in value_list if j[0] and j[0] > 75]
+                else:
+                    value_list = [j[0] for j in value_list if j[0]]
                 res[org_list[-1]] = value_list
 
         total = sum([len(res[i]) for i in res])
@@ -668,7 +943,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                 "organization1", "organization2", "organization3", "organization4", "organization5", "organization6"
             ).distinct()
         else:
-            child_org = [[]]
+            child_org = []
         return child_org
 
     def get_organtree(self, **kargs):
