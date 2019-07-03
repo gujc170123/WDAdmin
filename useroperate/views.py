@@ -70,7 +70,12 @@ class MessagePushViewset(CustomModelViewSet):
     queryset = models.MessagePush.objects.all()
     serializer_class = serializers.MessagePushSerializer
 
-    def get(self, request, *args, **kwargs):
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)
+
+    def list(self, request, *args, **kwargs):
         
         enterprise_id = self.kwargs['enterprise_id']
         queryset = models.MessagePush.objects.filter(enterprise_id=enterprise_id,is_read=False).first()
