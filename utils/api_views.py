@@ -93,7 +93,7 @@ class VerifyCodeView(AuthenticationExceptView, WdListAPIView):
         else:
 
             if RegularUtils.phone_check(self.account):
-                send_general_code.delay(code, phone=self.account)
+                send_general_code(code, phone=self.account)
                 # Sms.send_general_code(code, [self.account])
             elif RegularUtils.email_check(self.account):
                 send_general_code(code, email=self.account)
