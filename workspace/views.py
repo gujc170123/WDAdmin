@@ -384,7 +384,7 @@ class OrganizationListView(AuthenticationExceptView, WdCreateAPIView):
     
     def get(self, request, *args, **kwargs):
         """get organization tree of current user"""
-        toporg = BaseOrganization.objects.filter_active(enterprise_id=self.enterprise_id,parent_id__isnull=True).first()
+        toporg = BaseOrganization.objects.filter_active(enterprise_id=self.enterprise_id,parent_id=0).first()
         if not toporg:
             return general_json_response(status.HTTP_200_OK, ErrorCode.NOT_EXISTED)
 
