@@ -182,7 +182,7 @@ class AssessViewset(CustomModelViewSet):
             return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, serializer.errors)
         if data['begin_time']>=data['end_time']:
             return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, u'结束时间必须晚于开始时间')
-        organizations = data['organizations'].split(',')
+        organizations = data['organizations'].split('|')
         if len(organizations)<1:
             return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, u'请添加机构')
         self.perform_create(serializer)
@@ -202,9 +202,10 @@ class AssessViewset(CustomModelViewSet):
 
         top = BaseOrganization.objects.get(parent_id=0,is_active=True,enterprise_id=data['enterprise_id'])
         AssessJoinedOrganization.objects.create(assess_id=assess_id,organization_id=top.id)
-
+                
         for org in organizations:
-            AssessJoinedOrganization.objects.create(assess_id=assess_id,organization_id=org)
+            toaddorg = BaseOrganization.objects.create(name=org,parent_id=top.id,enterprise_id=data['enterprise_id'])
+            AssessJoinedOrganization.objects.create(assess_id=assess_id,organization_id=toaddorg.id)
 
         data = serializer.data.copy()
         data['url'] = self.get_share_url(assess_id)
