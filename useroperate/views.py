@@ -57,7 +57,7 @@ class TrialMessageView(views.APIView):
         spu_id = self.kwargs['key']
         order = OrderDetail.objects.get(sku_id=spu_id,order__enterprise_id=enterprise_id)
         
-        message = '您当前使用的是%(n1)s，仅能开设1场调研，调研人数上限为%(n2)d人' % {"n1":order.sku_name,"n2":order.number}
+        message = '本次评估每次只能做一次，评估人数上限为%(n1)d人，开启评估后，周期最长为一个月。请合理安排时间，完成测评，如一个月未完成测试，可联系工作人员。' % {"n1":order.number}
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"message": message})
 
 class MessageViewset(CustomModelViewSet):
