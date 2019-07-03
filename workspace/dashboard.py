@@ -53,7 +53,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         # 领导方式
         "leadership_style": "self.get_leadership_style",
         # 群体聚焦
-        "focus_group": "self.get_focus_group",
+        "focus_group": "self.focus_group",
         # 聚焦问题
         "focus_problem": "self.get_focus_problem",
         # 工作环境-群体分布
@@ -102,24 +102,26 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         sgga_score_keys = ['%s__avg' % s for s in sgga]
 
         sgga_score = [round(score[s]*20, 2) for s in sgga_score_keys]
-        czkf_score_pre = [[round(score[c]*20, 2) for c in czkf_score_keys]]
-        n1 = [sum(czkf_score_pre[1: 3]) / 2]
-        n2 = [sum(czkf_score_pre[4: 6]) / 2, sum(czkf_score_pre[6: 8]) / 2]
-        n3 = [sum(czkf_score_pre[12: 14]) / 2]
-        n4 = [sum(czkf_score_pre[20: 22]) / 2]
-        n5 = [sum(czkf_score_pre[23: 25]) / 2]
-        n6 = [sum(czkf_score_pre[26: 28]) / 2, sum(czkf_score_pre[28: 30]) / 2]
-        n7 = [sum(czkf_score_pre[31: 33]) / 2, sum(czkf_score_pre[33: 35]) / 2, sum(czkf_score_pre[35: 37]) / 2, sum(czkf_score_pre[37:]) / 2]
-        czkf_score = czkf_score_pre[0] + n1 + czkf_score_pre[3: 5] + n2 + czkf_score_pre[8: 12] + n3 + \
-                     czkf_score_pre[14: 20] + n4 + czkf_score_pre[22] + n5 + czkf_score_pre[25] + \
-                     n6 + czkf_score_pre[30] + n7
+        sgga_score.insert(0, u'得分')
+        czkf_score_pre = [round(score[c]*20, 2) for c in czkf_score_keys]
+        n1 = [round(sum(czkf_score_pre[1: 3]) / 2, 2)]
+        n2 = [round(sum(czkf_score_pre[4: 6]) / 2, 2), round(sum(czkf_score_pre[6: 8]) / 2, 2)]
+        n3 = [round(sum(czkf_score_pre[12: 14]) / 2, 2)]
+        n4 = [round(sum(czkf_score_pre[20: 22]) / 2, 2)]
+        n5 = [round(sum(czkf_score_pre[23: 25]) / 2, 2)]
+        n6 = [round(sum(czkf_score_pre[26: 28]) / 2, 2), round(sum(czkf_score_pre[28: 30]) / 2, 2)]
+        n7 = [round(sum(czkf_score_pre[31: 33]) / 2, 2), round(sum(czkf_score_pre[33: 35]) / 2, 2),
+              round(sum(czkf_score_pre[35: 37]) / 2, 2), round(sum(czkf_score_pre[37:]) / 2, 2)]
+        czkf_score = [u'得分'] + [czkf_score_pre[0]] + n1 + [czkf_score_pre[3]] + n2 + czkf_score_pre[8: 12] + n3 + \
+                     czkf_score_pre[14: 20] + n4 + [czkf_score_pre[22]] + n5 + [czkf_score_pre[25]] + \
+                     n6 + [czkf_score_pre[30]] + n7
         from workspace.util.indicators import czkf_act, czkf_indi, sgga_act, sgga_indi
         czkf_res = [czkf_indi, czkf_act, czkf_score]
         sgga_res = [sgga_indi, sgga_act, sgga_score]
         res = {'sgga': sgga_res, 'czkf': czkf_res}
         return res, ErrorCode.SUCCESS
 
-    def get_focus_group(self, **kwargs):
+    def focus_group(self, **kwargs):
         org = kwargs.get("org_id")
         profile = kwargs.get("profile_id")
         if profile and profile == 'profile1':
