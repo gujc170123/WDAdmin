@@ -61,7 +61,7 @@ class TrialAssessDetailSerializer(serializers.ModelSerializer):
         return (obj.end_time-obj.begin_time).days
 
     def get_remain_days(self, obj):
-        return max(0,(obj.end_time-datetime.datetime.now()).days)
+        return min(max(0,(obj.end_time-datetime.datetime.now()).days),(obj.end_time-obj.begin_time).days)
 
 class MessageSerializer(serializers.ModelSerializer):
 
