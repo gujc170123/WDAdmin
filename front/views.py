@@ -155,7 +155,10 @@ class PeopleLoginView(AuthenticationExceptView, WdCreateAPIView):
         if err_code != ErrorCode.SUCCESS:
             return general_json_response(status.HTTP_200_OK, err_code)
         user_info = people_login(request, user, self.get_serializer_context())
-        user_info['enterprise'] = enterprise
+        if not user_info['enteprise']:
+            user_info['enterprise'] =0
+        else:
+            user_info['enterprise'] = enterprise
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, user_info)
 
 class PeopleActiveCodeLoginView(AuthenticationExceptView, WdCreateAPIView):
