@@ -15,7 +15,7 @@ from workspace.serializers import BaseOrganizationSerializer
 from sales.serializers import Product_SpecificationSerializer
 from utils.response import general_json_response, ErrorCode
 from rest_framework import mixins,status,views
-from datetime import date
+from datetime import date,datetime
 
 class MenuListView(views.APIView):
 
@@ -180,8 +180,12 @@ class AssessViewset(CustomModelViewSet):
         is_valid = serializer.is_valid(raise_exception=False)
         if not is_valid:
             return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, serializer.errors)
-        if data['begin_time']>=data['end_time']:
+        begin_time = datetime.strptime(data['begin_time'], "%Y-%m-%d %H:%M:%S")
+        end_time = datetime.strptime(data['end_time'], "%Y-%m-%d %H:%M:%S")
+        if end_time.__le__(begin_time):
             return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, u'结束时间必须晚于开始时间')
+        if (end_time-begin_time).days>30:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, u'此次调研须在30天内完成')
         organizations = data['organizations'].split('|')
         if len(organizations)<1:
             return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, u'请添加机构')
