@@ -27,7 +27,6 @@ class TrialAssessListSerializer(serializers.ModelSerializer):
 
     organizations = serializers.SerializerMethodField()
     joined = serializers.SerializerMethodField()
-    url = serializers.SerializerMethodField()
 
     class Meta:
         model = AssessProject
