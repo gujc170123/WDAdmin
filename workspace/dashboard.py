@@ -400,13 +400,14 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                 res = res1 if scale == "quota39" else res2
                 for i in res:
                     res[i] = round(res[i] * 100 / total, 2)
-                high = res['r1c1'] + res['r1c2'] + res['r2c1'] + res['r2c2']
-                res['high'] = round(high, 2)
                 if scale == 'quota39':
-                    low = res["r6c6"] + res["r6c7"] + res["r7c6"] + res["r7c7"]
+                    low = res['r1c5'] + res['r1c6'] + res['r1c7'] + res['r2c5'] + res['r2c6'] + res['r2c7']
+                    high = res["r6c1"] + res["r6c2"] + res["r7c1"] + res["r7c2"]
                 else:
-                    low = res["r4c6"] + res["r4c7"] + res["r5c6"] + res["r5c7"]
+                    low = res["r4c5"] + res["r4c6"] + res["r4c7"] + res["r5c5"] + res["r5c6"] + res["r5c7"]
+                    high = res['r1c1'] + res['r1c2'] + res['r2c1'] + res['r2c2']
                 res['low'] = round(low, 2)
+                res['high'] = round(high, 2)
                 return res, ErrorCode.SUCCESS
             else:
                 return res, ErrorCode.NOT_EXISTED
