@@ -11,7 +11,7 @@ from email.header import Header
 from WeiDuAdmin import settings
 from utils.logger import err_c_logger, info_c_logger
 
-username = 'service@iwedoing.com'
+username = 'iwedoing@gelue.com'
 # 发件人密码，通过控制台创建的发件人密码
 password = 'GLcxzaqweds123'
 # 自定义的回复地址
@@ -27,12 +27,12 @@ class EmailUtils(object):
         pass
 
     def __send_email(self, subject, nickname, content, receive_emails, is_text=True):
-        # 构建alternative结构
+        info_c_logger.info("mail client start")
         msg = MIMEMultipart('alternative')
         msg['Subject'] = Header(subject).encode()
         msg['From'] = '%s <%s>' % (Header(nickname).encode(), username)
         msg['To'] = receive_emails
-        msg['Reply-to'] = receive_emails
+        msg['Reply-to'] = replyto
         msg['Message-id'] = email.utils.make_msgid()
         msg['Date'] = email.utils.formatdate()
         if is_text:
@@ -43,21 +43,10 @@ class EmailUtils(object):
             # 构建alternative的text/html部分
             texthtml = MIMEText(content, _subtype='html', _charset='UTF-8')
             msg.attach(texthtml)
-            # 发送邮件
-        # 发送邮件
-        info_c_logger.info("mail client start")
         try:
-            client = smtplib.SMTP()
-            # python 2.7以上版本，若需要使用SSL，可以这样创建client
             client = smtplib.SMTP_SSL()
-            # SMTP普通端口为25或80
-            client.connect('smtpdm.aliyun.com', 465)
-            # 开启DEBUG模式
-            client.set_debuglevel(0)
+            client.connect('smtp.mxhichina.com',465)
             client.login(username, password)
-            # 发件人和认证地址必须一致
-            # 备注：若想取到DATA命令返回值,可参考smtplib的sendmaili封装方法:
-            #      使用SMTP.mail/SMTP.rcpt/SMTP.data方法
             client.sendmail(username, receive_emails, msg.as_string())
             client.quit()
             info_c_logger.info("mail sent")
@@ -73,8 +62,8 @@ class EmailUtils(object):
             err_c_logger.error("邮件发送失败，数据接收拒绝:%s,%s" % (e.smtp_code, e.smtp_error))
         except smtplib.SMTPException, e:
             err_c_logger.error("邮件发送失败:%s" % (e.message))
-        except Exception, e:            
-            err_c_logger.error("邮件发送异常:%s" % (str(e)))
+        except Exception, e:
+            err_c_logger.error(e)
 
     def send_active_code(self, code, receive_email):
         subject = u"格略维度平台激活码"
