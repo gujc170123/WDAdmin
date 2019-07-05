@@ -7,19 +7,12 @@ from email.mime.image import MIMEImage
 from email.mime.base import MIMEBase
 from email.mime.application import MIMEApplication
 from email.header import Header
-# 发件人地址，通过控制台创建的发件人地址
 from WeiDuAdmin import settings
 from utils.logger import err_c_logger, info_c_logger
 
-username = 'iwedoing@gelue.com'
-# 发件人密码，通过控制台创建的发件人密码
-password = 'GLcxzaqweds123'
-# 自定义的回复地址
-replyto = 'service@gelue.com'
-# 收件人地址或是地址列表，支持多个收件人，最多30个
-#rcptto = ['***', '***']
-# rcptto = '***'
-
+username = 'system@iwedoing.com'
+password = 'gl1234567'
+replyto = ''
 
 class EmailUtils(object):
 
@@ -36,19 +29,17 @@ class EmailUtils(object):
         msg['Message-id'] = email.utils.make_msgid()
         msg['Date'] = email.utils.formatdate()
         if is_text:
-            # 构建alternative的text/plain部分
             textplain = MIMEText(content, _subtype='plain', _charset='UTF-8')
             msg.attach(textplain)
         else:
-            # 构建alternative的text/html部分
             texthtml = MIMEText(content, _subtype='html', _charset='UTF-8')
             msg.attach(texthtml)
         try:
-            client = smtplib.SMTP_SSL()
-            client.connect('smtp.mxhichina.com',465)
+            client = smtplib.SMTP('mail.iwedoing.com',587)
+            client.startttls()
             client.login(username, password)
             client.sendmail(username, receive_emails, msg.as_string())
-            client.quit()
+            client.close()
             info_c_logger.info("mail sent")
         except smtplib.SMTPConnectError, e:
             err_c_logger.error("邮件发送失败，连接失败:%s,%s" % (e.smtp_code, e.smtp_error))
