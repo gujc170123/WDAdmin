@@ -36,7 +36,7 @@ class EmailUtils(object):
             msg.attach(texthtml)
         try:
             client = smtplib.SMTP('mail.iwedoing.com',587)
-            client.startttls()
+            client.starttls()
             client.login(username, password)
             client.sendmail(username, receive_emails, msg.as_string())
             client.close()
