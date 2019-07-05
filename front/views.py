@@ -2438,7 +2438,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             statement_key = ''.join([i[0] for i in name_score_list])
             if not statement_key:
                 statement_key = u'下移位'
-            if statement_key == "DISC":
+            if len(statement_key) == 4:
                 statement_key = u'上移位'
             statement = test_statement[statement_key]
             disc[item] = [statement_key, statement]

@@ -83,7 +83,7 @@ class Applier(models.Model):
     source = models.IntegerField(verbose_name='Info Source', choices=SOURCE_CHOICES , default=1)
 
     def __unicode__(self):
-        return self.title + self.appliername
+        return self.title
 
 class Application(models.Model):
 
@@ -103,4 +103,4 @@ class Application(models.Model):
     rejectreason = models.CharField(verbose_name='Enterprise Title', max_length=100, null=True)
 
     def __unicode__(self):
-        return self.applier
+        return self.applier.title
