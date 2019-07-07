@@ -1449,8 +1449,182 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
         # 职业定向(new)
         "CO2019": 'self.getCO2019',
         # 180MC
-        "MC2019": 'self.getMC2019'
+        "MC2019": 'self.getMC2019',
+        # PEOI2019
+        "PEOI2019": 'self.getPEOI2019',
     }
+
+    def getPEOI2019(self, personal_result_id):
+
+        dict_quota={}
+        dict_quota[u'自主定向']={}
+        dict_quota[u'意义寻求']={}
+        dict_quota[u'自我悦纳']={}
+        dict_quota[u'自我拓展']={}
+        dict_quota[u'情绪调节']={}
+        dict_quota[u'专注投入']={}
+        dict_quota[u'亲和利他']={}
+        dict_quota[u'包容差异']={}
+        dict_quota[u'乐观积极']={}
+        dict_quota[u'自信坚韧']={}
+        dict_quota[u'合理归因']={}
+        dict_quota[u'灵活变通']={}
+
+        dict_ranking = {}
+        dict_ranking[1]=[]
+        dict_ranking[2]=[]
+        dict_ranking[3]=[]
+        dict_ranking[4]=[]
+
+        default_data = {
+            "report_type": "PEOI2019",
+            "msg": {
+                "Name": "",
+                "Gender": "",
+                "TestTime": "",
+                "Age":"",
+                "scores":dict_quota,
+                "ranks":dict_ranking,
+            }}
+
+        dict_std = {
+            u"自主定向": {"avg": 62.64,"std": 18.09},
+            u"意义寻求": {"avg": 74.13,"std": 18.87},
+            u"自我悦纳": {"avg": 73.43,"std": 18.67},
+            u"自我拓展": {"avg": 69.75,"std": 17.14},
+            u"情绪调节": {"avg": 72.10,"std": 19.24},
+            u"专注投入": {"avg": 66.86,"std": 18.92},
+            u"亲和利他": {"avg": 60.94,"std": 16.80},
+            u"包容差异": {"avg": 73.23,"std": 20.86},
+            u"乐观积极": {"avg": 73.53,"std": 19.60},
+            u"自信坚韧": {"avg": 71.59,"std": 21.68},
+            u"合理归因": {"avg": 71.96,"std": 18.47},
+            u"灵活变通": {"avg": 68.62,"std": 18.60}}
+
+        rank_table = [2.28,6.69,15.86,30.85,50.5,69.15,84.13,93.31,97.7,100]
+
+        dict_table_dimension = {u'乐观积极':{1:u'您对工作中的问题或生活中的得失的看法相当消极，在挫折和困境中往往会怀疑自己，对未来存在观望或悲观情绪，经常感到无助。',
+                                            3:u'您对工作中的问题或生活中的得失的看法可能比较消极，在挫折和困境中倾向于怀疑自己，有时会对未来存在观望或悲观情绪，甚至感到无助。',
+                                            7:u'您在多数情况下能从积极的角度看待存在的问题以及自己的得失，在挫折和困境中往往也能看到积极的一面，但有些时候也会受到负面信息的影响。',
+                                            10:u'您倾向于从乐观正面的角度看待工作和生活中的问题和得失，即使在挫折和困境中也能看到积极的一面，对自己和未来充满希望，能够做好准备并付诸行动。'},
+                                u'自信坚韧':{1:u'您经常低估自己的能力或高估工作任务的难度，不善于应对挑战和工作压力，或处理较高强度的工作。您需要相当长的时间才能从挫折和批评中恢复过来，重新投入到工作中。',
+                                            3:u'您对自己的能力不太有信心，往往高估工作任务的难度。和大多数人相比，您不善于应对挑战和工作压力，或处理在短期内较高强度的工作。需要较长的时间才能从挫折和',
+                                            7:u'您和大多数人一样相信自己的能力，能够应对大部分挑战和工作压力，并在短期内处理较高强度的工作。虽然会需要一些时间，您通常可以从挫折和批评中恢复过来，重新投入到工作中。',
+                                            10:u'您比大多数人更相信自己的能力，可以更好的应对挑战和工作压力，长期处理较高强度的工作，或者接受短期内极大强度工作的挑战。您通常可以在较短时间内从挫折和批评中恢复过来，重新投入到工作中。'},
+                                u'合理归因':{1:u'您很少能够从全面、发展、客观的角度分析和看待问题，在上思维方式经常过于具体或过度关注细节，往往只从某一个单一的角度看待问题。',
+                                            3:u'您比较缺乏从全面、发展、客观的角度分析和看待问题的意识，往往会陷入过于具体或只针对问题某一个单独方面的思维方式中。',
+                                            7:u'您有从全面、发展、客观的角度分析和看待问题的意识，但有时还是会陷入过于具体或只针对问题某一个单独方面的思维方式中。',
+                                            10:u'您能够从全面、发展、客观的角度分析和看待问题，很少陷入过于具体或只针对问题某一个单独方面的思维方式中。'},
+                                u'情绪调节':{1:u'您非常感性，经常会认为他人的批评是完全针对自己个人的。在面对持久的压力和或挫折时，不善于调节自身的情绪，难以维持正常的工作状态，也会在肢体语言上表现出明显的紧张。',
+                                            3:u'您比较感性，有时会认为他人的批评是完全针对自己个人的。在面对持久的压力和或挫折时，不太能够调节自身的情绪，在维持正常的工作状态上有一定困难，也会在肢体语言上表现出明显的紧张。',
+                                            7:u'您在一般情况下不会让情绪影响到理性思维，不倾向于认为他人的批评是完全针对自己个人的。在面对持久的压力和或挫折时，一定程度上能够调节自身的情绪，维持正常的工作状态，但有时会在肢体语言上表现出一定的紧张。',
+                                            10:u'您比较理性，很少会让情绪影响理性思维，不会把他人的批评当成是完全针对自己个人的。您在面对持久的压力和或挫折时，基本上能够调节自身的情绪，维持正常的工作状态，也不太会在肢体语言上表现出紧张。'},
+                                u'自主定向':{1:u'您可能对自己的发展方向和目标没有太多思考，面对选择时更多服从主流或权威的意见，在没有他人的管理和支持的情况下会显得无所适从。',
+                                            3:u'您对自己的发展方向和目标思考较少，面对选择时比较倾向于服从主流或权威的意见，在没有他人的管理和支持的情况下可能会显得无所适从。',
+                                            7:u'您把握自己生活和工作的发展方向和目标的能力和大多数人差不多，面对选择时多少都会受到外界的影响，但在大是大非的问题上还是能够坚持自己的标准，能够一定程度上在没有他人管理和支持的情况下完成工作。',
+                                            10:u'您能够明确的把握自己生活和工作的发展方向和目标，面对选择时能够坚持自己的标准，不随大流、不人云亦云，相信自己的价值并不需要通过迎合他人来体现，在工作中不依赖他人的管理和支持。'},
+                                u'意义寻求':{1:u'您很难从工作和生活中找到意义和价值，在达成目标的过程中，经常会受到外界因素的干扰，需要有外部监督。',
+                                            3:u'您不太能够从工作和生活中找到意义和价值，在达成目标的过程中，容易被外界因素干扰，比较依赖外部的监督。',
+                                            7:u'您能够一定程度上从工作和生活中寻求意义和价值，并付出一些努力去达成预设的目标，但有时会受到外界因素影响。',
+                                            10:u'您能够主动地在工作和生活中寻求意义和价值，并有计划的通过各种努力来达成预设的目标。'},
+                                u'专注投入':{1:u'您在处理工作时非常容易分心，缺乏计划性。您在大部分情况下不能保持注意力的集中，经常在工作中会出现虎头蛇尾的情况。',
+                                            3:u'和大部分人相比，您在处理工作时专注度不够，也比较缺乏计划性。在任务不再新颖或不具有挑战性时，您很难保持注意力的集中，可能会出现虎头蛇尾的情况。',
+                                            7:u'您能够在处理大部分工作时保证精力充沛，并能够在安排自己的工作计划上有一定的考虑。但在任务不再新颖或不具有挑战性时，您可能不太能够保持注意力的集中，不是特别胜任持续的常规或重复性工作。',
+                                            10:u'您倾向于精力充沛地投入到任何工作事务中，并按优先级来安排自己的工作计划。即使当任务不再新颖或不具有挑战性时，您也能够保持注意力的集中，能够较好的胜任持续的常规或重复性工作。'},
+                                u'自我拓展':{1:u'您在工作生活一般都会基于已有的经验做出判断，不倾向于学习新的知识和技能，缺少发展自身能力和潜力的意识。',
+                                            3:u'您在工作生活中比较拘泥于已有的经验，很少作出一些尝试来发展、兑现自身的能力和潜力，比较缺乏提升自己的知识和技能的意识。',
+                                            7:u'您能够一定程度上从工作和生活经验中学习，会作出一些尝试来发展、兑现自身的能力和潜力，在工作不太繁忙时，能够花一些时间提升自己的知识和技能。',
+                                            10:u'您能够持续从工作和生活经验中学习并发展自身的能力，会作各种尝试以充分地兑现自己的潜力，不断提升自己的知识和技能，主动拥抱变化以得到新的经验。'},
+                                u'灵活变通':{1:u'您看待事物的方式非常保守，明显的倾向于否定新奇的、非传统的观点和工作方法，维持现状。在身处快速变化，需要不断调整自身应对方式的环境时会感到明显的无所适从。',
+                                            3:u'您看待事物的方式比较保守，往往会用怀疑的眼光来看待新奇的、非传统的观点和工作方法，倾向于维持现状。在身处快速变化，需要不断调整自身应对方式的环境时会感到无所适从。',
+                                            7:u'您看待事物的方式和大多数人相同，能够接受部分新奇的、非传统的观点和工作方法，在必要时不会拘泥于维持现状。在身处快速变化，需要不断调整自身应对方式的环境时，需要一些时间来适应。',
+                                            10:u'您倾向于用变化和多元的观点看待事物，能够接受新奇的、非传统的观点和工作方法，不倾向于维持现状。在身处快速变化，需要不断调整自身应对方式的环境时能够较好地适应。'},
+                                u'包容差异':{1:u'人际交往中，您相当介意他人的不足或缺点，很容易给人留下待人严苛而不够包容的印象；经常只和观点相近的人进行交流，在与风格有差异的人合作时会遇到很多问题。',
+                                            3:u'人际交往中，您可能比较介意他人的不足或缺点，有时会给人留下待人严苛而不够包容的印象；倾向于只和观点相近的人进行交流，不善于与风格有差异的人进行合作。',
+                                            7:u'和大多数人一样，您能够正常的和他人建立起信任关系，在正常情况下不倾向于为非原则性的问题和他人对峙或冲突，能够一定程度上接受他人的不同意见和处事风格。',
+                                            10:u'您表现出一种随和的气质，能够很快的和他人建立起信任关系，不会为非原则性的问题和他人对峙，较少发生人际冲突，大部分时候能够接受他人的不同意见和处事风格。当事情出错时，也不大容易发脾气或暴怒。'},
+                                u'亲和利他':{1:u'人际交往中，您不关注他人的感受和需要，不会从他人的角度考虑问题，并且不倾向于帮助他人。',
+                                            3:u'人际交往中，您可能对他人的感受和需要关注不多，不太会从他人的角度考虑问题，并且在他人没有明确提出需要时也不太会主动提供帮助和支持。',
+                                            7:u'您待人和大多数人一样友善，对人比较开放而友好。虽然在和陌生人交往时可能不会表现的非常主动和热情，您仍然颇具合作精神、常常能够热心助人，并在自己能力范围内满足他人的合理要求。',
+                                            10:u'和大多数人相比，您待人更友善，对人开放而友好，往往在交往的最初就表现的非常主动和热情。您极具合作精神、热心助人，倾向于努力满足他人的合理要求。'},
+                                u'自我悦纳':{1:u'您看不到自身的长处，同时非常介意自身的缺点和不足，在大部分情况下都倾向于过低的评价自己。',
+                                            3:u'您不太能够客观评价自身的长处，比较介意自身的缺点和不足，在遇到挫折和困难时倾向于过低的评价自己。',
+                                            7:u'您基本能够客观评价自身的长处，并接受自身的缺点和不足，但在遇到较大的挫折和困难时可能会有过低评价自己的倾向。',
+                                            10:u'您能够客观地评价自身的长处，并接受自身的缺点和不足，即使遇到较大的挫折和困难也不会过低的评价自己'}}
+        frontname = settings.DATABASES['front']['NAME']
+        sql_query = "select b.tag_value ,a.score from\
+            (select question_id,answer_score score\
+            from " + frontname + ".front_peoplesurveyrelation a,\
+            " + frontname + ".front_userquestionanswerinfo b\
+            where  a.id=%s and a.survey_id=b.survey_id and a.people_id=b.people_id\
+            and a.project_id=b.project_id and a.is_active=true and b.is_active=true) a,research_questiontagrelation b\
+            where a.question_id=b.object_id and b.tag_id=54\
+            and b.is_active=True"
+
+        try:
+            people_result = PeopleSurveyRelation.objects.get(id=personal_result_id)
+            if people_result.status != PeopleSurveyRelation.STATUS_FINISH:
+                return default_data, ErrorCode.INVALID_INPUT
+            if not people_result.report_url:
+                people_result.report_url= settings.Reports['peoi2019'] % (personal_result_id)
+                people_result.report_status=PeopleSurveyRelation.STATUS_FINISH
+                people_result.save()
+            people = People.objects.get(id=people_result.people_id)
+            default_data["msg"]["Name"] = people.display_name
+            default_data["msg"]["Gender"] = people.get_info_value(u"性别", u"未知")
+            default_data["msg"]["Age"] = people.get_info_value(u"年龄", None)
+            if not default_data["msg"]["Age"]:
+                default_data["msg"]["Age"] = u"未知"
+            else:
+                default_data["msg"]["Age"] += u"岁"
+            if people_result.finish_time:
+                default_data["msg"]["TestTime"] = people_result.finish_time.strftime(u"%Y年%m月%d日")
+            else:
+                default_data["msg"]["TestTime"] = time.strftime(u"%Y年%m月%d日", time.localtime())
+
+            with connection.cursor() as cursor:
+                cursor.execute(sql_query, [personal_result_id])
+                columns = [col[0] for col in cursor.description]
+                dictscore = {}
+                for row in cursor.fetchall():
+                    dictscore[row[0]]=row[1]
+            
+            dict_quota[u'自主定向']['pt']=(dictscore['N1']+dictscore['N2'])*25.00/2
+            dict_quota[u'意义寻求']['pt']=(dictscore['N3']+dictscore['N4'])*25.00/2
+            dict_quota[u'自我悦纳']['pt']=(dictscore['N5']+dictscore['N6'])*25.00/2
+            dict_quota[u'自我拓展']['pt']=(dictscore['N7']+dictscore['N8'])*25.00/2
+            dict_quota[u'情绪调节']['pt']=(dictscore['N9']+dictscore['N10'])*25.00/2
+            dict_quota[u'专注投入']['pt']=(dictscore['N11']+dictscore['N12'])*25.00/2
+            dict_quota[u'亲和利他']['pt']=(dictscore['N13']+dictscore['N14'])*25.00/2
+            dict_quota[u'包容差异']['pt']=(dictscore['N15']+dictscore['N16'])*25.00/2
+            dict_quota[u'乐观积极']['pt']=(dictscore['N17']+dictscore['N18'])*25.00/2
+            dict_quota[u'自信坚韧']['pt']=(dictscore['N19']+dictscore['N20'])*25.00/2
+            dict_quota[u'合理归因']['pt']=(dictscore['N21']+dictscore['N22'])*25.00/2
+            dict_quota[u'灵活变通']['pt']=(dictscore['N23']+dictscore['N24'])*25.00/2
+
+            for key,value in dict_std.items():                
+                zscore=(dict_quota[key]['pt']-value['avg'])*1.00/value['std']
+                dict_quota[key]['cdf']=round(normsdist(zscore)*100.00,2)
+                i = 1
+                for pt in rank_table:
+                    if dict_quota[key]['cdf']<=pt:
+                        dict_quota[key]['rank']=i
+                        break
+                    else:
+                        i += 1
+                sortedlist = sorted(dict_table_dimension[key].items(),key=lambda d:d[0])
+                i = 1
+                for level in sortedlist:
+                    if dict_quota[key]['rank']<=level[0]:
+                        dict_quota[key]['desc']=level[1]
+                        dict_ranking[i].append(key)
+                        break
+                    else:
+                        i += 1
+        except Exception, e:
+            err_logger.error("get report data error, msg: %s" % e)
+            return default_data, ErrorCode.INVALID_INPUT
+        return default_data, ErrorCode.SUCCESS  
 
     def getMC2019(self, personal_result_id):
 
