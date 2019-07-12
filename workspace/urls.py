@@ -5,7 +5,7 @@ from workspace.views import UserLoginView,OrganizationlRetrieveUpdateDestroyView
                             AssessCreateView,AssessDetailView,AssessSurveyRelationDistributeView,\
                             AssessProgressView,AssessProgressTotalView,UserImportExportView,\
                             AssessOrganizationView,OrganizationlUsersDestroyView,SurveyListView,\
-                            UserBatchDeleteView,AssessShareView,OrganizationListView,LogoutView
+                            UserBatchDeleteView,AssessShareView,OrganizationListView,LogoutView, ManagementAssess
 from workspace.dashboard import Dashboard, redisStatus
 from workspace.dedication import Dedication
 
@@ -50,5 +50,7 @@ urlpatterns = [
     url(r"^listEntorg/$",OrganizationListView.as_view(), name="org-list-e"),
     url(r"^getStatus/$", redisStatus, name="redis_status"),
     # jing ye du
-    url(r'^dedication/$', Dedication.as_view(), name='dedication')
+    url(r'^dedication/$', Dedication.as_view(), name='dedication'),
+    #
+    url(r'^managementAssess/(?P<ass>\d+)/(?P<sur>\d+)/$', ManagementAssess.as_view()),
 ]

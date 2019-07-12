@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 import hashlib
 import base64
+import json
 from urllib import quote
 from django.db.models import F,Q
 from django.contrib.auth import logout
@@ -26,13 +27,14 @@ from assessment.models import AssessProject, AssessSurveyRelation, AssessProject
 from survey.models import Survey
 from utils.cache.cache_utils import FileStatusCache
 from rest_framework.views import APIView
-from front.models import PeopleSurveyRelation
+from front.models import PeopleSurveyRelation, SurveyInfo
 from assessment.tasks import send_survey_active_codes
 from django.db import connection,transaction,connections
 from django.conf import settings
 from survey.models import Survey
 from rest_framework.parsers import FileUploadParser
 from tasks import userimport_task,CreateNewUser
+import pandas as pd
 
 #retrieve logger entry for workspace app
 
@@ -634,3 +636,59 @@ class AssessProgressTotalView(AuthenticationExceptView,APIView):
             result= dict(zip(columns, cursor.fetchone()))
         data = {"progress" : result}
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, data)
+
+
+class ManagementAssess(APIView):
+    """
+    测评管理
+    """
+
+    def get(self, request, ass, sur):
+        # AssessSurveyUserDistribute
+        org = json.loads(request.query_params.get("org"))  # org_id 数组
+        # 根据组织查 AuthUser.ID, 到wduser_people查id，wduser_people.user_id=AuthUser.ID
+        user_obj = AuthUser.objects.filter(organization_id__in=org, is_active=True).values_list(
+            "id", "username", "gender__value", "rank__value", "sequence__value", "birthday"
+        )
+        auth_id_list = [obj[0] for obj in user_obj]  # 假id    所选组织下的所有人
+        people_obj = People.objects.filter(user_id__in=auth_id_list).values_list("id", "user_id")
+        # id_list = set(p[0] for p in people_obj)  # 所有员工参加测评的有效ID
+
+        # 已在测评中的员工ID
+        ass_ids = AssessSurveyUserDistribute.objects.filter(assess_id=ass, survey_id=sur).first().people_ids
+
+        # import pandas as pd  # --------------------
+        user_df = pd.DataFrame(list(user_obj))
+        user_df.columns = ["id", "username", "gender", "rank", "sequence", "birthday"]
+
+        people_df = pd.DataFrame(list(people_obj))
+        people_df.columns = ["pid", "id"]
+        res = pd.merge(people_df, user_df, on="id")
+        res = res.drop_duplicates()
+        res = res.drop("id", axis=1)
+        res = res.values.transpose().tolist()
+        res = res.values.T
+
+        data = {"staff": res, "selected": ass_ids}
+        return Response({"data": data, "code": ErrorCode.SUCCESS})
+
+    def post(self, request, ass, sur):
+
+        modify_pid = set(json.loads(request.data.get("pid")))  # 列表, 选中人员的ID
+        survey_obj = AssessSurveyUserDistribute.objects.filter(assess_id=ass, survey_id=sur).first()
+        ass_ids = set(json.loads(survey_obj.people_ids))
+        pid = modify_pid | ass_ids
+        AssessSurveyUserDistribute.objects.filter(assess_id=ass, survey_id=sur).update(people_ids=json.dumps(list(pid)))
+        # from front.models import SurveyInfo  # --------------------
+        survey_name = SurveyInfo.objects.filter(project_id=ass, survey_id=sur).first().survey_name
+        pid_insert_psr = list(modify_pid - ass_ids)
+        people_survey = []
+        for people_id in pid_insert_psr:
+            psr_obj = PeopleSurveyRelation(
+                id=people_id, creator_id=survey_obj.creator_id, last_modify_user_id=survey_obj.last_modify_user_id,
+                survey_id=sur, project_id=ass, survey_name=survey_name
+            )
+            people_survey.append(psr_obj)
+        PeopleSurveyRelation.objects.bulk_create(people_survey)
+        return Response({'code': ErrorCode.SUCCESS, 'data': list(pid)})
+
