@@ -6,6 +6,7 @@ router = DefaultRouter()
 router.register(r'eventlist', views.EventModelViewset, base_name='event')
 router.register(r'applicationlist', views.ApplicationModelViewset, base_name='application')
 router.register(r'applierlist', views.ApplierModelViewset, base_name='applier')
+router.register(r'customerlist', views.CustomerModelView, base_name='customer')
 urlpatterns = [
     url(r'^choice/$',views.ChoiceView.as_view()),
 ]

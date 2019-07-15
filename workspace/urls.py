@@ -50,5 +50,5 @@ urlpatterns = [
     url(r"^listEntorg/$",OrganizationListView.as_view(), name="org-list-e"),
     url(r"^getStatus/$", redisStatus, name="redis_status"),
     # jing ye du
-    url(r'^dedication/$', Dedication.as_view(), name='dedication')
+    url(r'^dedication/$', Dedication.as_view(), name='dedication'),
 ]

@@ -10,7 +10,7 @@ deploy in production env, need replaced with env_pro.py
 import os
 
 # debug settings
-DEBUG = False
+DEBUG = True
 
 # allow host settings
 ALLOWED_HOSTS = ['*']
@@ -18,7 +18,6 @@ ALLOWED_HOSTS = ['*']
 # csrf setting
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True
-CORS_ORIGIN_WHITELIST = ('127.0.0.1:8000')
 CORS_ALLOW_METHODS = (
     'DELETE',
     'GET',

@@ -32,7 +32,7 @@ class Product_Specification(BaseEntity):
     price = models.DecimalField(max_digits=8,decimal_places=2,null=True)
     title = models.CharField(max_length=50)
     menu = models.CharField(max_length=50)
-    category_id = models.IntegerField(db_index=True)
+    category = models.ForeignKey(Category, db_constraint=False)
     is_platform = models.BooleanField(default=False)
 
     @classmethod
@@ -65,10 +65,10 @@ class Order(models.Model):
 
     order_no = models.CharField(max_length=30, db_index=True,default=get_order_code)
     order_status = models.IntegerField(choices=STATUS_CHOICES, default=1, db_index=True)
-    enterprise = models.ForeignKey(EnterpriseInfo, on_delete=models.CASCADE)
+    enterprise = models.ForeignKey(EnterpriseInfo, on_delete=models.CASCADE, db_constraint=False)
     product_amount = models.DecimalField(max_digits=12,decimal_places=2, default=0)
     order_amount = models.DecimalField(max_digits=12,decimal_places=2, default=0)
-    order_date = models.DateTimeField(auto_now_add=True)
+    order_date = models.DateTimeField()
     paid_date = models.DateTimeField(null=True)
     delivered_date = models.DateTimeField(null=True)
 
@@ -81,8 +81,8 @@ class OrderDetail(models.Model):
         verbose_name_plural=u'订单明细'
         verbose_name=u'订单明细'
 
-    order = models.ForeignKey(Order, on_delete=models.CASCADE,related_name='details')
-    sku = models.ForeignKey(Product_Specification)
+    order = models.ForeignKey(Order, on_delete=models.CASCADE,related_name='products')
+    sku = models.ForeignKey(Product_Specification, db_constraint=False)
     sku_name = models.CharField(max_length=150)
     price = models.DecimalField(max_digits=12,decimal_places=2)
     discount_rate = models.DecimalField(max_digits=5,decimal_places=2, default=0)
@@ -106,8 +106,8 @@ class Balance(models.Model):
         verbose_name_plural=u'财务余额'
         verbose_name=u'财务余额'
 
-    enterprise_id = models.IntegerField(db_index=True)
-    sku = models.IntegerField(db_index=True)
+    enterprise = models.ForeignKey(EnterpriseInfo, db_constraint=False)
+    sku = models.ForeignKey(Product_Specification, db_constraint=False)
     number = models.IntegerField()
     validfrom = models.DateField()
     validto = models.DateField()

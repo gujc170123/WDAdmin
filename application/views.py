@@ -1,9 +1,12 @@
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status,generics
+from django_filters import rest_framework as filters
 from rest_framework.generics import GenericAPIView
 from utils.views import CustomModelViewSet
 from utils.response import general_json_response, ErrorCode
 from application import models,serializers
+from wduser.serializers import EnterpriseBasicSerializer
+from wduser.models import EnterpriseInfo,BaseOrganization
 
 class ChoiceView(GenericAPIView):
 
@@ -42,3 +45,41 @@ class EventModelViewset(CustomModelViewSet):
 
     queryset = models.Event.objects.all()
     serializer_class = serializers.EventSerializer
+
+class CustomerFilter(filters.FilterSet):
+
+    class Meta:
+        model = EnterpriseInfo
+        fields = {
+            'cn_name':['icontains'],
+            'email':['icontains'],
+        }
+
+class CustomerModelView(CustomModelViewSet):
+
+    queryset = EnterpriseInfo.objects.filter_active()
+    serializer_class = EnterpriseBasicSerializer
+    filter_backend = filters.DjangoFilterBackend
+    filter_class = CustomerFilter
+
+    def perform_destroy(self, instance):
+        instance.is_active = False
+        if hasattr(instance, 'last_modify_user_id'):
+            instance.last_modify_user_id = 0
+        instance.save()
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        is_valid = serializer.is_valid(raise_exception=False)
+        if not is_valid:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, serializer.errors)            
+        self.perform_create(serializer)
+      
+        BaseOrganization.objects.create(
+            is_active=True,
+            name = serializer.data['cn_name'],
+            parent_id=0,
+            enterprise_id=serializer.data['id']
+        )
+
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)          
