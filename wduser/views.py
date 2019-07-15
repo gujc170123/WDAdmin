@@ -32,6 +32,10 @@ from wduser.serializers import UserBasicSerializer, EnterpriseBasicSerializer, O
     RoleUserBusinessBasicSeriaSerializer, RoleUserBusinessListSeriaSerializer, RoleUserInfoSerializer
 from wduser.tasks import import_org_task, send_general_code, enterprise_statistics_test_user
 from wduser.user_utils import UserAccountUtils, OrgImportExport, OrganizationUtils
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from wduser.serializers import RankSerializer, SequenceSerializer
+from wduser.models import Dim_Rank, Dim_Sequence
 
 
 def login_info(request, user, context):
@@ -871,4 +875,67 @@ class RoleUserPartListCreateView(WdListCreateAPIView, WdDestroyAPIView):
             )
         info_logger.info('user %s update model type %s id %s roleuserbusiness model' % (request.user.id, self.type, self.model_id))
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
+
+
+class Rank(APIView):
+
+    def get(self, request, org_id):
+        rank_list = Dim_Rank.objects.filter(org_id=org_id)
+        ret = RankSerializer(rank_list, many=True)
+        return Response({"code": ErrorCode.SUCCESS, "data": ret.data})
+
+    def post(self, request, org_id):
+        serializer = RankSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"code": ErrorCode.SUCCESS, "data": serializer.data})
+        else:
+            return Response({"code": ErrorCode.INVALID_INPUT, "data": serializer.errors})
+
+    def delete(self, request, org_id):
+        # org_id == Dim_Rank.id
+        Dim_Rank.objects.filter(id=org_id).delete()
+        return Response({"code": ErrorCode.SUCCESS, "data": org_id})
+
+    def put(self, request, org_id):
+        # org_id == Dim_Rank.id
+        obj = Dim_Rank.objects.get(id=org_id)
+        serializer = RankSerializer(obj, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"code": ErrorCode.SUCCESS, "data": serializer.is_valid()})
+        else:
+            return Response({"code": ErrorCode.SUCCESS, "data": serializer.errors})
+
+
+class Sequence(APIView):
+
+    def get(self, request, org_id):
+        sequence_list = Dim_Sequence.objects.filter(org_id=org_id)
+        ret = SequenceSerializer(sequence_list, many=True)
+        return Response({"code": ErrorCode.SUCCESS, "data": ret.data})
+
+    def post(self, request, org_id):
+        serializer = SequenceSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"code": ErrorCode.SUCCESS, "data": serializer.data})
+        else:
+            return Response({"code": ErrorCode.INVALID_INPUT, "data": serializer.errors})
+
+    def delete(self, request, org_id):
+        # org_id == Dim_Rank id
+        Dim_Sequence.objects.filter(id=org_id).delete()
+        return Response({"code": ErrorCode.SUCCESS, "data": org_id})
+
+    def put(self, request, org_id):
+        # org_id == Dim_Rank.id
+        obj = Dim_Sequence.objects.get(id=org_id)
+        serializer = SequenceSerializer(obj, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"code": ErrorCode.SUCCESS, "data": serializer.is_valid()})
+        else:
+            return Response({"code": ErrorCode.SUCCESS, "data": serializer.errors})
+
 
