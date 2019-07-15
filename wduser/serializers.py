@@ -17,6 +17,7 @@ from wduser.models import AuthUser, EnterpriseInfo, Organization, UserAdminRole,
     BusinessPermission, RoleUser, RoleUserBusiness, People, PeopleOrganization, PeopleAccount
 from wduser.user_utils import OrganizationUtils
 from utils.logger import err_logger
+from wduser.models import Dim_Sequence, Dim_Rank
 
 
 class UserBasicSerializer(serializers.ModelSerializer):
@@ -493,3 +494,29 @@ class PeopleSerializer360(serializers.ModelSerializer):
         else:
             ret = 10
         return ret
+
+
+class SequenceSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(read_only=True)
+    org_info = serializers.SerializerMethodField(read_only=True)
+
+    def get_org_info(self, obj):
+        org_obj = obj.org
+        return {"id": org_obj.id, "name": org_obj.name}
+
+    class Meta:
+        model = Dim_Sequence
+        fields = "__all__"
+
+
+class RankSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(read_only=True)
+    org_info = serializers.SerializerMethodField(read_only=True)
+
+    def get_org_info(self, obj):
+        org_obj = obj.org
+        return {"id": org_obj.id, "name": org_obj.name}
+
+    class Meta:
+        model = Dim_Rank
+        fields = "__all__"

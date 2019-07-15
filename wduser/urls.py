@@ -7,7 +7,7 @@ from wduser.views import LoginView, EnterpriseListCreateView, OrganizationListCr
     OrganizationImportExportView, EnterpriseOpsView, UserAdminRoleListCreateView, PermissionListView, \
     UserAdminRoleDetailView, RolePermissionAPIView, RoleUserListCreateView, RoleUserDetailView, UserRoleListCreateView, \
     RoleUserBusinessListCreateView, ActiveCodeCheckView, ActiveCodePwdSetView, UserPwdForgetView, \
-    ForgetVerifyCodeCheckView, RoleUserPartListCreateView
+    ForgetVerifyCodeCheckView, RoleUserPartListCreateView, Rank, Sequence
 
 urlpatterns = [
     # 登录接口
@@ -52,8 +52,9 @@ urlpatterns = [
     # 人员关联角色
     url(r"^userrole/$", UserRoleListCreateView.as_view(), name="user-role-view"),
     # 授权对象 列表，新建 删除
-    url(r"^permission/model/$", RoleUserBusinessListCreateView.as_view(), name="user-permission-model-view")
+    url(r"^permission/model/$", RoleUserBusinessListCreateView.as_view(), name="user-permission-model-view"),
 
-
-
+    # 序列、层级
+    url(r"^rank/(?P<org_id>\d+)/", Rank.as_view()),
+    url(r"^sequence/(?P<org_id>\d+)/", Sequence.as_view()),
 ]

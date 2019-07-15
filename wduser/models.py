@@ -74,6 +74,10 @@ class BaseOrganizationPaths(models.Model):
 class Dim_Sequence(models.Model):
     value = models.CharField(max_length=50)
     value_en = models.CharField(max_length=50)
+    org = models.ForeignKey(BaseOrganization)
+
+    class Meta:
+        unique_together = (("value", "org"), ("value_en", "org"))
 
 class Dim_Gender(models.Model):
     value = models.CharField(max_length=50)
@@ -82,6 +86,10 @@ class Dim_Gender(models.Model):
 class Dim_Rank(models.Model):
     value = models.CharField(max_length=50)
     value_en = models.CharField(max_length=50)
+    org = models.ForeignKey(BaseOrganization)
+
+    class Meta:
+        unique_together = (("value", "org"), ("value_en", "org"))
 
 class Dim_Marriage(models.Model):
     value = models.CharField(max_length=50)
