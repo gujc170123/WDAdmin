@@ -180,6 +180,7 @@ def do_new_authusers(new_authusers):
     titles = AssessImportExport.get_title()
     key_names = []
     hash_mima = get_mima(u'')
+    time_stamp = datetime.datetime.now()
     for key_name in titles:
         key_names.append(key_name.split("(")[0])
     try:
@@ -227,7 +228,8 @@ def do_new_authusers(new_authusers):
                 nickname=nickname,
                 account_name=account,
                 phone=phone,
-                email=email
+                email=email,
+                date_joined__gte=time_stamp
             )
             finish_authusers.append((authuser_obj[0], new_authuser))
 
