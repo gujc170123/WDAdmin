@@ -17,6 +17,7 @@ import numpy as np
 from django.db.models import Count
 from collections import OrderedDict
 from django.db import connection
+import json
 
 
 class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
@@ -367,6 +368,10 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         res = {}
         org = kwargs.get("org_id")
         scale = kwargs.get("scale_id")
+        redis_key = "data-distribution-%s-%s" % (org, scale)
+        data = redis_pool.get(redis_key)
+        if data:
+            return json.loads(data), ErrorCode.SUCCESS
         if not org or (scale not in ["scale1", "scale2"]):
             return res, ErrorCode.INVALID_INPUT
         try:
@@ -408,6 +413,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                     high = res['r1c1'] + res['r1c2'] + res['r2c1'] + res['r2c2']
                 res['low'] = round(low, 2)
                 res['high'] = round(high, 2)
+                redis_pool.set(redis_key, json.dumps(res))
                 return res, ErrorCode.SUCCESS
             else:
                 return res, ErrorCode.NOT_EXISTED
