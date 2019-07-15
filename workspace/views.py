@@ -644,18 +644,17 @@ class ManagementAssess(APIView):
     """
 
     def get(self, request, ass, sur):
-        # AssessSurveyUserDistribute
         org = json.loads(request.query_params.get("org"))  # org_id 数组
         # 根据组织查 AuthUser.ID, 到wduser_people查id，wduser_people.user_id=AuthUser.ID
         user_obj = AuthUser.objects.filter(organization_id__in=org, is_active=True).values_list(
-            "id", "username", "gender__value", "rank__value", "sequence__value", "birthday"
+            "id", "nickname", "gender__value", "rank__value", "sequence__value", "birthday"
         )
         auth_id_list = [obj[0] for obj in user_obj]  # 假id    所选组织下的所有人
         people_obj = People.objects.filter(user_id__in=auth_id_list).values_list("id", "user_id")
-        # id_list = set(p[0] for p in people_obj)  # 所有员工参加测评的有效ID
 
         # 已在测评中的员工ID
-        ass_ids = AssessSurveyUserDistribute.objects.filter(assess_id=ass, survey_id=sur).first().people_ids
+        ass_obj = PeopleSurveyRelation.objects.filter(project_id=ass, survey_id=sur).values_list("people_id")
+        ass_ids = [ao[0] for ao in ass_obj]
 
         # import pandas as pd  # --------------------
         user_df = pd.DataFrame(list(user_obj))
@@ -674,20 +673,20 @@ class ManagementAssess(APIView):
     def post(self, request, ass, sur):
 
         modify_pid = set(json.loads(request.data.get("pid")))  # 列表, 选中人员的ID
+        # 已在测评中的员工ID
+        ass_obj = PeopleSurveyRelation.objects.filter(project_id=ass, survey_id=sur).values_list("people_id")
+        ass_ids = {ao[0] for ao in ass_obj}
+        insert_id = modify_pid - ass_ids
         survey_obj = AssessSurveyUserDistribute.objects.filter(assess_id=ass, survey_id=sur).first()
-        ass_ids = set(json.loads(survey_obj.people_ids))
-        pid = modify_pid | ass_ids
-        AssessSurveyUserDistribute.objects.filter(assess_id=ass, survey_id=sur).update(people_ids=json.dumps(list(pid)))
         # from front.models import SurveyInfo  # --------------------
         survey_name = SurveyInfo.objects.filter(project_id=ass, survey_id=sur).first().survey_name
-        pid_insert_psr = list(modify_pid - ass_ids)
         people_survey = []
-        for people_id in pid_insert_psr:
+        for people_id in insert_id:
             psr_obj = PeopleSurveyRelation(
-                id=people_id, creator_id=survey_obj.creator_id, last_modify_user_id=survey_obj.last_modify_user_id,
+                people_id=people_id, creator_id=survey_obj.creator_id, last_modify_user_id=survey_obj.last_modify_user_id,
                 survey_id=sur, project_id=ass, survey_name=survey_name
             )
             people_survey.append(psr_obj)
         PeopleSurveyRelation.objects.bulk_create(people_survey)
-        return Response({'code': ErrorCode.SUCCESS, 'data': list(pid)})
+        return Response({'code': ErrorCode.SUCCESS, 'data': {"add people": list(insert_id)}})
 
