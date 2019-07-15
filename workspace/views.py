@@ -667,7 +667,6 @@ class ManagementAssess(APIView):
         res = res.drop_duplicates()
         res = res.drop("id", axis=1)
         res = res.values.transpose().tolist()
-        res = res.values.T
 
         data = {"staff": res, "selected": ass_ids}
         return Response({"data": data, "code": ErrorCode.SUCCESS})
