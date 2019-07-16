@@ -653,7 +653,7 @@ class ManagementAssess(APIView):
         org = json.loads(request.query_params.get("org"))  # org_id 数组
         # 根据组织查 AuthUser.ID, 到wduser_people查id，wduser_people.user_id=AuthUser.ID
         user_obj = AuthUser.objects.filter(organization_id__in=org, is_active=True).values_list(
-            "id", "nickname", "age_value", "seniority_value", "politics_value", "education_value"
+            "id", "nickname", "age__value", "seniority__value", "politics__value", "education__value"
         )
         auth_id_list = [obj[0] for obj in user_obj]  # 假id    所选组织下的所有人
         people_obj = People.objects.filter(user_id__in=auth_id_list).values_list("id", "user_id")
@@ -671,7 +671,7 @@ class ManagementAssess(APIView):
         res = pd.merge(people_df, user_df, on="id")
         res = res.drop_duplicates()
         res = res.drop("id", axis=1)
-        res = res.values.transpose().tolist()
+        res = res.values.tolist()
 
         data = {"staff": res, "selected": ass_ids}
         return Response({"data": data, "code": ErrorCode.SUCCESS})
