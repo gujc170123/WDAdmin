@@ -90,12 +90,14 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
         nickname = convertempty2none(request.data.get('nickname', None))
         account_name = convertempty2none(request.data.get('account_name', None))
         organization_id = convertempty2none(request.data.get('organization', None))
-        hiredate = convertempty2none(request.data.get('hiredate', None))
+        seniority = convertempty2none(request.data.get('seniority', None))
         rank = convertempty2none(request.data.get('rank', None))
-        birthday = convertempty2none(request.data.get('birthday', None))
+        age = convertempty2none(request.data.get('age', None))
         gender = convertempty2none(request.data.get('gender', None))
         sequence = convertempty2none(request.data.get('sequence', None))
         marriage = convertempty2none(request.data.get('marriage', None))
+        politics = convertempty2none(request.data.get('politics', None))
+        education = convertempty2none(request.data.get('education', None))
         is_staff = request.data.get('is_staff', True)
         role_type = convertempty2none(request.data.get('role_type', AuthUser.ROLE_NORMAL))
         is_superuser = request.data.get('is_superuser', False)
@@ -145,8 +147,8 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
                                              {'msg': u'必须填写手机，工号，邮箱中任一项信息作为登录帐号'})
         try:
             user = CreateNewUser(username,account_name,nickname,pwd,phone,email,is_superuser,
-                          role_type,is_staff,sequence,gender,birthday,rank,hiredate,marriage,
-                          organization.id)
+                          role_type,is_staff,sequence,gender,age,rank,seniority,marriage,
+                          organization.id,politics,education)
 
             return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {'id':user.id})
         except Exception, e:
@@ -207,12 +209,14 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
         pwd = convertempty2none(request.data.get('password', None))
         password = get_mima(pwd) if pwd else None
         organization_id = convertempty2none(request.data.get('organization', None))
-        hiredate = convertempty2none(request.data.get('hiredate', None))
+        seniority = convertempty2none(request.data.get('seniority', None))
         rank = convertempty2none(request.data.get('rank', None))
-        birthday = convertempty2none(request.data.get('birthday', None))
+        age = convertempty2none(request.data.get('age', None))
         gender = convertempty2none(request.data.get('gender', None))
         sequence = convertempty2none(request.data.get('sequence', None))
         marriage = convertempty2none(request.data.get('marriage', None))
+        politics = convertempty2none(request.data.get('politics', None))
+        education = convertempty2none(request.data.get('education', None))        
         is_staff = request.data.get('is_staff', True)
         role_type = convertempty2none(request.data.get('role_type', AuthUser.ROLE_NORMAL))
         is_superuser = request.data.get('is_superuser', False)
@@ -262,9 +266,9 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
         user.email = email
         if password:
             user.password = password
-        user.hiredate = hiredate
+        user.seniority = seniority
         user.rank_id = rank
-        user.birthday = birthday
+        user.age = age
         user.gender_id = gender
         user.sequence_id = sequence
         user.marriage_id = marriage
@@ -272,6 +276,8 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
         user.role_type = role_type
         user.organization_id = organization_id
         user.is_superuser = is_superuser
+        user.politics = politics
+        user.education = education        
 
         try:
             user.save()
@@ -647,7 +653,7 @@ class ManagementAssess(APIView):
         org = json.loads(request.query_params.get("org"))  # org_id 数组
         # 根据组织查 AuthUser.ID, 到wduser_people查id，wduser_people.user_id=AuthUser.ID
         user_obj = AuthUser.objects.filter(organization_id__in=org, is_active=True).values_list(
-            "id", "nickname", "gender__value", "rank__value", "sequence__value", "birthday"
+            "id", "nickname", "age_value", "seniority_value", "politics_value", "education_value"
         )
         auth_id_list = [obj[0] for obj in user_obj]  # 假id    所选组织下的所有人
         people_obj = People.objects.filter(user_id__in=auth_id_list).values_list("id", "user_id")
@@ -658,7 +664,7 @@ class ManagementAssess(APIView):
 
         # import pandas as pd  # --------------------
         user_df = pd.DataFrame(list(user_obj))
-        user_df.columns = ["id", "username", "gender", "rank", "sequence", "birthday"]
+        user_df.columns = ["id", "username", "age", "seniority", "politics", "education"]
 
         people_df = pd.DataFrame(list(people_obj))
         people_df.columns = ["pid", "id"]

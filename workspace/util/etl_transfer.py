@@ -288,14 +288,16 @@ def check_null(data):
 def get_user_info(user_ids):
     res = []
     people_info = AuthUser.objects.filter(id__in=user_ids).values_list(
-        "id", "username", "birthday", "gender__value", "sequence__value", "hiredate", "rank__value", "organization_id"
+        "id", "username", "age__value", "gender__value", "sequence__value", "seniority__value",
+        "rank__value","politics__value","education__value", "organization_id"
     )
     for personal in people_info:
-        info = [personal[0], personal[1], cal_age(personal[2]), check_null(personal[3]),
-                check_null(personal[4]), cal_seniority(personal[5]), check_null(personal[6]), personal[7]]
+        info = [personal[0], personal[1], personal[2], check_null(personal[3]),
+                check_null(personal[4]), personal[5], check_null(personal[6]), 
+                check_null(personal[7]),check_null(personal[8]),personal[9]]
         res.append(info)
     res.sort(key=lambda x: x[0])
-    index = ['user_id', 'username', u"年龄", u"性别", u"岗位序列", u"司龄", u"层级", 'org_id']
+    index = ['user_id', 'username', u"年龄", u"性别", u"岗位序列", u"司龄", u"层级", u"政治面貌" , u"学历", 'org_id']
     return index, res
 
 
@@ -473,6 +475,8 @@ def model_obj_create(person_score_list, assessID, hidden_people_id, mask):
         'profile3': person_score_list[4],
         'profile4': person_score_list[5],
         'profile5': person_score_list[6],
+        'profile6': person_score_list[7],
+        'profile7': person_score_list[8],            
         'organization1': person_score_list[7],
         'organization2': person_score_list[8],
         'organization3': person_score_list[9],

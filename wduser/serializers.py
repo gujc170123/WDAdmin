@@ -496,6 +496,7 @@ class PeopleSerializer360(serializers.ModelSerializer):
         return ret
 
 
+
 class SequenceSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(read_only=True)
     org_info = serializers.SerializerMethodField(read_only=True)

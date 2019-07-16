@@ -101,9 +101,9 @@ def importdata(data):
                     is_staff=True,
                     sequence_id=convertna2none(row['sequence']),
                     gender_id=convertna2none(row['gender']),
-                    birthday=convertna2none(row[u"出生年月"]),
+                    age=convertna2none(row[u"出生年月"]),
                     rank_id=convertna2none(row['rank']),
-                    hiredate=convertna2none(row[u"入职时间"]),
+                    seniority=convertna2none(row[u"入职时间"]),
                     marriage_id=convertna2none(row['marriage']),
                     organization_id=row['id']
             )
@@ -117,7 +117,7 @@ def importdata(data):
         AuthUser.objects.bulk_create(UserList)
 
 def CreateNewUser(username,account_name,nickname,pwd,phone,email,is_superuser,
-                    role_type,is_staff,sequence,gender,birthday,rank,hiredate,marriage,
+                    role_type,is_staff,sequence,gender,age,rank,seniority,marriage,
                     organization_id):
     #create user object
     if not role_type:

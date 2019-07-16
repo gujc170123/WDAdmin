@@ -42,6 +42,10 @@ class UserSerializer(serializers.ModelSerializer):
     rank_name = serializers.CharField(source='rank.value', read_only=True)
     marriage_name = serializers.CharField(source='marriage.value', read_only=True)
     organization_name = serializers.CharField(source='organization.name', read_only=True)
+    age_name = serializers.CharField(source='age.value', read_only=True)
+    seniority_name = serializers.CharField(source='seniority.value', read_only=True)
+    politics_name = serializers.CharField(source='politics.value', read_only=True)
+    education_name = serializers.CharField(source='education.value', read_only=True)
     enteprise = serializers.IntegerField(source='organization.enterprise_id', read_only=True)
 
     class Meta:
@@ -49,7 +53,8 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ('id', 'nickname','role_type','phone','email','sequence',
                   'gender','rank','marriage','organization','enteprise',
                   'sequence_name','gender_name','rank_name','marriage_name',
-                  'organization_name','birthday','hiredate','account_name')
+                  'organization_name','age_name','seniority_name','account_name',
+                  'politics_name','education_name')
 
 class UserDetailSerializer(serializers.ModelSerializer):
     """user serializer"""
@@ -58,6 +63,10 @@ class UserDetailSerializer(serializers.ModelSerializer):
     rank_name = serializers.CharField(source='rank.value', read_only=True)
     marriage_name = serializers.CharField(source='marriage.value', read_only=True)
     organization_name = serializers.CharField(source='organization.name', read_only=True)
+    age_name = serializers.CharField(source='age.value', read_only=True)
+    seniority_name = serializers.CharField(source='seniority.value', read_only=True)
+    politics_name = serializers.CharField(source='politics.value', read_only=True)
+    education_name = serializers.CharField(source='education.value', read_only=True)    
     enteprise = serializers.IntegerField(source='organization.enterprise_id', read_only=True)
     fullorg = serializers.SerializerMethodField()
 
@@ -66,7 +75,8 @@ class UserDetailSerializer(serializers.ModelSerializer):
         fields = ('id', 'nickname','role_type','phone','email','sequence',
                   'gender','rank','marriage','organization','enteprise',
                   'sequence_name','gender_name','rank_name','marriage_name',
-                  'organization_name','birthday','hiredate','account_name','fullorg')
+                  'organization_name','age_name','seniority_name','account_name',
+                  'fullorg','politics_name','education_name')
 
     def get_fullorg(self, obj):        
         return BaseOrganizationPaths.objects.filter(child_id=obj.organization).order_by('depth').values_list('parent_id',flat=True)        

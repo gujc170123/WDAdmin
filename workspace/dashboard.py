@@ -701,7 +701,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
     def get_focus_group(self, **kwargs):
         org = kwargs.get("org_id")
         profile = kwargs.get("profile_id")
-        profile_dict = {u"年龄": "profile1", u"性别": "profile2", u"序列": "profile3", u"司龄": "profile4", u"层级": "profile5"}
+        profile_dict = {u"年龄": "profile1", u"性别": "profile2", u"序列": "profile3", u"司龄": "profile4", u"层级": "profile5",u"学历": "profile6", u"政治面貌": "profile7"}
 
         query_dict, org_list = self.get_organization(org)
         company_obj = FactOEI.objects.complex_filter(query_dict).filter(model__lt=65)
@@ -791,7 +791,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         query_dict = self.get_organization(org)[0]
         company_query_set = FactOEI.objects.complex_filter(query_dict)
         profile_dict = {
-            u'年龄': 'profile1', u'性别': 'profile2', u'司龄': 'profile3', u'层级': 'profile4', u'序列': 'profile5',
+            u'年龄': 'profile1', u'性别': 'profile2', u'司龄': 'profile3', u'层级': 'profile4', u'序列': 'profile5',u"学历": "profile6", u"政治面貌": "profile7",
         }
         if profile in profile_dict:
             company_query_set = company_query_set.complex_filter({profile: profile_dict[profile]})
@@ -834,7 +834,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         profile = kwargs.get("profile_id")
         select = kwargs.get("select_id")
         query_dict = self.get_organization(org)[0]
-        profile_options = [u"年龄", u"性别", u"司龄", u"层级", u"序列"]
+        profile_options = [u"年龄", u"性别", u"司龄", u"层级", u"序列", u"学历", u"政治面貌"]
         # current department
         department = FactOEI.objects.complex_filter(query_dict)
         if not department.exists():
@@ -843,7 +843,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         if profile in profile_options:
             # all optional fields
             profile_dict = {
-                u"年龄": "profile1", u"性别": "profile2", u"司龄": "profile4", u"层级": "profile5", u"序列": "profile3"
+                u"年龄": "profile1", u"性别": "profile2", u"司龄": "profile4", u"层级": "profile5", u"序列": "profile3", u"学历": "profile6", u"政治面貌": "profile7",
             }
             field_query_set = department.values_list(profile_dict[profile]).distinct()
             field_list = [i[0] for i in field_query_set if i[0]]

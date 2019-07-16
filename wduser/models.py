@@ -91,7 +91,23 @@ class Dim_Rank(models.Model):
     class Meta:
         unique_together = (("value", "org"), ("value_en", "org"))
 
+class Dim_Politics(models.Model):
+    value = models.CharField(max_length=50)
+    value_en = models.CharField(max_length=50)
+
 class Dim_Marriage(models.Model):
+    value = models.CharField(max_length=50)
+    value_en = models.CharField(max_length=50)
+
+class Dim_Seniority(models.Model):
+    value = models.CharField(max_length=50)
+    value_en = models.CharField(max_length=50)
+
+class Dim_Age(models.Model):
+    value = models.CharField(max_length=50)
+    value_en = models.CharField(max_length=50)
+
+class Dim_Education(models.Model):
     value = models.CharField(max_length=50)
     value_en = models.CharField(max_length=50)
 
@@ -124,13 +140,15 @@ class AuthUser(AbstractUser):
     active_code = models.CharField(u"激活码", max_length=20, db_index=True, blank=True, null=True)
     active_code_valid = models.BooleanField(u"激活码是否有效", default=False, db_index=True)
     remark = models.CharField(u"备注", max_length=400, null=True, db_index=True)
-    sequence = models.ForeignKey(Dim_Sequence,null= True)
-    gender = models.ForeignKey(Dim_Gender,null= True)
-    birthday = models.DateField(null= True)
-    rank = models.ForeignKey(Dim_Rank,null= True)
-    hiredate = models.DateField(null= True)
-    marriage = models.ForeignKey(Dim_Marriage,null= True)
-    organization = models.ForeignKey(BaseOrganization, null=True)
+    sequence = models.ForeignKey(Dim_Sequence,null= True, db_constraint=False, db_index=True)
+    gender = models.ForeignKey(Dim_Gender,null= True, db_constraint=False, db_index=True)
+    age = models.ForeignKey(Dim_Age, null= True, db_constraint=False, db_index=True)
+    rank = models.ForeignKey(Dim_Rank,null= True, db_constraint=False, db_index=True)
+    seniority = models.ForeignKey(Dim_Seniority, null= True, db_constraint=False, db_index=True)
+    marriage = models.ForeignKey(Dim_Marriage,null= True, db_constraint=False, db_index=True)
+    politics = models.ForeignKey(Dim_Politics,null= True, db_constraint=False, db_index=True)
+    education = models.ForeignKey(Dim_Education,null= True, db_constraint=False, db_index=True)
+    organization = models.ForeignKey(BaseOrganization, null=True, db_constraint=False, db_index=True)
 
     class Meta:
         verbose_name = '基本信息'
