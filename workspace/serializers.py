@@ -73,7 +73,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = AuthUser
         fields = ('id', 'nickname','role_type','phone','email','sequence',
-                  'gender','rank','marriage','organization','enteprise',
+                  'gender','rank','marriage','age','seniority','politics','education','organization','enteprise',
                   'sequence_name','gender_name','rank_name','marriage_name',
                   'organization_name','age_name','seniority_name','account_name',
                   'fullorg','politics_name','education_name')
