@@ -276,8 +276,8 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
         user.role_type = role_type
         user.organization_id = organization_id
         user.is_superuser = is_superuser
-        user.politics = politics
-        user.education = education        
+        user.politics_id = politics
+        user.education_id = education
 
         try:
             user.save()

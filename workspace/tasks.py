@@ -118,7 +118,7 @@ def importdata(data):
 
 def CreateNewUser(username,account_name,nickname,pwd,phone,email,is_superuser,
                     role_type,is_staff,sequence,gender,age,rank,seniority,marriage,
-                    organization_id):
+                    politics,education,organization_id):
     #create user object
     if not role_type:
         role_type = 100
@@ -134,9 +134,11 @@ def CreateNewUser(username,account_name,nickname,pwd,phone,email,is_superuser,
         is_staff=is_staff,
         sequence_id=sequence,
         gender_id=gender,
-        birthday=birthday,
+        age_id=age,
         rank_id=rank,
-        hiredate=hiredate,
+        seniority_id=seniority,
+        politics_id=politics,
+        education_id=education,
         marriage_id=marriage,
         organization_id=organization_id
     )
