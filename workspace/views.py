@@ -176,7 +176,7 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
         
         alluser = AuthUser.objects.filter(is_active=True,organization__childorg__parent_id=org,organization__is_active=True,is_staff=True)
         if keyword:
-            alluser = alluser.filter(Q(nickname__contains=keyword) | Q(phone__contains=keyword) | Q(email__contains=keyword))
+            alluser = alluser.filter(Q(account_name__contains=keyword) |Q(nickname__contains=keyword) | Q(phone__contains=keyword) | Q(email__contains=keyword))
         
         alluser = alluser.all().order_by('organization__id','-id')
         allUserCounts =alluser.count()
@@ -666,7 +666,7 @@ class ManagementAssess(AuthenticationExceptView,WdCreateAPIView):
         allPage = 0
 
         frontname = settings.DATABASES['front']['NAME']
-        sql_query =  "select c.id,e.name organization,c.nickname,c.email,c.phone,isnull(d.user_id) joined,\
+        sql_query =  "select c.id,e.name organization,c.nickname,c.account_name,c.email,c.phone,isnull(d.user_id) joined,\
                     d1.value age,d2.value education,d3.value politics,d4.value seniority \
                     from assessment_assessorganizationpathssnapshots a\
                     inner join assessment_assessjoinedorganization b\
@@ -690,7 +690,7 @@ class ManagementAssess(AuthenticationExceptView,WdCreateAPIView):
                     where a.parent_id=" + org + " and a.assess_id="+ ass+ "\
                     and c.is_active=true"
         if keyword:
-            sql_query += r" and (c.nickname like '%" + keyword + r"%' or c.email like '%" + keyword +  r"%' or c.phone like '%" + keyword + r"%')"
+            sql_query += " and (c.nickname like '%" + keyword + "%' or c.account_name  like '%" + keyword + "%' or c.email like '%" + keyword +  "%' or c.phone like '%" + keyword + "%')"
         sql_query += " order by a.child_id,joined,c.nickname,c.email,c.phone limit " + str(startPos) + ","+ str(endPos)
         sql_query_aggregate = "select count(1)\
                                 from assessment_assessorganizationpathssnapshots a\
