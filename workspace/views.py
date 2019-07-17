@@ -644,7 +644,7 @@ class AssessProgressTotalView(AuthenticationExceptView,APIView):
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, data)
 
 
-class ManagementAssess(APIView):
+class ManagementAssess(AuthenticationExceptView,WdCreateAPIView):
     """
     测评管理
     """
@@ -714,23 +714,59 @@ class ManagementAssess(APIView):
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"allPage":allPage, "curPage":curPage,"data":results })
 
     def post(self, request, ass):
+        modify_pid = request.data.get("pid",None)
+        org = request.data.get('organization_id',None)
 
-        general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {})
-        # modify_pid = set(json.loads(request.data.get("pid")))  # 列表, 选中人员的ID
-        # # 已在测评中的员工ID
-        # ass_obj = PeopleSurveyRelation.objects.filter(project_id=ass, survey_id=sur).values_list("people_id")
-        # ass_ids = {ao[0] for ao in ass_obj}
-        # insert_id = modify_pid - ass_ids
-        # survey_obj = AssessSurveyUserDistribute.objects.filter(assess_id=ass)
+        if modify_pid:
+            modify_pid = set(json.loads(modify_pid))
 
-        # survey_name = SurveyInfo.objects.filter(project_id=ass, survey_id=sur).first().survey_name
-        # people_survey = []
-        # for people_id in insert_id:
-        #     psr_obj = PeopleSurveyRelation(
-        #         people_id=people_id, creator_id=survey_obj.creator_id, last_modify_user_id=survey_obj.last_modify_user_id,
-        #         survey_id=sur, project_id=ass, survey_name=survey_name
-        #     )
-        #     people_survey.append(psr_obj)
-        # PeopleSurveyRelation.objects.bulk_create(people_survey)
-        # return Response({'code': ErrorCode.SUCCESS, 'data': {"add people": list(insert_id)}})
+        surveys = SurveyInfo.objects.filter_active(project_id=ass)
+
+        sql_query =  "select f.id as pid,c.id as user_id\
+                    from assessment_assessorganizationpathssnapshots a\
+                    inner join assessment_assessjoinedorganization b\
+                    on a.child_id=b.organization_id\
+                    and a.assess_id=b.assess_id\
+                    inner join wduser_authuser c\
+                    on c.organization_id=a.child_id\
+                    left join (select user_id from assessment_assessuser a1,\
+                    wduser_people a2 where a1.people_id=a2.id and assess_id=" + str(ass) + ") d\
+                    on c.id=d.user_id\
+                    inner join wduser_baseorganization e\
+                    on a.child_id=e.id\
+                    inner join wduser_people f\
+                    on c.id=f.user_id\
+                    where a.parent_id=" + org + " and a.assess_id="+ ass+ "\
+                    and c.is_active=true and d.user_id is null and f.is_active=true"
+        results = {}
+        user_toadd = set()
+        with connection.cursor() as cursor:
+            cursor.execute(sql_query)
+            for row in cursor.fetchall():
+                user_toadd.add(row[1])
+                results[row[1]]=row[0]
+
+        if modify_pid:
+            user_toadd = user_toadd & modify_pid
+
+        i = True
+        people_survey = []
+        survey_user = []        
+        for survey in surveys:
+            for uid in user_toadd:
+                people_survey.append(
+                    PeopleSurveyRelation(
+                        people_id=results[uid],survey_id=survey.id, project_id=ass, survey_name=survey.survey_name
+                    )
+                )
+                if i:                    
+                    survey_user.append(
+                        AssessUser(
+                            assess_id=ass,people_id=results[uid],role_type=10,role_people_id=0
+                        )
+                    )
+            i = False
+        PeopleSurveyRelation.objects.bulk_create(people_survey)
+        AssessUser.objects.bulk_create(survey_user)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
