@@ -178,7 +178,7 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
         if keyword:
             alluser = alluser.filter(Q(nickname__contains=keyword) | Q(phone__contains=keyword) | Q(email__contains=keyword))
         
-        alluser = alluser.all().order_by('id','organization__id')
+        alluser = alluser.all().order_by('organization__id','-id')
         allUserCounts =alluser.count()
         if allUserCounts>0:
             if endPos>allUserCounts:
@@ -650,31 +650,68 @@ class ManagementAssess(APIView):
     """
 
     def get(self, request, ass, sur):
-        org = json.loads(request.query_params.get("org"))  # org_id 数组
-        # 根据组织查 AuthUser.ID, 到wduser_people查id，wduser_people.user_id=AuthUser.ID
-        user_obj = AuthUser.objects.filter(organization_id__in=org, is_active=True).values_list(
-            "id", "nickname", "age__value", "seniority__value", "politics__value", "education__value"
-        )
-        auth_id_list = [obj[0] for obj in user_obj]  # 假id    所选组织下的所有人
-        people_obj = People.objects.filter(user_id__in=auth_id_list).values_list("id", "user_id")
+        curPage = int(request.GET.get('curPage', '1'))
+        pagesize = int(request.GET.get('pagesize', 20))
+        pageType = str(request.GET.get('pageType', ''))
+        org = request.GET.get('organization_id')
+        keyword = str(request.GET.get('search',''))
+        
+        if pageType == 'pageDown':
+            curPage += 1
+        elif pageType == 'pageUp':
+            curPage -= 1
 
-        # 已在测评中的员工ID
-        ass_obj = PeopleSurveyRelation.objects.filter(project_id=ass, survey_id=sur).values_list("people_id")
-        ass_ids = [ao[0] for ao in ass_obj]
+        startPos = (curPage - 1) * pagesize
+        endPos = startPos + pagesize
+        allPage = 0
 
-        # import pandas as pd  # --------------------
-        user_df = pd.DataFrame(list(user_obj))
-        user_df.columns = ["id", "username", "age", "seniority", "politics", "education"]
+        frontname = settings.DATABASES['front']['NAME']
+        sql_query =  "select c.id,e.name organization,c.nickname,c.email,c.phone,isnull(d.user_id) joined,\
+                    d1.value age,d2.value education,d3.value politics,d4.value seniority \
+                    from assessment_assessorganizationpathssnapshots a\
+                    inner join assessment_assessjoinedorganization b\
+                    on a.child_id=b.organization_id\
+                    and a.assess_id=b.assess_id\
+                    inner join wduser_authuser c\
+                    on c.organization_id=a.child_id\
+                    left join (select user_id from assessment_assessuser a1,\
+                    wduser_people a2 where a1.people_id=a2.id and assess_id=" + str(ass) + ") d\
+                    on c.id=d.user_id\
+                    left join wduser_dim_age d1\
+                    on c.age_id=d1.id\
+                    left join wduser_dim_education d2\
+                    on c.education_id=d1.id\
+                    left join wduser_dim_politics d3\
+                    on c.politics_id=d1.id\
+                    left join wduser_dim_seniority d4\
+                    on c.seniority_id=d1.id\
+                    inner join wduser_baseorganization e\
+                    on a.child_id=e.id\
+                    where a.parent_id=" + org + " and a.assess_id="+ ass+ "\
+                    and c.is_active=true"
+        if keyword:
+            sql_query += r" and (c.nickname like '%" + keyword + r"%' or c.email like '%" + keyword +  r"%' or c.phone like '%" + keyword + r"%')"
+        sql_query += " order by a.child_id,joined,c.nickname,c.email,c.phone limit " + str(startPos) + ","+ str(endPos)
+        sql_query_aggregate = "select count(1)\
+                                from assessment_assessorganizationpathssnapshots a\
+                                inner join assessment_assessjoinedorganization b\
+                                on a.child_id=b.organization_id\
+                                and a.assess_id=b.assess_id\
+                                inner join wduser_authuser c\
+                                on c.organization_id=a.child_id\
+                                where c.is_active=true and a.parent_id=" + org + " and a.assess_id="+ ass
+        if keyword:
+            sql_query_aggregate += r" and (c.nickname like '%" + keyword + r"%' or c.email like '%" + keyword +  r"%' or c.phone like '%" + keyword + r"%')"
+        with connection.cursor() as cursor:
+            cursor.execute(sql_query_aggregate)
+            allPage = (cursor.fetchone()[0] +pagesize-1) / pagesize
+            cursor.execute(sql_query)
+            columns = [column[0] for column in cursor.description]
+            results = []
+            for row in cursor.fetchall():
+                results.append(dict(zip(columns, row)))
 
-        people_df = pd.DataFrame(list(people_obj))
-        people_df.columns = ["pid", "id"]
-        res = pd.merge(people_df, user_df, on="id")
-        res = res.drop_duplicates()
-        res = res.drop("id", axis=1)
-        res = res.values.transpose().tolist()
-
-        data = {"staff": res, "selected": ass_ids}
-        return Response({"data": data, "code": ErrorCode.SUCCESS})
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"allPage":allPage, "curPage":curPage,"data":results })
 
     def post(self, request, ass, sur):
 
@@ -684,7 +721,7 @@ class ManagementAssess(APIView):
         ass_ids = {ao[0] for ao in ass_obj}
         insert_id = modify_pid - ass_ids
         survey_obj = AssessSurveyUserDistribute.objects.filter(assess_id=ass, survey_id=sur).first()
-        # from front.models import SurveyInfo  # --------------------
+
         survey_name = SurveyInfo.objects.filter(project_id=ass, survey_id=sur).first().survey_name
         people_survey = []
         for people_id in insert_id:
