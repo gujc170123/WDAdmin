@@ -51,5 +51,5 @@ urlpatterns = [
     url(r"^getStatus/$", redisStatus, name="redis_status"),
     # jing ye du
     url(r'^dedication/$', Dedication.as_view(), name='dedication'),
-    url(r'^managementAssess/(?P<ass>\d+)/(?P<sur>\d+)/$', ManagementAssess.as_view()),
+    url(r'^managementAssess/(?P<ass>\d+)/$', ManagementAssess.as_view()),
 ]

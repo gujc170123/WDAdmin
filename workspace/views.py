@@ -649,7 +649,7 @@ class ManagementAssess(APIView):
     测评管理
     """
 
-    def get(self, request, ass, sur):
+    def get(self, request, ass):
         curPage = int(request.GET.get('curPage', '1'))
         pagesize = int(request.GET.get('pagesize', 20))
         pageType = str(request.GET.get('pageType', ''))
@@ -713,23 +713,24 @@ class ManagementAssess(APIView):
 
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"allPage":allPage, "curPage":curPage,"data":results })
 
-    def post(self, request, ass, sur):
+    def post(self, request, ass):
 
-        modify_pid = set(json.loads(request.data.get("pid")))  # 列表, 选中人员的ID
-        # 已在测评中的员工ID
-        ass_obj = PeopleSurveyRelation.objects.filter(project_id=ass, survey_id=sur).values_list("people_id")
-        ass_ids = {ao[0] for ao in ass_obj}
-        insert_id = modify_pid - ass_ids
-        survey_obj = AssessSurveyUserDistribute.objects.filter(assess_id=ass, survey_id=sur).first()
+        general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {})
+        # modify_pid = set(json.loads(request.data.get("pid")))  # 列表, 选中人员的ID
+        # # 已在测评中的员工ID
+        # ass_obj = PeopleSurveyRelation.objects.filter(project_id=ass, survey_id=sur).values_list("people_id")
+        # ass_ids = {ao[0] for ao in ass_obj}
+        # insert_id = modify_pid - ass_ids
+        # survey_obj = AssessSurveyUserDistribute.objects.filter(assess_id=ass)
 
-        survey_name = SurveyInfo.objects.filter(project_id=ass, survey_id=sur).first().survey_name
-        people_survey = []
-        for people_id in insert_id:
-            psr_obj = PeopleSurveyRelation(
-                people_id=people_id, creator_id=survey_obj.creator_id, last_modify_user_id=survey_obj.last_modify_user_id,
-                survey_id=sur, project_id=ass, survey_name=survey_name
-            )
-            people_survey.append(psr_obj)
-        PeopleSurveyRelation.objects.bulk_create(people_survey)
-        return Response({'code': ErrorCode.SUCCESS, 'data': {"add people": list(insert_id)}})
+        # survey_name = SurveyInfo.objects.filter(project_id=ass, survey_id=sur).first().survey_name
+        # people_survey = []
+        # for people_id in insert_id:
+        #     psr_obj = PeopleSurveyRelation(
+        #         people_id=people_id, creator_id=survey_obj.creator_id, last_modify_user_id=survey_obj.last_modify_user_id,
+        #         survey_id=sur, project_id=ass, survey_name=survey_name
+        #     )
+        #     people_survey.append(psr_obj)
+        # PeopleSurveyRelation.objects.bulk_create(people_survey)
+        # return Response({'code': ErrorCode.SUCCESS, 'data': {"add people": list(insert_id)}})
 
