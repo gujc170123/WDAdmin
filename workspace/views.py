@@ -266,9 +266,9 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
         user.email = email
         if password:
             user.password = password
-        user.seniority = seniority
+        user.seniority_id = seniority
         user.rank_id = rank
-        user.age = age
+        user.age_id  = age
         user.gender_id = gender
         user.sequence_id = sequence
         user.marriage_id = marriage
