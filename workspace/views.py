@@ -475,7 +475,6 @@ class AssessCreateView(AuthenticationExceptView, WdListCreateAPIView):
     SURVEY_DISC = 89
     SURVEY_OEI = 147
     SURVEY_IEC = 163
-    ASSESS_STA = 286
 
     def post(self, request, *args, **kwargs):
         name = request.data.get('name')
@@ -492,18 +491,17 @@ class AssessCreateView(AuthenticationExceptView, WdListCreateAPIView):
 
         for survey in surveys:
             AssessSurveyRelation.objects.create(assess_id=assess.id,survey_id=survey)
-            if int(survey) == self.SURVEY_OEI:
-                qs = AssessProjectSurveyConfig.objects.filter_active(survey_id=survey,
-                                                                     assess_id=self.ASSESS_STA).all()
-                for x in qs:
-                    x.id = None
-                    x.assess_id=assess.id
-                AssessProjectSurveyConfig.objects.bulk_create(qs)
+            qs = AssessProjectSurveyConfig.objects.filter_active(survey_id=survey,
+                                                                    assess_id=0).all()
+            for x in qs:
+                x.id = None
+                x.assess_id=assess.id
+            AssessProjectSurveyConfig.objects.bulk_create(qs)
 
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,{'id':assess.id})
     
     def get(self, request, *args, **kwargs):
-        assesses = AssessProject.objects.filter_active(enterprise_id=self.enterprise,has_distributed=True).order_by('-id')
+        assesses = AssessProject.objects.filter_active(enterprise_id=self.enterprise).order_by('-id')
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,AssessListSerializer(assesses,many=True).data)
 
 class SurveyListView(AuthenticationExceptView, WdListCreateAPIView):
@@ -527,6 +525,76 @@ class AssessDetailView(AuthenticationExceptView, WdCreateAPIView):
         assess.is_active = False
         assess.save()
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
+
+class StdAssessListView(AuthenticationExceptView,WdCreateAPIView):
+    model = AssessProject
+    serializer_class = AssessSerializer
+
+    POST_CHECK_REQUEST_PARAMETER = {"name","surveys","begin","end","user_id","orgid_list"}
+
+    def post(self, request, *args, **kwargs):
+        user_id = request.data.get('user_id')
+        name = request.data.get('name')
+        begin_time = request.data.get('begin')
+        end_time = request.data.get('end')
+        surveys = request.data.get('surveys').split(",")
+        orgs = request.data.get('orgid_list')
+        enterprise = self.kwargs['enterprise_id']
+
+        assess = AssessProject.objects.create(name=name,
+                                              distribute_type=AssessProject.DISTRIBUTE_OPEN,
+                                              begin_time=begin_time,
+                                              end_time=end_time,
+                                              enterprise_id=enterprise)
+
+        for survey in surveys:
+            AssessSurveyRelation.objects.create(assess_id=assess.id,survey_id=survey)
+            qs = AssessProjectSurveyConfig.objects.filter_active(survey_id=147,
+                                                                    assess_id=0).all()
+            for x in qs:
+                x.id = None
+                x.assess_id=assess.id
+            AssessProjectSurveyConfig.objects.bulk_create(qs)
+
+        with connection.cursor() as cursor:
+            ret = cursor.callproc("StdAssess_Save", (assess.enterprise_id,assess.id,user_id,orgs,))
+
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,{'id':assess.id})
+
+
+class StdAssessManageView(AuthenticationExceptView,WdCreateAPIView,WdDestroyAPIView,WdRetrieveUpdateAPIView):
+    model = AssessProject
+    serializer_class = AssessSerializer
+
+    def post(self, request, *args, **kwargs):
+        assess_id = self.kwargs['assess_id']
+        user_id = self.request.data.get("user_id")
+        assess = AssessProject.objects.get(pk=assess_id)
+        if assess.has_distributed:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE,{'msg': u'已发布的调研不可重复发布'})
+        assess.has_distributed=True
+        assess.save()
+        with connection.cursor() as cursor:
+            ret = cursor.callproc("StdAssess_Confirm", (assess.enterprise_id,assess_id,user_id,))
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
+    
+    def delete(self, request, *args, **kwargs):
+        assess_id = self.kwargs['assess_id']
+        Organization.objects.filter(assess_id=assess_id).delete()
+        AssessOrganization.objects.filter(assess_id=assess_id).delete()
+        AssessUser.objects.filter(assess_id=assess_id).delete()
+        AssessProject.objects.filter(pk=assess_id).delete()
+        
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
+
+    def put(self, request, *args, **kwargs):
+        assess_id = self.kwargs['assess_id']
+        user_id = self.request.data.get("user_id")
+        end_time = request.data.get('end')
+        AssessProject.objects.filter(pk=assess_id).update(end_time=end_time,last_modify_user_id=user_id)
+        SurveyInfo.objects.filter_active(project_id=assess_id).update(end_time=end_time,last_modify_user_id=user_id)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
+
 
 class AssessSurveyRelationDistributeView(AuthenticationExceptView,WdCreateAPIView):
 

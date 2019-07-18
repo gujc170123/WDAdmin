@@ -99,7 +99,7 @@ class AssessListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AssessProject
-        fields = ('id', 'name', 'en_name', 'begin_time', 'end_time', 'project_status')                  
+        fields = ('id', 'name', 'en_name', 'begin_time', 'end_time', 'project_status','has_distributed')                  
 
 class SurveyListSerializer(serializers.ModelSerializer):
     '''Assessment List Serializer'''
