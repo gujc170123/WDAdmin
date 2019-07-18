@@ -1262,7 +1262,7 @@ class UserAnswerQuestionView(WdCreateAPIView):
             )
 
     def finish_survey(self, people):
-        reports = {100:'co2019',89:'disc2019',96:'mbti2019'}
+        reports = {100:'co2019',89:'disc2019',96:'mbti2019',160:'mc2019',147:'peoi2017',98:'ppsy2019'}
         if self.block_id == 0:
             qs = PeopleSurveyRelation.objects.filter_active(
                 people_id=people.id,
@@ -1271,7 +1271,7 @@ class UserAnswerQuestionView(WdCreateAPIView):
                 role_type=self.role_type,
                 evaluated_people_id=self.evaluated_people_id
             )
-            if self.survey_id in [89,96,100]:
+            if self.survey_id in [89,96,100,147,160,98]:
                 for o in qs:
                     o.status=PeopleSurveyRelation.STATUS_FINISH
                     o.report_status=PeopleSurveyRelation.STATUS_FINISH
@@ -1318,7 +1318,7 @@ class UserAnswerQuestionView(WdCreateAPIView):
                         role_type=self.role_type,
                         evaluated_people_id=self.evaluated_people_id
                     )
-                    if self.survey_id in [89,96,100]:
+                    if self.survey_id in [89,96,100,147,160,98]:
                         for o in qs:
                             o.status=PeopleSurveyRelation.STATUS_FINISH
                             o.report_status=PeopleSurveyRelation.STATUS_FINISH
@@ -1452,7 +1452,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
         "MC2019": 'self.getMC2019',
         # PEOI2019
         "PEOI2019": 'self.getPEOI2019',
-        # PEOI2019
+        # PPSY2019
         'PPSY2019': 'self.getPPSY2019',
     }
 
