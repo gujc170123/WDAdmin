@@ -566,6 +566,10 @@ class StdAssessManageView(AuthenticationExceptView,WdCreateAPIView,WdDestroyAPIV
     model = AssessProject
     serializer_class = AssessSerializer
 
+    def get_share_url(self,assess_id):
+        project_id_bs64 = quote(base64.b64encode(str(assess_id)))
+        return settings.CLIENT_HOST + '/people/join-project/?ba=%s&bs=0' % (project_id_bs64)
+
     def post(self, request, *args, **kwargs):
         assess_id = self.kwargs['assess_id']
         user_id = self.request.data.get("user_id")
@@ -576,7 +580,7 @@ class StdAssessManageView(AuthenticationExceptView,WdCreateAPIView,WdDestroyAPIV
         assess.save()
         with connection.cursor() as cursor:
             ret = cursor.callproc("StdAssess_Confirm", (assess.enterprise_id,assess_id,user_id,))
-        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,{'url':get_share_url(assess_id)})
     
     def delete(self, request, *args, **kwargs):
         assess_id = self.kwargs['assess_id']
