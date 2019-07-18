@@ -580,7 +580,7 @@ class StdAssessManageView(AuthenticationExceptView,WdCreateAPIView,WdDestroyAPIV
         assess.save()
         with connection.cursor() as cursor:
             ret = cursor.callproc("StdAssess_Confirm", (assess.enterprise_id,assess_id,user_id,))
-        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,{'url':get_share_url(assess_id)})
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,{'url':self.get_share_url(assess_id)})
     
     def delete(self, request, *args, **kwargs):
         assess_id = self.kwargs['assess_id']
