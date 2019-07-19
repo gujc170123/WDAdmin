@@ -114,6 +114,7 @@ class TrialOrganizationViewset(CustomModelViewSet):
         data['enterprise_id'] = enterprise_id
         top = BaseOrganization.objects.get(parent_id=0,is_active=True,enterprise_id=enterprise_id)
         data['parent_id'] = top.id
+        data['is_active'] = False
         serializer = self.get_serializer(data=data)
         is_valid = serializer.is_valid(raise_exception=False)
         if not is_valid:
@@ -206,7 +207,7 @@ class AssessViewset(CustomModelViewSet):
 
         top = BaseOrganization.objects.get(parent_id=0,is_active=True,enterprise_id=data['enterprise_id'])
         AssessJoinedOrganization.objects.create(assess_id=assess_id,organization_id=top.id)
-                
+        BaseOrganization.objects.filter(enterprise_id=data['enterprise_id'],is_active=False).delete()
         for org in organizations:
             toaddorg = BaseOrganization.objects.create(name=org,parent_id=top.id,enterprise_id=data['enterprise_id'])
             AssessJoinedOrganization.objects.create(assess_id=assess_id,organization_id=toaddorg.id)

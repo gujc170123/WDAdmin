@@ -297,17 +297,13 @@ class AssessShareView(AuthenticationExceptView,WdCreateAPIView):
     model = EnterpriseInfo
     serializer_class = EnterpriseBasicSerializer
 
-    def get(self, request, *args, **kwargs):
-        enterprise_obj = self.get_object()
-        if not enterprise_obj.enterprise_dedicated_link:
-            id_str = "%10d" % enterprise_obj.id
-            sha1 = hashlib.sha1()
-            sha1.update(id_str)
-            enterprise_dedicated_link = sha1.hexdigest()
-            enterprise_obj.enterprise_dedicated_link = enterprise_dedicated_link
-            enterprise_obj.save()
+    def get_share_url(self,assess_id):
+        project_id_bs64 = quote(base64.b64encode(str(assess_id)))
+        return settings.CLIENT_HOST + '/people/join-project/?ba=%s&bs=0' % (project_id_bs64)
 
-        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,{'url':settings.CLIENT_HOST + "/#/enterprise" + "/" + str(enterprise_obj.enterprise_dedicated_link)})
+    def get(self, request, *args, **kwargs):
+        instance = self.get_object()        
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,{'url':self.get_share_url(instance.id)})
 
 class UserBatchDeleteView(AuthenticationExceptView,WdDestroyAPIView):
     model = None
@@ -334,7 +330,7 @@ class UserImportExportView(AuthenticationExceptView,WdCreateAPIView):
         self.parser_classes = (FileUploadParser,)
         filename = request.data["name"]
         filetype = filename.split('.')[-1]
-        filecsv = request.FILES.get("file", None)
+        fileexcel = request.FILES.get("file", None)
         enterprise_id = self.enterprise_id
 
         if not filecsv:
@@ -343,13 +339,13 @@ class UserImportExportView(AuthenticationExceptView,WdCreateAPIView):
             "data_msg": u'未检测到任何上传文件'
         })
 
-        if filetype.upper()!='CSV':
+        if filetype.upper()!='XLSX':
             return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, {
             'data_index': -1,
-            "data_msg": u'请确认上传文件类型是否为csv'
+            "data_msg": u'请确认上传文件类型是否为xlsx格式'
         })
 
-        result,errdata = userimport_task(filecsv,filename,enterprise_id,4,',')
+        result,errdata = userimport_task(fileexcel,filename,enterprise_id,4,',')
         
         if result:
             return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
