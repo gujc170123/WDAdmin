@@ -303,7 +303,7 @@ class AssessShareView(AuthenticationExceptView,WdCreateAPIView):
 
     def get(self, request, *args, **kwargs):
         id = self.kwargs['pk']  
-        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,{'url':self.get_share_url(id})
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,{'url':self.get_share_url(id)})
 
 class UserBatchDeleteView(AuthenticationExceptView,WdDestroyAPIView):
     model = None
