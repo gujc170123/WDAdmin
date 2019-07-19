@@ -294,16 +294,16 @@ class UserDetailView(AuthenticationExceptView,WdRetrieveUpdateAPIView,WdDestroyA
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
 class AssessShareView(AuthenticationExceptView,WdCreateAPIView):
-    model = EnterpriseInfo
-    serializer_class = EnterpriseBasicSerializer
+    model = AssessProject
+    serializer_class = AssessSerializer
 
     def get_share_url(self,assess_id):
         project_id_bs64 = quote(base64.b64encode(str(assess_id)))
         return settings.CLIENT_HOST + '/people/join-project/?ba=%s&bs=0' % (project_id_bs64)
 
     def get(self, request, *args, **kwargs):
-        instance = self.get_object()        
-        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,{'url':self.get_share_url(instance.id)})
+        id = self.kwargs['pk']  
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,{'url':self.get_share_url(id})
 
 class UserBatchDeleteView(AuthenticationExceptView,WdDestroyAPIView):
     model = None
