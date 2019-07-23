@@ -445,7 +445,7 @@ class OrganizationlUsersDestroyView(AuthenticationExceptView,WdDestroyAPIView):
             return general_json_response(status.HTTP_200_OK, ErrorCode.NOT_EXISTED)
 
         #delete all organizations only when no active member exists
-        alluser = AuthUser.objects.filter(is_active=True,organization__childorg__parent_id=org,organization__is_active=True,is_staff=True)
+        alluser = AuthUser.objects.filter(is_active=True,organization__childorg__parent_id=org,organization__is_active=True,role_type__lt=300)
         alluser.update(is_active=False)
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 

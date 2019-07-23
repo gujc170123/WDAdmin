@@ -1262,7 +1262,7 @@ class UserAnswerQuestionView(WdCreateAPIView):
             )
 
     def finish_survey(self, people):
-        reports = {100:'co2019',89:'disc2019',96:'mbti2019',160:'mc2019',147:'peoi2017',98:'ppsy2019'}
+        reports = {89:'disc2019',96:'mbti2019',97:'ls2019',98:'ppsy2019',100:'co2019',147:'peoi2019',160:'mc2019',163:'peoi2019'}
         if self.block_id == 0:
             qs = PeopleSurveyRelation.objects.filter_active(
                 people_id=people.id,
@@ -1271,7 +1271,7 @@ class UserAnswerQuestionView(WdCreateAPIView):
                 role_type=self.role_type,
                 evaluated_people_id=self.evaluated_people_id
             )
-            if self.survey_id in [89,96,100,147,160,98]:
+            if self.survey_id in [89,96,97,98,100,147,160,163]:
                 for o in qs:
                     o.status=PeopleSurveyRelation.STATUS_FINISH
                     o.report_status=PeopleSurveyRelation.STATUS_FINISH
@@ -1284,6 +1284,7 @@ class UserAnswerQuestionView(WdCreateAPIView):
                     report_status=PeopleSurveyRelation.REPORT_GENERATING,
                     finish_time=datetime.datetime.now()
                 )
+                # maanshan
                 if self.survey_id!=164:
                     for o in qs:
                         algorithm_task.delay(o.id)
@@ -1318,7 +1319,7 @@ class UserAnswerQuestionView(WdCreateAPIView):
                         role_type=self.role_type,
                         evaluated_people_id=self.evaluated_people_id
                     )
-                    if self.survey_id in [89,96,100,147,160,98]:
+                    if self.survey_id in [89,96,97,98,100,147,160,163]:
                         for o in qs:
                             o.status=PeopleSurveyRelation.STATUS_FINISH
                             o.report_status=PeopleSurveyRelation.STATUS_FINISH
@@ -1331,6 +1332,7 @@ class UserAnswerQuestionView(WdCreateAPIView):
                             report_status=PeopleSurveyRelation.REPORT_GENERATING,
                             finish_time=datetime.datetime.now()
                         )
+                        # maanshan
                         if self.survey_id!=164:
                             for o in qs:
                                 algorithm_task.delay(o.id)
@@ -1454,7 +1456,128 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
         "PEOI2019": 'self.getPEOI2019',
         # PPSY2019
         'PPSY2019': 'self.getPPSY2019',
+        # LS2019
+        'LS2019': 'self.getLS2019',
     }
+
+    def getLS2019(self, personal_result_id):
+
+        dict_quota={}
+        dict_ranking = {}
+        dict_ranking[1]=[]
+        dict_ranking[2]=[]
+        dict_ranking[3]=[]
+
+        default_data = {
+            "report_type": "LS2019",
+            "msg": {
+                "Name": "",
+                "Gender": "",
+                "TestTime": "",
+                "Age":"",
+                "scores":dict_quota,
+                "ranks":dict_ranking,
+                "behaviour":[]
+            }}
+
+        dict_quota[u'高压风格']={}
+        dict_quota[u'权威风格']={}
+        dict_quota[u'亲和风格']={}
+        dict_quota[u'民主风格']={}
+        dict_quota[u'模范风格']={}
+        dict_quota[u'教练风格']={}
+
+        dict_std = {u'高压风格':{12:100,11:100,10:97,9:95,8:90,7:88,6:74,5:57,4:47,3:28,2:8,1:0},
+                    u'权威风格':{12:100,11:100,10:95,9:88,8:67,7:48,6:28,5:9,4:6,3:3,2:0,1:0},
+                    u'亲和风格':{12:100,11:100,10:100,9:98,8:97,7:95,6:87,5:68,4:48,3:28,2:8,1:3},
+                    u'民主风格':{12:98,11:96,10:88,9:74,8:58,7:30,6:17,5:9,4:6,3:4,2:0,1:0},
+                    u'模范风格':{12:100,11:100,10:98,9:95,8:93,7:88,6:68,5:48,4:36,3:8,2:5,1:0},
+                    u'教练风格':{12:98,11:95,10:88,9:68,8:37,7:18,6:8,5:4,4:2,3:0,2:0,1:0}}
+
+        dict_table_dimension = {u'高压风格':[u'不断的给出命令，期望下属立刻服从。',
+                                        u'密切的监督和控制下属的工作进程。',
+                                        u'关注发现的问题，经常给出负面的、纠正性的反馈。',
+                                        u'强调不服从所导致的负面后果来激发团队成员服从。'],
+                                u'权威风格':[u'为团队制定和传达清晰的使命和方向',
+                                        u'用清晰的目标激励员工，让他们清楚地认识到本岗位与组织总体愿景之间的联系。',
+                                        u'会把宏大的愿景分解为个体的目标任务，并围绕组织愿景制定工作标准。',
+                                        u'允许员工自由创新、尝试各种方法，并愿意承担可衡量的风险。'],
+                                u'亲和风格':[u'提倡团队成员之间保持友好的关系。',
+                                        u'关注团队成员的情感需求，而不是工作任务的指引、目标和标准。',
+                                        u'追求员工的满意以及团队的和谐，通过与员工建立牢固的感情联系，获得员工强烈的忠诚。',
+                                        u'避免与绩效相关的冲突，创造能带来积极反馈的机会。'],
+                                u'民主风格':[u'愿意花时间听取集体意见，争取民意。',
+                                        u'允许员工对自己的任务目标以及工作方式保留发言权。',
+                                        u'通过组织许多会议来作出决策，希望通过深入讨论最终达成共识。'],
+                                u'模范风格':[u'相信团队成员有能力为自己和团队确定合适的指引。',
+                                        u'设定特别高的业绩标准，并且以身作则，亲自示范。',
+                                        u'强迫自己更高质量、更快速地完成工作，而且要求别人跟他一样。',
+                                        u'倾向于亲力亲为，独立完成工作任务，只有紧急任务时，才与他人协调。',
+                                        u'在团队成员遇到问题时，提供详细的工作指引。'],
+                                u'教练风格':[u'鼓励员工确定长期的职业发展目标，帮助制订明确的实施计划。',
+                                        u'应用倾听技巧和开放性问题来鼓励团队成员解决自己的问题',
+                                        u'擅长授权，会布置给员工挑战性的任务。',
+                                        u'将错误视为学习机会，为了员工的成长愿意接受暂时的失败。']}
+
+        frontname = settings.DATABASES['front']['NAME']
+        sql_query = "select b.tag_value, sum(GREATEST(a.score,0)) as score from\
+            (select answer_id,answer_score score\
+            from " + frontname + ".front_peoplesurveyrelation a,\
+            " + frontname + ".front_userquestionanswerinfo b\
+            where  a.id=%s and a.survey_id=b.survey_id and a.people_id=b.people_id\
+            and a.project_id=b.project_id and a.is_active=true and b.is_active=true) a,research_questiontagrelation b\
+            where a.answer_id=b.object_id and b.tag_id=54\
+            and b.is_active=True group by b.tag_value"
+
+        try:
+            people_result = PeopleSurveyRelation.objects.get(id=personal_result_id)
+            if people_result.status != PeopleSurveyRelation.STATUS_FINISH:
+                return default_data, ErrorCode.INVALID_INPUT
+            if not people_result.report_url:
+                people_result.report_url= settings.Reports['ls2019'] % (personal_result_id)
+                people_result.report_status=PeopleSurveyRelation.STATUS_FINISH
+                people_result.save()
+            people = People.objects.get(id=people_result.people_id)
+            default_data["msg"]["Name"] = people.display_name
+            default_data["msg"]["Gender"] = people.get_info_value(u"性别", u"未知")
+            default_data["msg"]["Age"] = people.get_info_value(u"年龄", None)
+            if not default_data["msg"]["Age"]:
+                default_data["msg"]["Age"] = u"未知"
+            else:
+                default_data["msg"]["Age"] += u"岁"
+            if people_result.finish_time:
+                default_data["msg"]["TestTime"] = people_result.finish_time.strftime(u"%Y年%m月%d日")
+            else:
+                default_data["msg"]["TestTime"] = time.strftime(u"%Y年%m月%d日", time.localtime())
+
+            dictscore = {}
+            with connection.cursor() as cursor:
+                cursor.execute(sql_query, [personal_result_id])
+                columns = [col[0] for col in cursor.description]
+                for row in cursor.fetchall():
+                    dictscore[row[0]]=row[1]
+            
+            dict_quota[u'高压风格']['pt']= dictscore['GY1']+dictscore['GY2']+dictscore['GY3']+dictscore['GY4']+dictscore['GY5']+dictscore['GY6']+dictscore['GY7']
+            dict_quota[u'权威风格']['pt']= dictscore['QW1']+dictscore['QW2']+dictscore['QW3']+dictscore['QW4']+dictscore['QW5']+dictscore['QW6']+dictscore['QW7']
+            dict_quota[u'亲和风格']['pt']= dictscore['QH1']+dictscore['QH2']+dictscore['QH3']+dictscore['QH4']+dictscore['QH5']+dictscore['QH6']
+            dict_quota[u'民主风格']['pt']= dictscore['MZ1']+dictscore['MZ2']+dictscore['MZ3']+dictscore['MZ4']+dictscore['MZ5']+dictscore['MZ6']
+            dict_quota[u'模范风格']['pt']= dictscore['MF1']+dictscore['MF2']+dictscore['MF3']+dictscore['MF4']+dictscore['MF5']+dictscore['MF6']
+            dict_quota[u'教练风格']['pt']= dictscore['JL1']+dictscore['JL2']+dictscore['JL3']+dictscore['JL4']+dictscore['JL5']+dictscore['JL6']
+
+            for key,value in dict_std.items():
+                zscore = dict_std[key][dict_quota[key]['pt']]
+                dict_quota[key]['zscore'] = zscore
+                if zscore >= 60:
+                    default_data["msg"]["behaviour"].extend(dict_table_dimension[key])
+                    dict_ranking[1].append(key)
+                elif zscore >= 40:
+                    dict_ranking[2].append(key)
+                else:
+                    dict_ranking[3].append(key)
+        except Exception, e:
+            err_logger.error("get report data error, msg: %s" % e)
+            return default_data, ErrorCode.INVALID_INPUT
+        return default_data, ErrorCode.SUCCESS  
 
     def getPPSY2019(self, personal_result_id):
         dict_quota={}
@@ -1625,10 +1748,10 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             else:
                 default_data["msg"]["TestTime"] = time.strftime(u"%Y年%m月%d日", time.localtime())
 
+            dictscore = {}
             with connection.cursor() as cursor:
                 cursor.execute(sql_query, [personal_result_id])
                 columns = [col[0] for col in cursor.description]
-                dictscore = {}
                 for row in cursor.fetchall():
                     dictscore[row[0]]=row[1]
 
@@ -1803,10 +1926,10 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             else:
                 default_data["msg"]["TestTime"] = time.strftime(u"%Y年%m月%d日", time.localtime())
 
+            dictscore = {}
             with connection.cursor() as cursor:
                 cursor.execute(sql_query, [personal_result_id])
-                columns = [col[0] for col in cursor.description]
-                dictscore = {}
+                columns = [col[0] for col in cursor.description]                
                 for row in cursor.fetchall():
                     dictscore[row[0]]=row[1]
             

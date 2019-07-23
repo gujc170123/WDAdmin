@@ -2,8 +2,22 @@
 from __future__ import unicode_literals
 from django.db import models
 from utils.models import BaseModel
+from assessment.models import AssessProject
+from wduser.models import AuthUser
 
-
+class AssessProgress(models.Model):
+    
+    STATUS_CHOICES = (
+            (1,u'未开始'),
+            (2,u'生成中'),
+            (3,u'生成失败'),
+            (4,u'已完成'),)
+    assess = models.OneToOneField(AssessProject,db_constraint=False,db_index=True,related_name='assess_progress')
+    inituser = models.OneToOneField(AuthUser,db_constraint=False)
+    starttime = models.DateTimeField(verbose_name='Start Time')
+    finishtime = models.DateTimeField(verbose_name='End Time')
+    status = models.IntegerField(verbose_name='Progress', choices=STATUS_CHOICES , default=1)
+    
 class FactOEIFacet(models.Model):
     assess_id = models.IntegerField(db_index=True)
     user_id = models.IntegerField()

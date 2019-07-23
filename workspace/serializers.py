@@ -4,6 +4,7 @@ from rest_framework import serializers
 from wduser.models import AuthUser, EnterpriseAccount, People, BaseOrganization,BaseOrganizationPaths
 from assessment.models import AssessProject
 from survey.models import Survey
+from workspace import models
 import json
 from collections import OrderedDict
 
@@ -81,18 +82,29 @@ class UserDetailSerializer(serializers.ModelSerializer):
     def get_fullorg(self, obj):        
         return BaseOrganizationPaths.objects.filter(child_id=obj.organization).order_by('depth').values_list('parent_id',flat=True)        
 
+class AssessProgressSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = models.AssessProgress
+        fields = '__all__'
+
 class AssessSerializer(serializers.ModelSerializer):
     '''Assessment Serializer'''
     distribute_type = ChoicesField(choices=AssessProject.DISTRIBUTE_CHOICES)
     assess_type =  ChoicesField(choices=AssessProject.TYPE_CHOICES)
     finish_choices =  ChoicesField(choices=AssessProject.FINISH_CHOICES)
+    progress = serializers.SlugRelatedField(
+        source='assess_progress',
+        slug_field='status',
+        read_only=True,    
+    )
 
     class Meta:
         model = AssessProject
         fields = ('id', 'name', 'en_name', 'enterprise_id', 'begin_time', 'end_time', 'advert_url', 'assess_type',
                   'project_status', 'finish_choices', 'finish_redirect', 'finish_txt', 'assess_logo', 'org_infos',
                   "user_count", "distribute_type", "has_distributed", 'is_answer_survey_by_order', 'has_survey_random',
-                  'survey_random_number', 'show_people_info')
+                  'survey_random_number', 'show_people_info','progress')              
 
 class AssessListSerializer(serializers.ModelSerializer):
     '''Assessment List Serializer'''
