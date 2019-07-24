@@ -788,7 +788,7 @@ class ManagementAssess(AuthenticationExceptView,WdCreateAPIView):
         if modify_pid:
             modify_pid = set(modify_pid.split(","))
 
-        surveys = SurveyInfo.objects.filter_active(project_id=ass)
+        surveys = AssessSurveyRelation.objects.filter_active(assess_id=ass).values_list('survey_id')
 
         sql_query =  "select f.id as pid,c.id as user_id\
                     from assessment_assessorganizationpathssnapshots a\
