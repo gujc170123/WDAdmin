@@ -695,7 +695,7 @@ class AssessProgressView(AuthenticationExceptView,WdCreateAPIView):
                             LEFT JOIN " + frontname + ".front_peoplesurveyrelation f\
                             on e.people_id=f.people_id and f.project_id=b.assess_id and f.survey_id=%s\
                             WHERE b.parent_id=%s and b.depth=1 and\
-                            b.assess_id=%s \
+                            b.assess_id=%s and f.is_active=True \
                             group by b.child_id) b WHERE a.id=b.id"
             cursor.execute(sql_query, [survey,orgid,assess,])
             columns = [column[0] for column in cursor.description]
@@ -724,7 +724,7 @@ class AssessProgressTotalView(AuthenticationExceptView,APIView):
                             on d.identification_code=e.org_code and d.assess_id=b.assess_id\
                             LEFT JOIN " + frontname + ".front_peoplesurveyrelation f\
                             on e.people_id=f.people_id and f.project_id=b.assess_id and f.survey_id=%s\
-                            WHERE b.parent_id=%s and b.assess_id=%s \
+                            WHERE b.parent_id=%s and b.assess_id=%s and f.is_active=True \
                             group by b.parent_id) b WHERE a.id=b.id"
 
             cursor.execute(sql_query, [survey,orgid,assess,])
