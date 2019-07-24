@@ -734,7 +734,7 @@ class ManagementAssess(AuthenticationExceptView,WdCreateAPIView):
         allPage = 0
 
         frontname = settings.DATABASES['front']['NAME']
-        sql_query =  "select c.id,e.name organization,c.nickname,c.account_name,c.email,c.phone,isnull(d.user_id) joined,\
+        sql_query =  "select c.id,e.name organization,c.nickname,c.account_name,c.email,c.phone,not isnull(d.user_id) joined,\
                     d1.value age,d2.value education,d3.value politics,d4.value seniority \
                     from assessment_assessorganizationpathssnapshots a\
                     inner join assessment_assessjoinedorganization b\
