@@ -64,13 +64,14 @@ DATABASES = {
      },
 }
 Reports = {
-    'mbti2019':"http://reporttest.iwedoing.com:9090/api/render?url=http://reporttest.iwedoing.com/NewBehavioralStyle?people_result_id=%s&emulateScreenMedia=false",
-    'disc2019':"http://reporttest.iwedoing.com:9090/api/render?url=http://reporttest.iwedoing.com/ProfessionalPersonality?people_result_id=%s&emulateScreenMedia=false",
-    'co2019':"http://reporttest.iwedoing.com:9090/api/render?url=http://reporttest.iwedoing.com/ProfessionalOrientation?people_result_id=%s&emulateScreenMedia=false",
-    'mc2019':"http://reporttest.iwedoing.com:9090/api/render?url=http://reporttest.iwedoing.com/TheHighLevel?people_result_id=%s&emulateScreenMedia=false",    
-    'peoi2019':"http://reporttest.iwedoing.com:9090/api/render?url=http://reporttest.iwedoing.com/PersonalHappiness?people_result_id=%s&emulateScreenMedia=false",
-    'ppsy2019':"http://reporttest.iwedoing.com:9090/api/render?url=http://reporttest.iwedoing.com/ProfessionalPsychology?people_result_id=%s&emulateScreenMedia=false",
-    'ls2019':""
+    'mbti2019':"http://reporttest.iwedoing.com:9090/api/render?url=http://reporttest.iwedoing.com/NewBehavioralStyle/?people_result_id=%s&emulateScreenMedia=false",
+    'disc2019':"http://reporttest.iwedoing.com:9090/api/render?url=http://reporttest.iwedoing.com/ProfessionalPersonality/?people_result_id=%s&emulateScreenMedia=false",
+    'co2019':"http://reporttest.iwedoing.com:9090/api/render?url=http://reporttest.iwedoing.com/ProfessionalOrientation/?people_result_id=%s&emulateScreenMedia=false",
+    'mc2019':"http://reporttest.iwedoing.com:9090/api/render?url=http://reporttest.iwedoing.com/TheHighLevel/?people_result_id=%s&emulateScreenMedia=false",    
+    'peoi2019':"http://reporttest.iwedoing.com:9090/api/render?url=http://reporttest.iwedoing.com/PersonalHappiness/?people_result_id=%s&emulateScreenMedia=false",
+    'ppsy2019':"http://reporttest.iwedoing.com:9090/api/render?url=http://reporttest.iwedoing.com/ProfessionalPsychology/?people_result_id=%s&emulateScreenMedia=false",
+    'ls2019':"http://reporttest.iwedoing.com:9090/api/render?url=http://reporttest.iwedoing.com/LeaderStyle/?people_result_id=%s&emulateScreenMedia=false",
+    'wv2019':"http://reporttest.iwedoing.com:9090/api/render?url=http://reporttest.iwedoing.com/WorkValues/?people_result_id=%s&emulateScreenMedia=false",
 }
 #
 # CLIENT_HOST = 'http://wd-user.exuetech.com'

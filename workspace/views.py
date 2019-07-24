@@ -27,7 +27,7 @@ from assessment.models import AssessProject, AssessSurveyRelation, AssessProject
 from survey.models import Survey
 from utils.cache.cache_utils import FileStatusCache
 from rest_framework.views import APIView
-from front.models import PeopleSurveyRelation, SurveyInfo
+from front.models import PeopleSurveyRelation, SurveyInfo, SurveyQuestionInfo
 from assessment.tasks import send_survey_active_codes
 from django.db import connection,transaction,connections
 from django.conf import settings
@@ -468,10 +468,6 @@ class AssessCreateView(AuthenticationExceptView, WdListCreateAPIView):
     POST_CHECK_NONEMPTYREQUEST_PARAMETER = {"name","distribute_type","surveys","begin","end","enterprise"}
     GET_CHECK_REQUEST_PARAMETER = {"enterprise"}
 
-    SURVEY_DISC = 89
-    SURVEY_OEI = 147
-    SURVEY_IEC = 163
-
     def post(self, request, *args, **kwargs):
         name = request.data.get('name')
         distribute_type = request.data.get('distribute_type')
@@ -489,10 +485,23 @@ class AssessCreateView(AuthenticationExceptView, WdListCreateAPIView):
             AssessSurveyRelation.objects.create(assess_id=assess.id,survey_id=survey)
             qs = AssessProjectSurveyConfig.objects.filter_active(survey_id=survey,
                                                                     assess_id=0).all()
+            qs2 = SurveyInfo.objects.filter_active(survey_id=survey,project_id=0).all()
+            qs3 = SurveyQuestionInfo.objects.filter_active(survey_id=survey,project_id=0).all()                                                                    
             for x in qs:
                 x.id = None
                 x.assess_id=assess.id
             AssessProjectSurveyConfig.objects.bulk_create(qs)
+            for y in qs2:
+                y.id=None
+                y.project_id = assess.id
+                y.begin_time = assess.begin_time
+                y.end_time = assess.end_time
+                y.project_name = name
+            SurveyInfo.objects.bulk_create(qs2)
+            for z in qs3:
+                z.id = None
+                z.project_id = assess.id
+            SurveyQuestionInfo.objects.bulk_create(qs3)              
 
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,{'id':assess.id})
     
@@ -547,10 +556,23 @@ class StdAssessListView(AuthenticationExceptView,WdCreateAPIView):
             AssessSurveyRelation.objects.create(assess_id=assess.id,survey_id=survey)
             qs = AssessProjectSurveyConfig.objects.filter_active(survey_id=147,
                                                                     assess_id=0).all()
+            qs2 = SurveyInfo.objects.filter_active(survey_id=survey,project_id=0).all()
+            qs3 = SurveyQuestionInfo.objects.filter_active(survey_id=survey,project_id=0).all()                                                                      
             for x in qs:
                 x.id = None
                 x.assess_id=assess.id
             AssessProjectSurveyConfig.objects.bulk_create(qs)
+            for y in qs2:
+                y.id=None
+                y.project_id = assess.id
+                y.begin_time = assess.begin_time
+                y.end_time = assess.end_time
+                y.project_name = name
+            SurveyInfo.objects.bulk_create(qs2)
+            for z in qs3:
+                z.id = None
+                z.project_id = assess.id
+            SurveyQuestionInfo.objects.bulk_create(qs3)             
 
         with connection.cursor() as cursor:
             ret = cursor.callproc("StdAssess_Save", (assess.enterprise_id,assess.id,user_id,orgs,))
@@ -788,8 +810,7 @@ class ManagementAssess(AuthenticationExceptView,WdCreateAPIView):
         if modify_pid:
             modify_pid = set(list(map(int,modify_pid.split(","))))
 
-        surveys = AssessSurveyRelation.objects.filter_active(assess_id=ass).values_list('survey_id')
-
+        surveys = SurveyInfo.objects.filter_active(project_id=ass)
         sql_query =  "select f.id as pid,c.id as user_id\
                     from assessment_assessorganizationpathssnapshots a\
                     inner join assessment_assessjoinedorganization b\
@@ -819,12 +840,12 @@ class ManagementAssess(AuthenticationExceptView,WdCreateAPIView):
 
         i = True
         people_survey = []
-        survey_user = []        
+        survey_user = []
         for survey in surveys:
             for uid in user_toadd:
                 people_survey.append(
                     PeopleSurveyRelation(
-                        people_id=results[uid],survey_id=survey.id, project_id=ass, survey_name=survey.survey_name
+                        people_id=results[uid],survey_id=survey.survey_id, project_id=ass, survey_name=survey.survey_name
                     )
                 )
                 if i:                    

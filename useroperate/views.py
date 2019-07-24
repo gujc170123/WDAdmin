@@ -16,6 +16,7 @@ from sales.serializers import Product_SpecificationSerializer
 from utils.response import general_json_response, ErrorCode
 from rest_framework import mixins,status,views
 from datetime import date,datetime
+from front.models import SurveyInfo,SurveyQuestionInfo
 
 class MenuListView(views.APIView):
 
@@ -200,10 +201,23 @@ class AssessViewset(CustomModelViewSet):
             AssessSurveyRelation.objects.create(assess_id=assess_id,survey_id=survey)
             qs = AssessProjectSurveyConfig.objects.filter_active(survey_id=survey,
                                                                 assess_id=0).all()
+            qs2 = SurveyInfo.objects.filter_active(survey_id=survey,project_id=0).all()
+            qs3 = SurveyQuestionInfo.objects.filter_active(survey_id=survey,project_id=0).all() 
             for x in qs:
                 x.id = None
                 x.assess_id=assess_id
             AssessProjectSurveyConfig.objects.bulk_create(qs)
+            for y in qs2:
+                y.id=None
+                y.project_id = assess_id
+                y.project_name = begin_time
+                y.begin_time = end_time
+                y.end_time = assess.end_time
+            SurveyInfo.objects.bulk_create(qs2)
+            for z in qs3:
+                z.id=None
+                z.project_id = assess_id
+            SurveyQuestionInfo.objects.bulk_create(qs3)            
 
         top = BaseOrganization.objects.get(parent_id=0,is_active=True,enterprise_id=data['enterprise_id'])
         AssessJoinedOrganization.objects.create(assess_id=assess_id,organization_id=top.id)
