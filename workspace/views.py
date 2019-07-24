@@ -786,7 +786,7 @@ class ManagementAssess(AuthenticationExceptView,WdCreateAPIView):
         org = request.data.get('organization_id',None)
 
         if modify_pid:
-            modify_pid = set(modify_pid.split(","))
+            modify_pid = set(list(map(int,modify_pid.split(","))))
 
         surveys = AssessSurveyRelation.objects.filter_active(assess_id=ass).values_list('survey_id')
 
