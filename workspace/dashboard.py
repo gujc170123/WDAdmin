@@ -834,7 +834,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         profile = kwargs.get("profile_id")
         select = kwargs.get("select_id")
         query_dict = self.get_organization(org)[0]
-        profile_options = [u"年龄", u"性别", u"司龄", u"层级", u"序列", u"学历", u"政治面貌"]
+        profile_options = [u"年龄", u"性别", u"司龄", u"政治面貌", u"学历"]
         # current department
         department = FactOEI.objects.complex_filter(query_dict)
         if not department.exists():
@@ -843,7 +843,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         if profile in profile_options:
             # all optional fields
             profile_dict = {
-                u"年龄": "profile1", u"性别": "profile2", u"司龄": "profile4", u"层级": "profile5", u"序列": "profile3", u"学历": "profile6", u"政治面貌": "profile7",
+                u"年龄": "profile1", u"性别": "profile2", u"司龄": "profile3",  u"学历": "profile5", u"政治面貌": "profile4",
             }
             field_query_set = department.values_list(profile_dict[profile]).distinct()
             field_list = [i[0] for i in field_query_set if i[0]]
@@ -1023,11 +1023,10 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             return {'msg': u'报告完成。', 'status': 1}, ErrorCode.SUCCESS
         else:
             main.delay(assess_id, survey_id, stime, reference)
-            redis_pool.rpush(redis_key, time.time(), 0)
             if not redis_value:
                 return {'msg': u'开始生成报告。', 'status': 0}, ErrorCode.SUCCESS
             else:
-                return {'msg': u'重新生成报告。', 'status': 3}, ErrorCode.SUCCESS
+                return {'msg': u'重新生成报告。', 'status': 3}, ErrorCode.SUCCESS    
 
     def post(self, request, *args, **kwargs):
         api_id = self.request.data.get("api", None)

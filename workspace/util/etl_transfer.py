@@ -47,21 +47,6 @@ def get_data(conn, sql, *args):
     cursor.execute(sql, args)
     return cursor.fetchall()
 
-
-# class MySqlConn:
-#     def __init__(self, host, port, db, user, pwd):
-#         self.conn = pymysql.connect(host=host, port=port, database=db, user=user, password=pwd)
-#         self.cursor = self.conn.cursor()
-#
-#     def get_data(self, sql, *args):
-#         rows = self.cursor.execute(sql, args)
-#         return self.cursor.fetchall()
-#
-#     def close(self):
-#         self.cursor.close()
-#         self.conn.close()
-
-
 # 人员列表
 @try_catch
 def list_people(conn, pro_id, sur_id, name):
@@ -95,7 +80,6 @@ def get_answer(conn, pro_id, sur_id, name):
             order by people_id,question_id
         """
     res = get_data(conn, sql, pro_id, sur_id)
-    # ((people_id, question_id, sum(answer_score)), (people_id, question_id, sum(answer_score)), ...)
     return ['people_id', 'question_id', 'answer_score'], res
 
 
@@ -170,15 +154,23 @@ def line3(conn, pro_id, sur_id, t_id, *args):
     admin_conn = args[0]
     # 人员列表 ((people_id, ), (people_id, ), ...)
     column_index_pit, people_id_tuples = list_people(conn, pro_id, sur_id, name=u"查询人员列表")
+    if not people_id_tuples:
+        return None,None
     column_index_at, answer_tuples = get_answer(conn, pro_id, sur_id, name=u"查询问卷答案")
+    if not answer_tuples:
+        return None,None    
 
     column_index_mj2, merge_join_2 = merge(answer_tuples, people_id_tuples, column_index_at, column_index_pit,
                                            how='left', on=['people_id'], name="merge_join_2")
+    if not merge_join_2:
+        return None,None
     merge_join_2.sort(key=lambda x: x[1])
     column_index_qt, question_tag_tuples = question_tag(admin_conn, t_id, name=u"查询题目编号")
+    if not question_tag_tuples:
+        return None,None
     column_index_mj, merge_join = merge(merge_join_2, question_tag_tuples, column_index_mj2, column_index_qt,
                                         left_on=['question_id'], right_on=['object_id'],
-                                        del_column=['question_id', 'object_id'], name="merge_join")
+                                        del_column=['question_id', 'object_id'], name="merge_join")    
     select_value = merge_join
     column_index_sv = ['people_id', 'answer_score', 'tag_value']
     select_value.sort(key=lambda x: (x[0], x[2]))
@@ -288,24 +280,28 @@ def check_null(data):
 def get_user_info(user_ids):
     res = []
     people_info = AuthUser.objects.filter(id__in=user_ids).values_list(
-        "id", "username", "age__value", "gender__value", "sequence__value", "seniority__value",
-        "rank__value","politics__value","education__value", "organization_id"
+        "id", "username", "age__value", "gender__value","seniority__value",
+        "politics__value","education__value", "organization_id"
     )
     for personal in people_info:
         info = [personal[0], personal[1], personal[2], check_null(personal[3]),
                 check_null(personal[4]), personal[5], check_null(personal[6]), 
-                check_null(personal[7]),check_null(personal[8]),personal[9]]
+                personal[7]]
         res.append(info)
     res.sort(key=lambda x: x[0])
-    index = ['user_id', 'username', u"年龄", u"性别", u"岗位序列", u"司龄", u"层级", u"政治面貌" , u"学历", 'org_id']
+    index = ['user_id', 'username', u"年龄", u"性别", u"司龄", u"政治面貌" , u"学历", 'org_id']
     return index, res
 
 
 def line1(conn, aid):
     user_ids, user_people_id, user_people_index = query_user_id(conn, aid, name=u"查询参加人员")
     column_index_sv3, select_values_3 = get_user_info(user_ids)
+    if not select_values_3:
+        return column_index, None
     column_index, select_values = merge(user_people_id, select_values_3, user_people_index, column_index_sv3,
                                         on='user_id', del_column='user_id', name="merge user_id people_id")
+    if not select_values:
+        return column_index, select_values                                        
     return column_index, select_values
 
 
@@ -468,6 +464,7 @@ def model_obj_create(person_score_list, assessID, hidden_people_id, mask):
     scale1, scale2, scale3, dimension1, dimension2, dimension3, dimension4, dimension5, dimension6, dimension7 = get_scale_and_dimension(person_score_list)
     quota55, quota56, quota57 = merge_quota(person_score_list)
     score_dict = {
+        # hardcoding !! code cleaning is needed
         'AssessKey': assessID,
         'DW_Person_ID': person_score_list[0],
         'profile1': person_score_list[2],
@@ -475,8 +472,8 @@ def model_obj_create(person_score_list, assessID, hidden_people_id, mask):
         'profile3': person_score_list[4],
         'profile4': person_score_list[5],
         'profile5': person_score_list[6],
-        'profile6': person_score_list[7],
-        'profile7': person_score_list[8],            
+        'profile6': None,
+        'profile7': None,            
         'organization1': person_score_list[7],
         'organization2': person_score_list[8],
         'organization3': person_score_list[9],
@@ -580,41 +577,85 @@ def get_avg_answer_time(conn, project_id, survey_id, stime):
         group by people_id
     """
     res = get_data(conn, sql, project_id, survey_id)
-    hidden_people_id = [i[0] for i in res if i[1] < stime]
+    hidden_people_id = [i[0] for i in res if i[1] < int(stime)]
     return hidden_people_id
 
-
+# ----------------------------------------------
+# ETL Main Procedure
+# 
+# The main purpose of this procedure is to transform 
+# Standard EOI2018 answer sheets to EOI2018 model quotas
+# and support BI functions as data source.Data Cleaning
+# functions as the March 2019 Conference Proposal.
+# 
+# ----------------------------------------------
 @shared_task
 def main(AssessID, SurveyID, stime, reference):
-    assess_id = project_id = AssessID  # 191
-    survey_id = SurveyID  # 132
+    
+    assess_id = AssessID
+    survey_id = SurveyID
     tag_id = 54
     global redis_key
     redis_key = 'etl_%s_%s' % (assess_id, survey_id)
-    redis_pool.rpush(redis_key, time.time(), 3)
-
-    admin_conn = connections['default']
-    front_conn = connections['front']
+    # mission init
     redis_pool.rpush(redis_key, time.time(), 0)
 
-    # Sort rows 3
-    column_index_sr3, sort_rows_3 = line1(admin_conn, assess_id)
+    try:
+        logger.info(u"ETL处理(KEY:etl_%s_%s)开始" % (AssessID, SurveyID))
+        # retrive connections manually due to django settings are not available in async thread
+        admin_conn = connections['default']
+        front_conn = connections['front']
 
-    column_index_sr2, sort_rows_2 = line2(admin_conn, assess_id)
+        # Phase A Profile Collection
 
-    column_index_mj3, merge_join_3 = merge(sort_rows_3, sort_rows_2, column_index_sr3, column_index_sr2,
-                                           how='left', on='org_id', del_column="org_id", name='merge_join_3')
-    sort_select_values_2 = merge_join_3
-    column_index_mj3[column_index_mj3.index('username')] = u'姓名'
+        # A.1 retrieve joiners with profiles
+        column_index_sr3, sort_rows_3 = line1(admin_conn, assess_id)
+        if not sort_rows_3:
+            redis_pool.rpush(redis_key, time.time(), 1)
+            return
+        # A.2 retrieve organizations
+        column_index_sr2, sort_rows_2 = line2(admin_conn, assess_id)
+        if not sort_rows_2:
+            redis_pool.rpush(redis_key, time.time(), 1)
+            return        
+        # A.3 match joiners with organizations
+        column_index_mj3, merge_join_3 = merge(sort_rows_3, sort_rows_2, column_index_sr3, column_index_sr2,
+                                            how='left', on='org_id', del_column="org_id", name='merge_join_3')
+        if not merge_join_3:
+            redis_pool.rpush(redis_key, time.time(), 1)
+            return
+        sort_select_values_2 = merge_join_3
+        # A.4 rename [username] column to Chinese
+        column_index_mj3[column_index_mj3.index('username')] = u'姓名'
 
-    column_index_l3, sort_rows_4 = line3(front_conn, project_id, survey_id, tag_id, admin_conn)
-    column_index_mj33, merge_join_3_3 = merge(sort_select_values_2, sort_rows_4, column_index_mj3, column_index_l3,
-                                              how='left', on=["people_id"], name='merge_join_3_3')
+        # Phase B Answers Collection
 
-    hidden_pid = get_avg_answer_time(front_conn, project_id, survey_id, stime)
-    compute_all(merge_join_3_3, AssessID, hidden_pid, reference, name=u'计算各项维度分')
+        # B.1 retrieve answer sheets
+        column_index_l3, sort_rows_4 = line3(front_conn, assess_id, survey_id, tag_id, admin_conn)
+        if not sort_rows_4:
+            redis_pool.rpush(redis_key, time.time(), 1)
+            return
+        # B.2 match joiners with answer sheets
+        column_index_mj33, merge_join_3_3 = merge(sort_select_values_2, sort_rows_4, column_index_mj3, column_index_l3,
+                                                how='left', on=["people_id"], name='merge_join_3_3')
+        if not merge_join_3_3:
+            redis_pool.rpush(redis_key, time.time(), 1)
+            return
+        # B.3 retrieve answer speed for data cleaning 
+        hidden_pid = get_avg_answer_time(front_conn, assess_id, survey_id, stime)
 
-    with connection.cursor() as cursor:
-        ret = cursor.callproc("CalculateFacet", (assess_id, survey_id,))
-    redis_pool.rpush(redis_key, time.time(), 1)
+        # Phase C Cleaning and Transformation
 
+        # C.1 transform answer sheets to EOI quotas
+        compute_all(merge_join_3_3, AssessID, hidden_pid, reference, name=u'计算各项维度分')
+        # C.2 transform answer sheets to EOI behaviors
+        with connection.cursor() as cursor:
+            ret = cursor.callproc("CalculateFacet", (assess_id, survey_id,))
+    except Exception,err:
+        # mission failed
+        redis_pool.rpush(redis_key, time.time(), 3)
+        logger.error(u"ETL执行(KEY:etl_%s_%s)出错，error info：%s" % (AssessID, SurveyID, err))
+    else:
+        # mission accomplished
+        redis_pool.rpush(redis_key, time.time(), 1)
+        logger.info(u"ETL处理(KEY:etl_%s_%s)结束" % (AssessID, SurveyID))
