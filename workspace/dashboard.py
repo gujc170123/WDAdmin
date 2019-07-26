@@ -895,13 +895,15 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                     value_list = [j[0] for j in value_list if j[0]]
                 res[org_list[-1]] = value_list
 
-        total = sum([len(res[i]) for i in res])
-        if not total:
-            res = {key: len(res[key]) for key in res}
-        else:
-            for key in res.keys():
-                res[key]= round(len(res[key]) * 100 / total, 2)
-            # res = {key: round(len(res[key]) * 100 / total, 2) for key in res}
+        # total = sum([len(res[i]) for i in res])
+        # if not total:
+        #     res = {key: len(res[key]) for key in res}
+        # else:
+        #     for key in res.keys():
+        #         res[key]= round(len(res[key]) * 100 / total, 2)
+        #     # res = {key: round(len(res[key]) * 100 / total, 2) for key in res}
+        for key in res.keys():
+            res[key]= len(res[key])            
         return res, ErrorCode.SUCCESS
 
     def WDindex(self, **kwargs):
