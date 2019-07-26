@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 from __future__ import division
 import time
+import collections
 from utils.views import AuthenticationExceptView, WdListCreateAPIView
 from utils.response import general_json_response, ErrorCode
 from rest_framework import status
@@ -22,6 +23,28 @@ import json
 
 class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
     """Dashboard"""
+
+    profile_matrix ={u'年龄':[u'25岁及以下',
+                            u'26-30岁',
+                            u'31-35岁',
+                            u'36-40岁',
+                            u'41-45岁',
+                            u'46-50岁',
+                            u'50岁及以上'],
+                    u'学历':[u'大专及以下',
+                            u'本科',
+                            u'硕士及以上'],
+                    u'政治面貌':[u'中共党员',
+                            u'中共预备党员',
+                            u'共青团员',
+                            u'其他党派',
+                            u'群众'],
+                    u'司龄':[u'1年及以下',
+                            u'1-3年',
+                            u'3-5年',
+                            u'6-10年',
+                            u'11-15年',
+                            u'16年及以上']}
 
     api_mapping = {
         "organtree": 'self.get_organtree',
@@ -701,7 +724,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
     def get_focus_group(self, **kwargs):
         org = kwargs.get("org_id")
         profile = kwargs.get("profile_id")
-        profile_dict = {u"年龄": "profile1", u"性别": "profile2", u"序列": "profile3", u"司龄": "profile4", u"层级": "profile5",u"学历": "profile6", u"政治面貌": "profile7"}
+        profile_dict = {u"年龄": "profile1", u"性别": "profile2", u"司龄": "profile3",  u"学历": "profile5", u"政治面貌": "profile4",}
 
         query_dict, org_list = self.get_organization(org)
         company_obj = FactOEI.objects.complex_filter(query_dict).filter(model__lt=65)
@@ -791,7 +814,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         query_dict = self.get_organization(org)[0]
         company_query_set = FactOEI.objects.complex_filter(query_dict)
         profile_dict = {
-            u'年龄': 'profile1', u'性别': 'profile2', u'司龄': 'profile3', u'层级': 'profile4', u'序列': 'profile5',u"学历": "profile6", u"政治面貌": "profile7",
+            u"年龄": "profile1", u"性别": "profile2", u"司龄": "profile3",  u"学历": "profile5", u"政治面貌": "profile4",
         }
         if profile in profile_dict:
             company_query_set = company_query_set.complex_filter({profile: profile_dict[profile]})
@@ -829,7 +852,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         return [title, ret], ErrorCode.SUCCESS
 
     def get_business_index(self, **kwargs):
-        res = {}
+        res = collections.OrderedDict()
         org = kwargs.get("org_id")
         profile = kwargs.get("profile_id")
         select = kwargs.get("select_id")
@@ -845,8 +868,9 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             profile_dict = {
                 u"年龄": "profile1", u"性别": "profile2", u"司龄": "profile3",  u"学历": "profile5", u"政治面貌": "profile4",
             }
-            field_query_set = department.values_list(profile_dict[profile]).distinct()
-            field_list = [i[0] for i in field_query_set if i[0]]
+            # field_query_set = department.values_list(profile_dict[profile]).distinct()            
+            # field_list = [i[0] for i in field_query_set if i[0]]
+            field_list = self.profile_matrix[profile]
             for i in field_list:
                 value_list = department.complex_filter({profile_dict[profile]: i}).values_list("model")
                 if select and select == "-":
@@ -875,7 +899,9 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         if not total:
             res = {key: len(res[key]) for key in res}
         else:
-            res = {key: round(len(res[key]) * 100 / total, 2) for key in res}
+            for key in res.keys():
+                res[key]= round(len(res[key]) * 100 / total, 2)
+            # res = {key: round(len(res[key]) * 100 / total, 2) for key in res}
         return res, ErrorCode.SUCCESS
 
     def WDindex(self, **kwargs):
