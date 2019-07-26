@@ -875,8 +875,10 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                 value_list = department.complex_filter({profile_dict[profile]: i}).values_list("model")
                 if select and select == "负面":
                     value_list = [j[0] for j in value_list if j[0] and j[0] < 65]
-                else:
+                elif select and select == "正面":
                     value_list = [j[0] for j in value_list if j[0] and j[0] > 75]
+                else:
+                    value_list = [j[0] for j in value_list if j[0]]
                 res[i] = value_list
 
         # get child department
@@ -902,8 +904,15 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         #     for key in res.keys():
         #         res[key]= round(len(res[key]) * 100 / total, 2)
         #     # res = {key: round(len(res[key]) * 100 / total, 2) for key in res}
-        for key in res.keys():
-            res[key]= len(res[key])            
+
+        if not select:
+            total = sum([len(res[i]) for i in res])
+            for key in res.keys():
+                res[key]= round(len(res[key]) * 100 / total, 2)
+        else:
+            for key in res.keys():
+                res[key]= len(res[key]) 
+
         return res, ErrorCode.SUCCESS
 
     def WDindex(self, **kwargs):
