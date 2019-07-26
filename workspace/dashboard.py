@@ -873,7 +873,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             field_list = self.profile_matrix[profile]
             for i in field_list:
                 value_list = department.complex_filter({profile_dict[profile]: i}).values_list("model")
-                if select and select == "-":
+                if select and select == "负面":
                     value_list = [j[0] for j in value_list if j[0] and j[0] < 65]
                 else:
                     value_list = [j[0] for j in value_list if j[0] and j[0] > 75]
@@ -887,9 +887,9 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                     return {'': 0}, ErrorCode.SUCCESS
                 child_query_dict, org_list = self.get_organization('.'.join(i))
                 value_list = department.complex_filter(child_query_dict).values_list("model")
-                if select and select == "-":
+                if select and select == "负面":
                     value_list = [j[0] for j in value_list if j[0] and j[0] < 65]
-                elif select and select == "+":
+                elif select and select == "正面":
                     value_list = [j[0] for j in value_list if j[0] and j[0] > 75]
                 else:
                     value_list = [j[0] for j in value_list if j[0]]
