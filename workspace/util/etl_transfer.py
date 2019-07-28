@@ -651,6 +651,8 @@ def main(AssessID, SurveyID, stime, reference):
         # C.2 transform answer sheets to EOI behaviors
         with connection.cursor() as cursor:
             ret = cursor.callproc("CalculateFacet", (assess_id, survey_id,))
+            ret = cursor.callproc("CalculateQuota", (assess_id,))
+            ret = cursor.callproc("CalculateDimension", (assess_id,))
     except Exception,err:
         # mission failed
         redis_pool.rpush(redis_key, time.time(), 3)
