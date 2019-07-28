@@ -6,7 +6,7 @@ from utils.views import AuthenticationExceptView, WdListCreateAPIView
 from utils.response import general_json_response, ErrorCode
 from rest_framework import status
 from utils.logger import err_logger
-from workspace.models import FactOEI
+from workspace.models import FactOEI,FactOEIDimensionDistributions,FactOEIFacetDistributions,DimensionOEI
 from wduser.models import BaseOrganization, BaseOrganizationPaths
 from .helper import OrganizationHelper
 from django.db.models import Avg
@@ -184,67 +184,71 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         return res, ErrorCode.SUCCESS
 
     def get_leadership_style(self, **kwargs):
-        # 查下属机构，按model排名，取前5后5，然后取各自机构的领导激发维度下所有的指标分
-        res = {}
+
         org = kwargs.get("org_id")
-        query_dict = self.get_organization(org)[0]
-        child_org = self.get_child_org(query_dict)
-        if child_org:
-            child_list = []
-            for tpl in child_org:
-                j = '.'.join([i for i in tpl if i])
-                if j not in child_list:
-                    child_list.append(j)
-            child_org_data = []
-            for i in child_list:
-                child_query_dict, child_org_list = self.get_organization(i)
-                child_org_name = i.split('.')[-1]  # 分行机关名字
-                scores = FactOEI.objects.complex_filter(child_query_dict).aggregate(
-                    Avg('model'), Avg('L1'), Avg('L2'), Avg('L3'), Avg('L4'), Avg('L5'),
-                    Avg('L6'), Avg('L7'), Avg('L8'), Avg('L9'), Avg('L10'),
-                    Avg('L11'), Avg('L12'), Avg('L13'), Avg('L14'), Avg('L15'),
-                    Avg('L16'), Avg('L17'), Avg('L18'), Avg('L19'), Avg('L20'),
-                )
-                org_res = [
-                    child_org_name,
-                    round(scores["model__avg"] * 20, 2), round(scores["L1__avg"] * 20, 2),
-                    round(scores["L2__avg"] * 20, 2),
-                    round(scores["L3__avg"] * 20, 2), round(scores["L4__avg"] * 20, 2),
-                    round(scores["L5__avg"] * 20, 2),
-                    round(scores["L6__avg"] * 20, 2), round(scores["L7__avg"] * 20, 2),
-                    round(scores["L8__avg"] * 20, 2),
-                    round(scores["L9__avg"] * 20, 2), round(scores["L10__avg"] * 20, 2),
-                    round(scores["L11__avg"] * 20, 2),
-                    round(scores["L12__avg"] * 20, 2), round(scores["L13__avg"] * 20, 2),
-                    round(scores["L14__avg"] * 20, 2),
-                    round(scores["L15__avg"] * 20, 2), round(scores["L16__avg"] * 20, 2),
-                    round(scores["L17__avg"] * 20, 2),
-                    round(scores["L18__avg"] * 20, 2), round(scores["L19__avg"] * 20, 2),
-                    round(scores["L20__avg"] * 20, 2)
-                ]
-                child_org_data.append(org_res)
-            child_org_data.sort(key=lambda x: x[1], reverse=True)
-            if len(child_org_data) > 10:
-                child_org_data = child_org_data[:5] + child_org_data[-5:]
-            # 处理数据
-            for data in child_org_data:
-                del data[1]  # 幸福指数分只用来排序
-            indicator = [u'指标', u'目标引领', u'目标引领', u'目标引领', u'系统把握', u'系统把握', u'激发信任',
-                         u'激发信任', u'激发信任', u'激发信任', u'激发信任', u'激发信任', u'激发信任', u'激发信任',
-                         u'读懂他人', u'读懂他人', u'释放潜能', u'释放潜能', u'释放潜能', u'促进成长', u'促进成长']
-            define = [u'行为', u'与团队一起讨论形成目标与思路', u'设置高目标并追求绩效改善的程度',
-                      u'帮助团队建立目标实现的共同意义', u'能够把握团队任务解决的关键问题',
-                      u'把注意力放到首要目标和节点的把握上', u'能与团队成员一起面对难题和挑战',
-                      u'主动承担团队工作失误中的责任', u'能根据标准和规则对待团队成员的关切',
-                      u'能及时兑现对员工的承诺，言行一致', u'能主动倾听团队成员心声并平等交流',
-                      u'能主动关心团队成员的困难并帮助和支持', u'向团队成员明确表达对其工作的期望',
-                      u'主动向团队成员分享各种变化和信息', u'能关注和把握团队成员的需求和特征',
-                      u'能根据团队成员需求和特征进行沟通和安排', u'员工的表现能够得到及时肯定和鼓励',
-                      u'给员工自主空间让员工成为工作主角', u'主动接纳员工不同意见和建议',
-                      u'能讨论团队成员的职业发展并予以鼓励', u'能定期给团队成员反馈和建设性辅导']
-            res_data = [indicator, define]
-            res_data.extend(child_org_data)
-            res = res_data
+        assess_id = kwargs.get("assess_id")
+        survey_id = kwargs.get("survey_id")
+        res = []
+        dictfacet = {}
+        listorgs = []
+
+        # A.retrive level n-1 organiations ordered by leadership scores desc
+        # org1 name1
+        # org2 name2
+        # ...
+        departments = FactOEIDimensionDistributions.objects.filter(assess=assess_id,
+                                                     organization__snapchildorg__parent_id=org,
+                                                     organization__snapchildorg__depth=1,
+                                                     organization__snapchildorg__assess_id=assess_id,
+                                                     dimension__name=u"领导方式").order_by('-Mean')\
+                                                     .values_list('organization_id','organization__name','dimension_id')
+        if not departments:
+            return res, ErrorCode.SUCCESS
+
+        templaterow = OrderedDict()
+        templaterow[u'指标'] =None
+        templaterow[u'定义'] =None
+        for row in departments:
+            templaterow[row[1]]=None
+            listorgs.append(row[0])
+    
+        # B.retrieve leadership facets by top organization's facets scores
+        # facet1
+        # facet2
+        # ...
+        topdepart = departments[0]
+        # warning the assess_id=0 condition should be reconsidered for future business change
+        sqlfacets = 'SELECT c.name,facet_id,d.description\
+                    FROM workspace_factoeifacetdistributions a\
+                    inner join workspace_dimensionoeipaths b on a.facet_id=b.child_id\
+                    and b.depth=1 inner join workspace_dimensionoei c\
+                    on b.parent_id=c.id inner join workspace_dimensionoei d\
+                    on a.facet_id=d.id inner join workspace_dimensionoeipaths e\
+                    on a.facet_id=e.child_id and e.depth=2\
+                    where a.organization_id=%s and a.assess_id=%s and b.assess_id=0\
+                    and e.parent_id=%s order by mean desc'
+        with connection.cursor() as cursor:
+            cursor.execute(sqlfacets, [topdepart[0],assess_id,topdepart[2],])
+            rowindex = 0
+            for row in cursor.fetchall():
+                r = templaterow.copy()
+                r[u'指标'] = row[0]
+                r[u'定义'] = row[2]            
+                res.append(r)
+                dictfacet[row[1]] = rowindex
+                rowindex += 1
+        # C .retrive level n-1 organizations leadership facets ordered by organization id
+        # org1 facet1 score1
+        # org1 facet2 score2
+        # org2 facet1 score1
+        # ...
+        facets = FactOEIFacetDistributions.objects.filter(assess_id=assess_id,
+                                                        organization_id__in=listorgs,
+                                                        facet_id__in=dictfacet.keys()).order_by('organization_id')\
+                                                        .values_list('organization__name','facet_id','Mean')
+        # D. fill in blanks
+        for facet in facets:
+            res[dictfacet[facet[1]]][facet[0]]=facet[2]
 
         return res, ErrorCode.SUCCESS
 
@@ -1090,7 +1094,8 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             else:
                 self.assess_id = assess_id
                 if org_id:
-                    org_id = self.get_org_siblings(org_id)
+                    if api_id!='leadership_style':
+                        org_id = self.get_org_siblings(org_id)
                 # retrieve chart's data
                 data, err_code = eval(self.api_mapping[api_id])(org_id=org_id,
                                                                 profile_id=profile_id,

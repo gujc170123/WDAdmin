@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 from django.db import models
 from utils.models import BaseModel
-from assessment.models import AssessProject
+from assessment.models import AssessProject,BaseOrganization
 from wduser.models import AuthUser
 
 class AssessProgress(models.Model):
@@ -37,9 +37,9 @@ class DimensionOEIPaths(models.Model):
     depth = models.IntegerField(default=0)
 
 class FactOEIFacetDistributions(models.Model):
-    assess_id = models.IntegerField(db_index=True)
-    organization_id = models.IntegerField(db_index=True)
-    facet_id =  models.IntegerField(db_index=True)
+    assess = models.ForeignKey(AssessProject,db_constraint=False)
+    organization = models.ForeignKey(BaseOrganization,db_constraint=False)
+    facet =  models.ForeignKey(DimensionOEI,db_constraint=False)    
     N = models.IntegerField(default=0)
     Mean = models.DecimalField(max_digits=5, decimal_places=2)
     STD = models.DecimalField(max_digits=5, decimal_places=2)
@@ -263,8 +263,42 @@ class FactOEI(models.Model):
     N22 = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     N23 = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     N24 = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-
+    
     hidden = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ("DW_Person_ID", "AssessKey")
+
+class FactOEIDimension(models.Model):
+    assess = models.ForeignKey(AssessProject,db_constraint=False)
+    user = models.ForeignKey(AuthUser,db_constraint=False)
+    organization = models.ForeignKey(BaseOrganization,db_constraint=False)
+    dimension = models.ForeignKey(DimensionOEI,db_constraint=False)
+    score = models.DecimalField(max_digits=5, decimal_places=2)
+
+class FactOEIQuota(models.Model):
+    assess =  models.ForeignKey(AssessProject,db_constraint=False)
+    user = models.ForeignKey(AuthUser,db_constraint=False)
+    organization = models.ForeignKey(BaseOrganization,db_constraint=False)
+    quota =  models.ForeignKey(DimensionOEI,db_constraint=False)
+    score = models.DecimalField(max_digits=5, decimal_places=2)
+
+class FactOEIDimensionDistributions(models.Model):
+    assess = models.ForeignKey(AssessProject,db_constraint=False)
+    organization = models.ForeignKey(BaseOrganization,db_constraint=False)
+    dimension =  models.ForeignKey(DimensionOEI,db_constraint=False)
+    N = models.IntegerField(default=0)
+    Mean = models.DecimalField(max_digits=5, decimal_places=2)
+    STD = models.DecimalField(max_digits=5, decimal_places=2)
+    Min = models.DecimalField(max_digits=5, decimal_places=2)
+    Max = models.DecimalField(max_digits=5, decimal_places=2)
+
+class FactOEIQuotaDistributions(models.Model):
+    assess = models.ForeignKey(AssessProject,db_constraint=False)
+    organization = models.ForeignKey(BaseOrganization,db_constraint=False)
+    quota =  models.ForeignKey(DimensionOEI,db_constraint=False)
+    N = models.IntegerField(default=0)
+    Mean = models.DecimalField(max_digits=5, decimal_places=2)
+    STD = models.DecimalField(max_digits=5, decimal_places=2)
+    Min = models.DecimalField(max_digits=5, decimal_places=2)
+    Max = models.DecimalField(max_digits=5, decimal_places=2)    
