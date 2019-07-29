@@ -167,6 +167,8 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             Avg('N10'), Avg('N11'), Avg('N12'), Avg('N13'), Avg('N14'), Avg('N15'),  Avg('N16'), Avg('N17'),
             Avg('N18'), Avg('N19'), Avg('N20'), Avg('N21'), Avg('N22'), Avg('N23'), Avg('N24')
         )
+        if not score['G1__avg']:
+            return [], ErrorCode.SUCCESS
         G = ['G%s__avg' % g for g in xrange(1, 9)]
         S = ['S%s__avg' % s for s in xrange(1, 10)]
         C = ['C%s__avg' % c for c in xrange(1, 11)]
@@ -268,16 +270,22 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             child_org_data = []
             for i in child_list:
                 child_query_dict, child_org_list = self.get_organization(i)
-                child_org_name = i[-1]  # 分行机关名字
+                child_org_name = i.split('.')[-1]  # 分行机关名字
                 child_org_qs = FactOEI.objects.complex_filter(child_query_dict)
                 # child_org_num = child_org_qs.count()  # 有效样本
                 scores = child_org_qs.aggregate(
                     Avg('quota41'), Avg('model'), Avg('dimension1'), Avg('dimension2'), Avg('dimension3'),
                     Avg('dimension4'), Avg('dimension5'), Avg('dimension6'), Avg('dimension7'), Count("id")
                 )
+                score_lastyear = 0
+                increterate = 0 
+                if score_lastyear!=0:
+                    increterate = round((round(scores['model__avg'], 2)-score_lastyear)/score_lastyear*100,2)
+                else:
+                    increterate = None
                 org_res = [
                     '', child_org_name, scores['id__count'], round(scores['quota41__avg'], 2),
-                    round(scores['model__avg'], 2), 0, 0, round(scores['dimension1__avg'], 2),
+                    round(scores['model__avg'], 2), score_lastyear, increterate , round(scores['dimension1__avg'], 2),
                     round(scores['dimension2__avg'], 2), round(scores['dimension3__avg'], 2),
                     round(scores['dimension4__avg'], 2), round(scores['dimension5__avg'], 2),
                     round(scores['dimension6__avg'], 2), round(scores['dimension7__avg'], 2),
