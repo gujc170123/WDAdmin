@@ -1464,7 +1464,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
 
     def getWV2019(self, personal_result_id):
 
-        ordict_quota = collections.OrderedDict()
+        ordict_quota = {'quota':[],'score':[]}
         dict_ranking = {}
         dict_ranking[1]=[]
         dict_ranking[2]=[]
@@ -1699,8 +1699,9 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             dict_quota[u'自主/独立']=dictscore['ZZ']
             dict_quota[u'挑战/成就']=dictscore['TZ']
             sortedlist = sorted(dict_quota.items(), key=lambda d:d[1], reverse = True)  
-            for tp in sortedlist:
-                ordict_quota[tp[0]] = tp[1]+5
+            for tp in sortedlist:                
+                ordict_quota['quota'].append(tp[0])
+                ordict_quota['score'].append(tp[1]+5)
                 idx = 1
                 for member in liststd:
                     if tp[1] >= member:
