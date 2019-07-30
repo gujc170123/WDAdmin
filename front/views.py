@@ -1471,10 +1471,10 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
         dict_ranking[3]=[]
         dict_ranking[4]=[]
         dict_detail={}
-        dict_detail[1]=[]
-        dict_detail[2]=[]
-        dict_detail[3]=[]
-        dict_detail[4]=[]        
+        dict_detail[1]={}
+        dict_detail[2]={}
+        dict_detail[3]={}
+        dict_detail[4]={}        
 
         default_data = {
             "report_type": "WV2019",
@@ -1489,6 +1489,21 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             }}
 
         liststd = [4, 2,-3,-5]
+
+        dict_dimension_qutoa = {u'舒适/家庭':u'保障',
+                                u'安全/稳定':u'保障',
+                                u'经济/报酬':u'保障',
+                                u'归属/团队':u'人际',
+                                u'社交/人际':u'人际',
+                                u'利他/慈善':u'人际',
+                                u'权力/影响':u'尊重',
+                                u'地位/职位':u'尊重',
+                                u'认可/表现':u'尊重',
+                                u'艺术/文化':u'认知与审美',
+                                u'变化/探索':u'认知与审美',
+                                u'专业/技术':u'自我实现',
+                                u'自主/独立':u'自我实现',
+                                u'挑战/成就':u'自我实现'}
         
         dict_table_description = {u'舒适/家庭':u'追求舒适、轻松、优越的工作条件和环境，关注工作与生活的平衡',
                                 u'安全/稳定':u'关注工作生活的安全与稳定，偏好有序的、计划性的、可预测的工作环境，不倾向于承担风险',
@@ -1706,10 +1721,13 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                 for member in liststd:
                     if tp[1] >= member:
                         dict_ranking[idx].append(tp[0])
-                        dict_detail[idx].append({'quota':tp[0],
-                                                 'desc':dict_table_description[tp[0]],
-                                                 'factor':dict_table_dimension[tp[0]][idx-1],
-                                                 'suggestion':dict_table_suggestion[tp[0]][idx-1]})
+                        dimension = dict_dimension_qutoa[tp[0]]
+                        if not dimension in dict_detail[idx].keys():
+                            dict_detail[idx][dimension]=[]
+                        dict_detail[idx][dimension].append({'quota':tp[0],
+                                                    'desc':dict_table_description[tp[0]],
+                                                    'factor':dict_table_dimension[tp[0]][idx-1],
+                                                    'suggestion':dict_table_suggestion[tp[0]][idx-1]})
                         break
                     idx += 1
 
