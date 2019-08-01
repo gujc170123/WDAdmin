@@ -2517,11 +2517,11 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             and b.is_active=True"
 
         sql_query_others = "select b.tag_value, sum(a.score)/count(people_id) from\
-            (select question_id,answer_score score,a.people_id\
+            (select question_id,answer_score score,a.evaluated_people_id as people_id \
             from " + frontname + ".front_peoplesurveyrelation a,\
             " + frontname + ".front_userquestionanswerinfo b\
-            where  a.id in (%s) and a.survey_id=b.survey_id and a.people_id=b.people_id\
-            and a.project_id=b.project_id and a.is_active=true and b.is_active=true) a,research_questiontagrelation b\
+            where  a.id in (%s) and a.survey_id=b.survey_id and a.evaluated_people_id=b.evaluated_people_id\
+            and a.project_id=b.project_id and a.status=20 and a.is_active=true and b.is_active=true) a,research_questiontagrelation b\
             where a.question_id=b.object_id and b.tag_id=54\
             and b.is_active=True group by b.tag_value"            
 
@@ -2731,7 +2731,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                 "MainTypes":list_mainquotas,
                 "SubTypes":list_subquotas,
                 "Main":dictquota_main,
-                "Sub":dictquota_sub               
+                "Sub":dictquota_sub
             }}
 
         frontname = settings.DATABASES['front']['NAME']

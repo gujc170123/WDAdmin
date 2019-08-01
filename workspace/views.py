@@ -333,19 +333,17 @@ class UserImportExportView(AuthenticationExceptView,WdCreateAPIView):
         fileexcel = request.FILES.get("file", None)
         enterprise_id = self.enterprise_id
 
-        if not filecsv:
+        if not fileexcel:
             return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, {
-            'data_index': -1,
-            "data_msg": u'未检测到任何上传文件'
+            'err_code': u'未检测到任何上传文件'
         })
 
         if filetype.upper()!='XLSX':
             return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, {
-            'data_index': -1,
-            "data_msg": u'请确认上传文件类型是否为xlsx格式'
+            'err_code': u'请确认上传文件类型是否为xlsx格式'
         })
 
-        result,errdata = userimport_task(fileexcel,filename,enterprise_id,4,',')
+        result,errdata = userimport_task(fileexcel,filename,enterprise_id)
         
         if result:
             return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)

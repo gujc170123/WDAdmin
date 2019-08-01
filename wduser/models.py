@@ -149,6 +149,8 @@ class AuthUser(AbstractUser):
     politics = models.ForeignKey(Dim_Politics,null= True, db_constraint=False, db_index=True)
     education = models.ForeignKey(Dim_Education,null= True, db_constraint=False, db_index=True)
     organization = models.ForeignKey(BaseOrganization, null=True, db_constraint=False, db_index=True)
+    importlot = models.IntegerField(default=0,db_index=True)
+    profile = models.CharField(max_length=4096, null=True, blank=True)
 
     class Meta:
         verbose_name = '基本信息'
@@ -183,6 +185,7 @@ class People(BaseModel):
     active_code_valid = models.BooleanField(u"激活码是否有效", default=False, db_index=True)
     # [{'key_name':xxx,'key_value':xxx}]
     more_info = models.CharField(u"导入的其他信息", max_length=4096, null=True, blank=True)
+    importlot = models.IntegerField(default=0,db_index=True)
 
     @property
     def org_codes(self):
