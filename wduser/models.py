@@ -62,7 +62,6 @@ def baseorganization_save(sender, **kwargs):
 
 @receiver(pre_delete, sender=BaseOrganization,dispatch_uid='baseorganization-delete')
 def baseorganization_delete(sender, instance, **kwargs):
-    instance = kwargs['instance']
     instance._closure_deletelink()
 
 class BaseOrganizationPaths(models.Model):
