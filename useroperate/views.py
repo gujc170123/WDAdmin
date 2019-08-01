@@ -221,7 +221,7 @@ class AssessViewset(CustomModelViewSet):
 
         top = BaseOrganization.objects.get(parent_id=0,is_active=True,enterprise_id=data['enterprise_id'])
         AssessJoinedOrganization.objects.create(assess_id=assess_id,organization_id=top.id)
-        BaseOrganization.objects.filter(enterprise_id=data['enterprise_id'],is_active=False).delete()
+        BaseOrganization.objects.filter(enterprise_id=data['enterprise_id'],is_active=False,parent_id__gt=0).delete()
         for org in organizations:
             toaddorg = BaseOrganization.objects.create(name=org,parent_id=top.id,enterprise_id=data['enterprise_id'])
             AssessJoinedOrganization.objects.create(assess_id=assess_id,organization_id=toaddorg.id)
