@@ -210,9 +210,9 @@ class AssessViewset(CustomModelViewSet):
             for y in qs2:
                 y.id=None
                 y.project_id = assess_id
-                y.project_name = begin_time
-                y.begin_time = end_time
-                y.end_time = assess.end_time
+                y.project_name = data['name']
+                y.begin_time = begin_time
+                y.end_time = end_time
             SurveyInfo.objects.bulk_create(qs2)
             for z in qs3:
                 z.id=None
