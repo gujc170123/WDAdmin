@@ -598,7 +598,6 @@ def main(AssessID, SurveyID, stime, reference):
     global redis_key
     redis_key = 'etl_%s_%s' % (assess_id, survey_id)
     # mission init
-    redis_pool.rpush(redis_key, time.time(), 0)
 
     try:
         logger.info(u"ETL处理(KEY:etl_%s_%s)开始" % (AssessID, SurveyID))

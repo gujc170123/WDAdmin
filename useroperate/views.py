@@ -16,6 +16,7 @@ from sales.serializers import Product_SpecificationSerializer
 from utils.response import general_json_response, ErrorCode
 from rest_framework import mixins,status,views
 from datetime import date,datetime
+from django.db import connection
 from front.models import SurveyInfo,SurveyQuestionInfo
 
 class MenuListView(views.APIView):
@@ -220,11 +221,15 @@ class AssessViewset(CustomModelViewSet):
             SurveyQuestionInfo.objects.bulk_create(qs3)            
 
         top = BaseOrganization.objects.get(parent_id=0,is_active=True,enterprise_id=data['enterprise_id'])
-        AssessJoinedOrganization.objects.create(assess_id=assess_id,organization_id=top.id)
         BaseOrganization.objects.filter(enterprise_id=data['enterprise_id'],is_active=False,parent_id__gt=0).delete()
+        listorgs = [top.id]        
         for org in organizations:
             toaddorg = BaseOrganization.objects.create(name=org,parent_id=top.id,enterprise_id=data['enterprise_id'])
-            AssessJoinedOrganization.objects.create(assess_id=assess_id,organization_id=toaddorg.id)
+            listorgs.append(toaddorg.id)
+        
+        listorgs= map(str, listorgs)
+        with connection.cursor() as cursor:
+            ret = cursor.callproc("DistributeAssess",(data['enterprise_id'],assess_id,0,','.join(listorgs),))
 
         data = serializer.data.copy()
         data['url'] = self.get_share_url(assess_id)

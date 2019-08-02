@@ -1066,16 +1066,19 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             return {}, ErrorCode.NOT_EXISTED
         redis_key = 'etl_%s_%s' % (assess_id, survey_id)
         redis_value = redis_pool.lrange(redis_key, -2, -1)
-        if redis_value and redis_value[-1] == '0':
-            return {'msg': u'正在生成报告，请稍后访问。', 'status': 2}, ErrorCode.SUCCESS
-        elif redis_value and redis_value[-1] == '1':
-            return {'msg': u'报告完成。', 'status': 1}, ErrorCode.SUCCESS
-        else:
+        if not redis_value:
+            redis_pool.rpush(redis_key, time.time(), 0)
             main.delay(assess_id, survey_id, stime, reference)
-            if not redis_value:
-                return {'msg': u'开始生成报告。', 'status': 0}, ErrorCode.SUCCESS
+            return {'msg': u'开始生成报告。', 'status': 0}, ErrorCode.SUCCESS
+        else:
+            if redis_value[-1] == '0':
+                return {'msg': u'正在生成报告，请稍后访问。', 'status': 2}, ErrorCode.SUCCESS
+            elif redis_value[-1] == '1':
+                return {'msg': u'报告完成。', 'status': 1}, ErrorCode.SUCCESS
             else:
-                return {'msg': u'重新生成报告。', 'status': 3}, ErrorCode.SUCCESS    
+                redis_pool.rpush(redis_key, time.time(), 0)
+                main.delay(assess_id, survey_id, stime, reference)                
+                return {'msg': u'重新生成报告。', 'status': 3}, ErrorCode.SUCCESS
 
     def post(self, request, *args, **kwargs):
         api_id = self.request.data.get("api", None)
