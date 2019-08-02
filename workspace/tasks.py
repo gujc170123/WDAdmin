@@ -91,7 +91,7 @@ class UserImport:
                         'education_id':None,'politics_id':None,'role_type':100}
             importinfo = {}
             # mail validation
-            if row['邮箱']!='nan':
+            if not pd.isna(row['邮箱']):
                 isempty= False
                 if not self.validateEmail(row['邮箱']):
                     self.errorlogs.append('无效的邮箱。行%s' % (i))
@@ -103,7 +103,7 @@ class UserImport:
                         idxmail[row['邮箱']] = i
                 dictrow['email'] = row['邮箱']
             # phone validation
-            if row['手机号']!='nan':
+            if not pd.isna(row['手机号']):
                 isempty= False
                 if not self.validatePhone(row['手机号']):
                     self.errorlogs.append('无效的手机号。行%s' % (i))
@@ -114,7 +114,7 @@ class UserImport:
                         # push identification fields into keylist
                         idxphone[row['手机号']] = i
                 dictrow['phone'] = row['手机号']
-            if row['工号']!='nan':
+            if not pd.isna(row['工号']):
                 isempty= False
                 if row['工号'] in idxaccount:
                     self.errorlogs.append('工号重复。行%svs行%s' % (i,idxaccount[row['工号']]))
@@ -124,45 +124,45 @@ class UserImport:
                 dictrow['account_name'] = row['工号']
             # not null index
             if isempty:
-                if row['姓名']=='nan' and row['orgname']=='nan':
+                if pd.isna(row['姓名']) and pd.isna(row['orgname']):
                     #exit from empty row
                     break
                 else:
                     self.errorlogs.append('邮箱，工号，手机号至少填写一项。行%s' % (i))            
 
             # B.check other required fields
-            if row['姓名']=='nan':
+            if pd.isna(row['姓名']):
                 self.errorlogs.append('姓名不可为空白。行%s' % (i))
             else:
                 dictrow['nickname'] = row['姓名']
             if row['orgname']=='nan':
                 self.errorlogs.append('所属部门不可为空白。行%s' % (i))
             elif pd.isna(row['organization_id']):
-                self.errorlogs.append('所属机构填写不正确。行%s' % (i))
+                self.errorlogs.append('所属机构不存在。行%s' % (i))
             else:
                 dictrow['organization_id'] = row['organization_id']
             # C.check parser values
-            if row['部门主管']!='nan':
+            if not pd.isna(row['部门主管']):
                 dictrow['role_type'] = row['role_type']
-            if row['学历']!='nan':
+            if not pd.isna(row['学历']):
                 if pd.isna(row['education']):
                     self.errorlogs.append('学历填写不正确。行%s' % (i))
                 else:
                     dictrow['education_id'] = row['education']
                 importinfo['学历']=row['学历']
-            if row['年龄']!='nan':
+            if not pd.isna(row['年龄']):
                 if pd.isna(row['age']):
                     self.errorlogs.append('年龄填写不正确。行%s' % (i))
                 else:
                     dictrow['age_id'] = row['age']
                 importinfo['年龄']=row['年龄']                
-            if row['政治面貌']!='nan':
+            if not pd.isna(row['政治面貌']):
                 if pd.isna(row['politics']):
                     self.errorlogs.append('政治面貌填写不正确。行%s' % (i))
                 else:
                     dictrow['politics_id'] = row['politics']
                 importinfo['政治面貌']=row['政治面貌']
-            if row['司龄']!='nan':
+            if not pd.isna(row['司龄']):
                 if pd.isna(row['seniority']):
                     self.errorlogs.append('司龄填写不正确。行%s' % (i))
                 else:
