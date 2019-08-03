@@ -1409,7 +1409,7 @@ class UserAnswerQuestionView(WdCreateAPIView):
             if user.organization:
                 org = Organization.objects.get(assess_id=self.project_id,is_active=True,baseorganization_id=user.organization_id)
                 AssessUser.objects.get_or_create(assess_id=self.project_id, people_id=people.id)            
-                PeopleOrganization.objects.get_or_create(people_id=self.project_id, org_code=org.identification_code)
+                PeopleOrganization.objects.get_or_create(people_id=people.id,org_code=org.identification_code)
             finish_url = self.finish_survey(people)
             return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"finish_url": finish_url})
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"finish_url": None})
