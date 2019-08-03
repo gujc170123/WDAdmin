@@ -1360,6 +1360,7 @@ class UserAnswerQuestionView(WdCreateAPIView):
                 status=PeopleSurveyRelation.STATUS_FINISH
         ).exists():
             return general_json_response(status.HTTP_200_OK, ErrorCode.PERMISSION_FAIL)
+
         question_map = {}
         for question in self.questions:
             question_id = question.get("question_id", None)
@@ -1403,6 +1404,12 @@ class UserAnswerQuestionView(WdCreateAPIView):
         except:
             pass
         if finish_submit:
+            # create assess-user,people-organization relation
+            user = AuthUser.objects.get(id=people.user_id)
+            if user.organization:
+                org = Organization.objects.get(assess_id=self.project_id,is_active=True,baseorganization_id=user.organization_id)
+                AssessUser.objects.get_or_create(assess_id=self.project_id, people_id=people.id)            
+                PeopleOrganization.objects.get_or_create(people_id=self.project_id, org_code=org.identification_code)
             finish_url = self.finish_survey(people)
             return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"finish_url": finish_url})
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"finish_url": None})
@@ -4450,7 +4457,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                                                        status=PeopleSurveyRelation.STATUS_FINISH)
             if not o_qs.exists():
                 # 该他评没有自评
-                logger.info("%s for ZGC180 not self ZGC180" % personal_result_id)
+                err_logger.error("%s for ZGC180 not self ZGC180" % personal_result_id)                
                 return
             else:
 
@@ -4517,7 +4524,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                         # info["name1"] = dimension_id_name_map[str(substandard_score_map[substandard_id]["dimension_id"])]
                         break
         except Exception, e:
-            logger.error("get report data error, msg: %s" % e)
+            err_logger.error("get report data error, msg: %s" % e)
             return default_data, ErrorCode.INVALID_INPUT
         return default_data, ErrorCode.SUCCESS
 
@@ -4657,7 +4664,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                         # info["name1"] = dimension_id_name_map[str(substandard_score_map[substandard_id]["dimension_id"])]
                         break
         except Exception, e:
-            logger.error("get report data error, msg: %s" % e)
+            err_logger.error("get report data error, msg: %s" % e)
             return default_data, ErrorCode.INVALID_INPUT
         return default_data, ErrorCode.SUCCESS
 
