@@ -297,7 +297,7 @@ def line1(conn, aid):
     user_ids, user_people_id, user_people_index = query_user_id(conn, aid, name=u"查询参加人员")
     column_index_sv3, select_values_3 = get_user_info(user_ids)
     if not select_values_3:
-        return column_index, None
+        return column_index_sv3, None
     column_index, select_values = merge(user_people_id, select_values_3, user_people_index, column_index_sv3,
                                         on='user_id', del_column='user_id', name="merge user_id people_id")
     if not select_values:
