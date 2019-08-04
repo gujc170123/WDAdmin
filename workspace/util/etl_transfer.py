@@ -4,13 +4,13 @@ import os
 import sys
 import time
 import pandas as pd
-import pymysql
+import pymysql,datetime
 import functools
 from utils.logger import get_logger
 from celery import shared_task
 from collections import OrderedDict
 from wduser.models import AuthUser
-from workspace.models import FactOEI
+from workspace.models import FactOEI,AssessProgress
 from workspace.util.redispool import redis_pool
 from wduser.models import BaseOrganization, BaseOrganizationPaths
 from django.db import connection, connections
@@ -601,10 +601,15 @@ def main(AssessID, SurveyID, stime, reference):
 
     try:
         logger.info(u"ETL处理(KEY:etl_%s_%s)开始" % (AssessID, SurveyID))
-        # retrive connections manually due to django settings are not available in async thread
+        # retrive connections manually due to django settings are not available in async thread        
         admin_conn = connections['default']
         front_conn = connections['front']
-
+        assess = AssessProgress.objects.create(
+            inituser_id=1,
+            starttime = datetime.datetime.now().strftime("%Y-%m-%d"),
+            status=2,
+            assess_id=AssessID
+        )
         # Phase A Profile Collection
 
         # A.1 retrieve joiners with profiles
@@ -655,8 +660,14 @@ def main(AssessID, SurveyID, stime, reference):
     except Exception,err:
         # mission failed
         redis_pool.rpush(redis_key, time.time(), 3)
+        assess.finishtime=datetime.datetime.now().strftime("%Y-%m-%d")
+        assess.status= 3
+        assess.save()
         logger.error(u"ETL执行(KEY:etl_%s_%s)出错，error info：%s" % (AssessID, SurveyID, err))
     else:
         # mission accomplished
         redis_pool.rpush(redis_key, time.time(), 1)
+        assess.finishtime=datetime.datetime.now().strftime("%Y-%m-%d")
+        assess.status= 4
+        assess.save()
         logger.info(u"ETL处理(KEY:etl_%s_%s)结束" % (AssessID, SurveyID))

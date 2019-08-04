@@ -14,8 +14,8 @@ class AssessProgress(models.Model):
             (4,u'已完成'),)
     assess = models.OneToOneField(AssessProject,db_constraint=False,db_index=True,related_name='assess_progress')
     inituser = models.OneToOneField(AuthUser,db_constraint=False)
-    starttime = models.DateTimeField(verbose_name='Start Time')
-    finishtime = models.DateTimeField(verbose_name='End Time')
+    starttime = models.DateTimeField(verbose_name='Start Time',null=True)
+    finishtime = models.DateTimeField(verbose_name='End Time',null=True)
     status = models.IntegerField(verbose_name='Progress', choices=STATUS_CHOICES , default=1)
     
 class FactOEIFacet(models.Model):
