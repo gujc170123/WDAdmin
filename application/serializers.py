@@ -8,6 +8,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Application
         fields = '__all__'
+        depth = 1
 
 class ApplierSerializer(serializers.ModelSerializer):
     

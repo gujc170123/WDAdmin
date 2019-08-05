@@ -480,7 +480,7 @@ class AssessCreateView(AuthenticationExceptView, WdListCreateAPIView):
                                               enterprise_id=enterprise)
 
         for survey in surveys:
-            AssessSurveyRelation.objects.create(assess_id=assess.id,survey_id=survey)
+            AssessSurveyRelation.objects.create(assess_id=assess.id,survey_id=survey,people_view_report=True)
             qs = AssessProjectSurveyConfig.objects.filter_active(survey_id=survey,
                                                                     assess_id=0).all()
             qs2 = SurveyInfo.objects.filter_active(survey_id=survey,project_id=0).all()
@@ -551,7 +551,7 @@ class StdAssessListView(AuthenticationExceptView,WdCreateAPIView):
                                               enterprise_id=enterprise)
 
         for survey in surveys:
-            AssessSurveyRelation.objects.create(assess_id=assess.id,survey_id=survey)
+            AssessSurveyRelation.objects.create(assess_id=assess.id,survey_id=survey,people_view_report=True)
             qs = AssessProjectSurveyConfig.objects.filter_active(survey_id=147,
                                                                     assess_id=0).all()
             qs2 = SurveyInfo.objects.filter_active(survey_id=survey,project_id=0).all()

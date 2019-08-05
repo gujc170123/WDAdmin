@@ -199,7 +199,7 @@ class AssessViewset(CustomModelViewSet):
 
         for survey in surveys:
             #create assess-survey relation
-            AssessSurveyRelation.objects.create(assess_id=assess_id,survey_id=survey)
+            AssessSurveyRelation.objects.create(assess_id=assess_id,survey_id=survey,people_view_report=True)
             qs = AssessProjectSurveyConfig.objects.filter_active(survey_id=survey,
                                                                 assess_id=0).all()
             qs2 = SurveyInfo.objects.filter_active(survey_id=survey,project_id=0).all()

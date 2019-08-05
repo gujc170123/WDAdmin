@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 from rest_framework.response import Response
 from rest_framework import status,generics
 from django_filters import rest_framework as filters
@@ -6,7 +7,8 @@ from utils.views import CustomModelViewSet
 from utils.response import general_json_response, ErrorCode
 from application import models,serializers
 from wduser.serializers import EnterpriseBasicSerializer
-from wduser.models import EnterpriseInfo,BaseOrganization
+from wduser.models import EnterpriseInfo,BaseOrganization,AuthUser
+from assessment.views import get_mima
 
 class ChoiceView(GenericAPIView):
 
@@ -69,17 +71,30 @@ class CustomerModelView(CustomModelViewSet):
         instance.save()
     
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+        data = request.data.copy()
+        serializer = self.get_serializer(data=data)
         is_valid = serializer.is_valid(raise_exception=False)
         if not is_valid:
             return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE, serializer.errors)            
         self.perform_create(serializer)
       
-        BaseOrganization.objects.create(
+        org = BaseOrganization.objects.create(
             is_active=True,
-            name = serializer.data['cn_name'],
+            name = data['cn_name'],
             parent_id=0,
-            enterprise_id=serializer.data['id']
-        )
+            enterprise_id=serializer.data['id'])
 
-        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)          
+        if data['email']:
+            AuthUser.objects.create(
+                username='admin' +  str(serializer.data['id']),
+                account_name='administrator',
+                nickname='后台管理员',
+                password=get_mima('123456'),            
+                email=data['email'],
+                is_superuser=False,
+                role_type=300,
+                is_staff=False,
+                organization=org
+            )
+
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)
