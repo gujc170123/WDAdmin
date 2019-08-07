@@ -69,6 +69,7 @@ Reports = {
     'ppsy2019':"http://reportsrv.iwedoing.com/api/render?url=http://report.iwedoing.com/ProfessionalPsychology/?people_result_id=%s&emulateScreenMedia=false",
     'ls2019':"http://reportsrv.iwedoing.com/api/render?url=http://report.iwedoing.com/LeaderStyle/?people_result_id=%s&emulateScreenMedia=false",
     'wv2019':"http://reportsrv.iwedoing.com/api/render?url=http://report.iwedoing.com/WorkValues/?people_result_id=%s&emulateScreenMedia=false",
+    'pc2019':"http://reportsrv.iwedoing.com/api/render?url=http://report.iwedoing.com/PsychologicalCapital/?people_result_id=%s&emulateScreenMedia=false",    
 }
 #
 # CLIENT_HOST = 'http://wd-user.exuetech.com'

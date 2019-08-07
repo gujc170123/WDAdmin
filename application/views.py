@@ -38,6 +38,11 @@ class ApplicationModelViewset(CustomModelViewSet):
     queryset = models.Application.objects.all()
     serializer_class = serializers.ApplicationSerializer
 
+class ApplicationModelCRMViewset(CustomModelViewSet):
+
+    queryset = models.Application.objects.all()
+    serializer_class = serializers.ApplicationCRMSerializer
+
 class ApplierModelViewset(CustomModelViewSet):
 
     queryset = models.Applier.objects.all()

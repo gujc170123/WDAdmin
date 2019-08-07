@@ -1262,7 +1262,7 @@ class UserAnswerQuestionView(WdCreateAPIView):
             )
 
     def finish_survey(self, people):
-        reports = {70:'wv2019',89:'disc2019',96:'mbti2019',97:'ls2019',98:'ppsy2019',100:'co2019',147:'peoi2019',160:'mc2019',163:'peoi2019'}
+        reports = {70:'wv2019',89:'disc2019',96:'mbti2019',97:'ls2019',98:'ppsy2019',99:'pc2019',100:'co2019',147:'peoi2019',160:'mc2019',163:'peoi2019'}
         if self.block_id == 0:
             qs = PeopleSurveyRelation.objects.filter_active(
                 people_id=people.id,
@@ -1271,7 +1271,7 @@ class UserAnswerQuestionView(WdCreateAPIView):
                 role_type=self.role_type,
                 evaluated_people_id=self.evaluated_people_id
             )
-            if self.survey_id in [70,89,96,97,98,100,147,160,163]:
+            if self.survey_id in [70,89,96,97,98,99,100,147,160,163]:
                 for o in qs:
                     o.status=PeopleSurveyRelation.STATUS_FINISH
                     o.report_status=PeopleSurveyRelation.STATUS_FINISH
@@ -1319,7 +1319,7 @@ class UserAnswerQuestionView(WdCreateAPIView):
                         role_type=self.role_type,
                         evaluated_people_id=self.evaluated_people_id
                     )
-                    if self.survey_id in [70,89,96,97,98,100,147,160,163]:
+                    if self.survey_id in [70,89,96,97,98,99,100,147,160,163]:
                         for o in qs:
                             o.status=PeopleSurveyRelation.STATUS_FINISH
                             o.report_status=PeopleSurveyRelation.STATUS_FINISH
@@ -1467,7 +1467,209 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
         'LS2019': 'self.getLS2019',
         # WV2019
         'WV2019': 'self.getWV2019',
+        # PC2019
+        'PC2019': 'self.getPC2019',        
     }
+
+    def getPC2019(self, personal_result_id):
+
+        ordict_quota = {'quota':[],'score':[]}
+        dict_ranking = {}
+        dict_ranking[1]=[]
+        dict_ranking[2]=[]
+        dict_ranking[3]=[]
+        dict_detail={}
+        dict_detail[u"动机取向"]={"scores":[],"quotas":[],"suggest":[]}
+        dict_detail[u"认知取向"]={"scores":[],"quotas":[],"suggest":[]}
+        dict_detail[u"意志取向"]={"scores":[],"quotas":[],"suggest":[]}
+        dict_detail[u"情绪取向"]={"scores":[],"quotas":[],"suggest":[]}
+        dict_detail[u"任务取向"]={"scores":[],"quotas":[],"suggest":[]}
+        dict_detail[u"人际取向"]={"scores":[],"quotas":[],"suggest":[]}
+        dict_dimension_qutoa = {
+            u"进取性":u"动机取向",
+            u"支配性":u"动机取向",
+            u"亲和性":u"动机取向",
+            u"开放性":u"认知取向",
+            u"乐观性":u"认知取向",
+            u"变通性":u"认知取向",
+            u"内省性":u"认知取向",
+            u"独立性":u"意志取向",
+            u"坚韧性":u"意志取向",
+            u"自律性":u"意志取向",
+            u"悦纳性":u"情绪取向",
+            u"稳定性":u"情绪取向",
+            u"自信心":u"情绪取向",
+            u"尽责性":u"任务取向",
+            u"容人性":u"人际取向",
+            u"利他性":u"人际取向",
+        }
+        score_social_desirability = 0
+
+        default_data = {
+            "report_type": "PC2019",
+            "msg": {
+                "Name": "",
+                "Gender": "",
+                "TestTime": "",
+                "Age":"",
+                "CompletionTime":"",
+                "Validity":"",                
+                "scores":ordict_quota,
+                "ranks":dict_ranking,
+                "detail":dict_detail,
+            }}
+
+        liststd = [75,30,0]
+        dict_std = {u"进取性":{"avg":9.9218 ,"std":2.8134 },
+                    u"支配性":{"avg":7.8741 ,"std":2.2837 },
+                    u"亲和性":{"avg":10.7492 ,"std":2.2238 },
+                    u"开放性":{"avg":11.4568 ,"std":2.2386 },
+                    u"乐观性":{"avg":10.7943 ,"std":2.3241 },
+                    u"变通性":{"avg":9.3143 ,"std":2.3755 },
+                    u"内省性":{"avg":9.8525 ,"std":2.3303 },
+                    u"独立性":{"avg":10.5365 ,"std":2.4590 },
+                    u"坚韧性":{"avg":8.3136 ,"std":2.7231 },
+                    u"自律性":{"avg":7.3937 ,"std":2.1992 },
+                    u"悦纳性":{"avg":11.2215 ,"std":2.4083 },
+                    u"稳定性":{"avg":8.3257 ,"std":3.2422 },
+                    u"自信心":{"avg":10.9360 ,"std":2.7136 },
+                    u"尽责性":{"avg":11.3242 ,"std":2.0988 },
+                    u"容人性":{"avg":8.2866 ,"std":2.1232 },
+                    u"利他性":{"avg":11.0449 ,"std":2.2027}}
+
+        dict_table_suggestion = {
+            u"进取性":{1:u"具有强烈的渴望成功的愿望，勇于挑战现状，始终从自我价值的实现的角度设定自己的理想抱负和奋斗目标，并以此来激励自己，作为目标达成的动力，积极付出、努力行动，不断完善和超越。（极端高分：可能过于看重自己个人的成就，难以容忍些许的不足，给人以工作狂的印象。）",
+                        2:u"有一定的追求成功的愿望，一般不会满足于现状，能够给自己设定具有一定挑战性的目标，为了目标的达成能够付出和努力行动。有时需要外部的一些肯定或激励才会持续地投入追求更高的目标和不断的完善和超越。",
+                        3:u"获得成功的愿望稍差，不太喜欢挑战，容易安于现状，不会主动设置较高的目标，不能调动自身的能量来投入，在困难和挑战面前，不愿付出努力，容易放弃，需要依赖外部的刺激来驱动自己，前进动力不足。"},
+            u"支配性":{1:u"工作中乐于支配和获得主导地位，喜欢以自己的思想和意图影响和改变他人和环境，喜欢组织、安排他人按自己的意愿行事，不愿受到约束。",
+                        2:u"工作中能够表现出一定的主导意愿，愿意通过自己的思想、意图影响他人和环境，能够进行组织、安排，面对外部环境的约束时，也会表现出相应的妥协。",
+                        3:u"工作中以自己的思想、意图影响控制他人和环境的愿望表现不充分，不愿意进行主导和影响、控制和安排，愿意服从和跟随，愿意接受安排和约束。"},
+            u"亲和性":{1:u"人际交往中，设身处地为他人着想，善解人意，言行举止透露出对他人的信任和尊重，待人热情，受人欢迎，乐于助人、合作，注重与人建立良好的人际关系。（极端高分：可能过于关注给别人留下好印象而过分取悦他人，甚至有时会放弃原则或过度迁就他人。）",
+                        2:u"人际交往中，能够从他人的角度考虑问题，理解、尊重并信任他人，待人比较热情，能够关注自己给人留下的印象，在别人需要时能够提供帮助和支持，愿意与他人打交道，进行合作和建立关系。",
+                        3:u"人际合作取向低，易于自我中心。与他人交往、参加社交活动以及建立良好关系的愿望很弱，不能从他人的角度思考问题，较难理解他人的需求和感受，不在乎是否受到欢迎，不会主动提供帮助，较难相处，亲和力较差。"},
+            u"开放性":{1:u"不局限于既有的观念、思维模式的束缚，主动尝试新事物，主动接纳变化和多样性，对不确定性的模糊情境有较强的容忍力，善于根据情境的变化适宜改变和修正自己的观点，实现自己持续性的成长。",
+                        2:u"通常情况下能够摆脱原有思维模式或习惯的束缚，愿意尝试新事物，不排斥变化和多样性，对不确定性的模糊情境有一定的适应性，愿意根据情境的变化适宜改变和修正自己的观点，实现自己的成长河进步。",
+                        3:u"通常情况下局限于原有思维模式或习惯，比较保守，不愿接纳和尝试新事物，排斥多样性，不能容忍不确定性的模糊情境，对改革或变化持批驳和抵触，难以根据情境的变化适宜改变和修正自己的观点。"},
+            u"乐观性":{1:u"始终从正面积极的角度捕捉信息，看待各类事物、现象、问题，正面解释和对待对工作与生活中的得失，相信一切都会变得更好，对未来充满希望，踌躇满志并积极准备和投入。（极端高分：可能过于关注事物好的一面而过滤不好的一面，甚至伴随盲目的乐观。）",
+                        2:u"通常会从正面的角度看待事物、现象和问题，对待工作和生活中的得失能够从正面的角度进行解释，能够从积极的方面憧憬未来，以比较愉悦的心情投入到工作和生活中，有时会受到负面信息的影响。",
+                        3:u"通常以消极的视角看待周围事物，对坏消息比较敏感，计较工作与生活中的得失，难以从正面的角度进行解释，对未来缺乏信心，较为悲观，有时会表现得很无助。"},
+            u"变通性":{1:u"问题解决过程中，非常注重从不同的角度进行思考，灵活地转换思路，探索多样的问题解决策略，形成适宜解决方案并进行调整，灵活应对各种突发事件。",
+                        2:u"问题解决过程中，具有从不同的角度考虑问题的习惯，在问题不能有效解决时能够进行思路的转换，注意提供问题解决的备选方案，也能在过程中进行调整并应对突发的事件。",
+                        3:u"问题解决过程中，不具有从多角度思考问题的习惯，易于受既有框架和套路的局限和影响，问题解决的策略比较单一，对计划的执行较为僵化，突发事件应对的灵活性不足。"},
+            u"内省性":{1:u"工作生活中，经常积极吸纳内外部的信息，主动审视自己行动所隐含的信念、观点，检查自己的思维过程和问题解决策略，反思自己经验的适应性，勇于剖析自己的不足，并进行总结、积累、校正、改进、完善。",
+                        2:u"工作生活中，能够通过内外部信息的吸纳来审视自己行动所隐含的信念、观点，对自己的思维过程、问题解决策略以及经验的适用性进行一定的反思，基本能够正确对待自己的不足，并进行相应的总结、积累、校正、改进。",
+                        3:u"工作生活中，不能接受外部提供的反馈信息，难以审视自己行动所隐含的信念、观点，不能对自己的思维过程、问题解决策略以及经验的适用性进行反思，回避自己的问题，极少进行总结、积累、校正和改进。"},
+            u"独立性":{1:u"具有自觉明显的目的性，充分认识到行动的意义，能够独立思考，有自己独立的立场、观点和主见，重要的问题能够自主决定并支配自己的行动，能够对自己的行动负责，愿意接受有益的建议和批评。",
+                        2:u"能够明确自己行动的目的，能够独立思考，拥有自己的立场、观点，一定程度上能够自主决定，支配自己的言行并负责，有时会考虑并受到外界影响，能够接收别人的建议和批评。",
+                        3:u"行动时缺乏自己明确的目标性，倾向于依靠外在参照来作为行动的依据，回避一个人面对重要问题，较难独立判断和自主决定，没有主见，希望别人给自己拿主意，自己的立场和观点易于改变，屈从于别人的影响。"},
+            u"坚韧性":{1:u"面对任务情境，勇于面对困难、挫折和失败，坚定地专注于既定的目标，积极寻求解决任务的办法，自觉地抵制一切不合目的的主客观诱因的干扰，具有锲而不舍、不达目的决不罢休的决心，坚信自己的能力，极少受到失望、沮丧等负面情绪的影响，有很强的心理承受能力。",
+                        2:u"面对任务情境，能够面对困难、挫折和失败，少有回避困难、挫折和失败的倾向，能够关注既定目标的完成，寻求解决办法，不会过分强调任务的困难和不可完成性，极少受到失望、沮丧等负面情绪的影响，有较强的心理承受能力。",
+                        3:u"面对任务情境，具有明显的回避困难、挫折和失败的倾向，担心失败，不能坚守既定的目标，缺乏自信，消极退缩，常常将潜在困难看得比实际上更严重，往往感到沮丧和失望，缺乏心理承受能力。"},
+            u"自律性":{1:u"无需外在监督就能自觉控制自己不合理的需求和欲望，抗拒来自外部和内部的诱因的干扰，克制自己不应有的情绪和冲动行为，主动严格约束自己的言行举止，自觉遵守纪律。",
+                        2:u"基本能够控制自己不合理的需求、欲望，偶尔需要在提醒情况下，抗拒来自外部和内部的诱因的干扰，克制自己不应有的情绪和冲动行为，有时在外部监督条件下能够束自己的言行举止，遵守纪律。",
+                        3:u"自制力较弱，一般不能控制自己不合理的需求、欲望以及不良情绪冲动，即使有外在强制性监督，也难于约束自己的言行举止，行为难以预测，缺乏组织性、纪律性，不遵守行为规范。"},
+            u"悦纳性":{1:u"坦然地接受自己的过去，客观地认识和评估自己的能力，对自己进行正面积极的肯定，欣赏自己并能积极面对自身的缺点和不足，并努力改正。",
+                        2:u"对自己的过去经历能够接受，基本上对自己有客观的认识，能够了解自己的能力和不足，多数情况下对自己能够进行正面的肯定，欣赏自己且不会回避自己的不足，适当调整修正可以改变的行为。",
+                        3:u"对自己的过去经历不能坦然接受，对自己的认识不够客观，要么夸大自己的能力，否认自己的不足，要么忽略自己的优势，夸大自己的缺陷，产生消极的自我评价，不能正面自己的不足并进行调整和修正。"},
+            u"稳定性":{1:u"情绪稳定，很少为外界因素影响而波动，能够合理地控制和调节自己的情绪状态，情绪积极，很少为负面情绪所困扰。",
+                        2:u"情绪较为稳定，一般情况下很少为外界因素影响而波动，具有一定控制和调节自己的情绪状态的能力，通常能够保持情绪的积极状态，没有较大的负面事件的情况下，很少为负面情绪所困扰。",
+                        3:u"情绪不太稳定，易受很小的外界因素影响，不能很好地认识、把握、调节自己的情绪，经常为负面情绪所困扰。"},
+            u"自信心":{1:u"对自己始终保持持续肯定性评价，认为自己有能力解决问题的信念，愿意参与竞争或挑战，不盲从权威，有克服困难、达成目标勇气和决心，具有较强的坚持力。",
+                        2:u"基本上能够对自己肯定性评价，对自己的能力比较有信心。不会回避竞争，不大会盲从权威，一般情况下，相信自己有能力解决问题，克服困难，达成目标。",
+                        3:u"对自己的能力缺乏信心，回避竞争和挑战，自卑，认为自己不如别人，缺乏克服困难的决心和勇气，依赖他人，易于放弃。"},
+            u"尽责性":{1:u"面对不明确的任务或职责时，总是能主动承担并努力完成，尽心尽责，一丝不苟，有始有终，工作中从不给自己找借口，从不降低标准，勤勉踏实，值得信赖。",
+                        2:u"工作中不会推托自己应承担的任务和责任，也能完成工作职责的要求，在外部要求明确或在一定的激励和监督的情况下，会按期按标准完成任务，有时未能完成任务时会从客观上找原因，有时也会感到暂时的不安。",
+                        3:u"在严格的监督和制约下才能履行本职工作，但经常推托回避任务和责任的承担，工作中经常降低标准，敷衍了事，易于松懈和放弃，工作结果总是不尽人意，经常为自己寻找借口，难以让人信赖。"},
+            u"容人性":{1:u"人际交往中，为人宽厚大度，善于包容他人的缺点和不足，以博大的胸怀包容别人的冒犯或过错，善于接纳不同的意见、观点，善于与不同风格的人交往，不拘泥于过去的成见和是非，着眼于未来的关系发展。",
+                        2:u"人际交往中，比较宽厚，多数情况下能够包容他人的缺点和不足，甚至不太计较别人无心的冒犯或不敬，一般不会求全责备、苛求他人，能够与持不同观点的人以及风格不同的人进行交往和发展关系。",
+                        3:u"人际交往中，较为在意别人的不足和缺点，容易求全责备和计较，难以容忍别人的冒犯或不敬，难以接受不同观点的人以及与风格不同的人进行交往，容易把对别人的偏见带入交往中，甚至在小事上和别人纠缠不清，不能从未来发展的角度与人建立和发展关系。"},
+            u"利他性":{1:u"具有强烈的亲社会取向，主动为他人着想，真诚、无私地帮助他人，自觉自愿地为社会服务，维护集体利益，具有强烈的社会责任感。",
+                        2:u"通常情况下，能够关注别人，愿意提供帮助，行为符合社会的期望，一般能够将集体利益放在个人利益之前，有一定的社会责任感，也会注重互惠互利的利益交换。",
+                        3:u"多数情况下较为注重利益的交换，较少表现无私助人的行为，较多地关注个人的利益而不是集体的利益，有时甚至会做出不符合社会期望的举动。"}}
+
+        frontname = settings.DATABASES['front']['NAME']
+        sql_query = "select left(b.tag_value,2), sum(a.score) as score from\
+            (select question_id,answer_score score\
+            from " + frontname + ".front_peoplesurveyrelation a,\
+            " + frontname + ".front_userquestionanswerinfo b\
+            where  a.id=%s and a.survey_id=b.survey_id and a.people_id=b.people_id\
+            and a.project_id=b.project_id and a.is_active=true and b.is_active=true) a,research_questiontagrelation b\
+            where a.question_id=b.object_id and b.tag_id=54\
+            and b.is_active=True group by left(b.tag_value,2)"
+
+        try:
+            people_result = PeopleSurveyRelation.objects.get(id=personal_result_id)
+            if people_result.status != PeopleSurveyRelation.STATUS_FINISH:
+                return default_data, ErrorCode.INVALID_INPUT
+            if not people_result.report_url:
+                people_result.report_url= settings.Reports['pc2019'] % (personal_result_id)
+                people_result.report_status=PeopleSurveyRelation.STATUS_FINISH
+                people_result.save()
+            people = People.objects.get(id=people_result.people_id)
+            default_data["msg"]["Name"] = people.display_name
+            default_data["msg"]["Gender"] = people.get_info_value(u"性别", u"未知")
+            default_data["msg"]["Age"] = people.get_info_value(u"年龄", None)
+            if not default_data["msg"]["Age"]:
+                default_data["msg"]["Age"] = u"未知"
+            else:
+                default_data["msg"]["Age"] += u"岁"
+            if people_result.finish_time:
+                default_data["msg"]["TestTime"] = people_result.finish_time.strftime(u"%Y年%m月%d日")
+            else:
+                default_data["msg"]["TestTime"] = time.strftime(u"%Y年%m月%d日", time.localtime())
+            used_time = people_result.used_time
+            default_data["msg"]["CompletionTime"] = u"%s分%s秒" % (used_time / 60, used_time % 60)
+            dictscore = {}
+            dict_quota = {}
+            with connection.cursor() as cursor:
+                cursor.execute(sql_query, [personal_result_id])
+                columns = [col[0] for col in cursor.description]
+                for row in cursor.fetchall():
+                    dictscore[row[0]]=row[1]
+            
+            dict_quota[u"变通性"]=dictscore["BT"]
+            dict_quota[u"独立性"]=dictscore["DL"]
+            dict_quota[u"坚韧性"]=dictscore["JR"]
+            dict_quota[u"尽责性"]=dictscore["JZ"]
+            dict_quota[u"进取性"]=dictscore["JQ"]
+            dict_quota[u"开放性"]=dictscore["KF"]
+            dict_quota[u"乐观性"]=dictscore["LG"]
+            dict_quota[u"利他性"]=dictscore["LT"]
+            dict_quota[u"内省性"]=dictscore["NX"]
+            dict_quota[u"亲和性"]=dictscore["QH"]
+            dict_quota[u"容人性"]=dictscore["RR"]
+            dict_quota[u"稳定性"]=dictscore["WD"]
+            dict_quota[u"悦纳性"]=dictscore["YN"]
+            dict_quota[u"支配性"]=dictscore["ZP"]
+            dict_quota[u"自律性"]=dictscore["ZL"]
+            dict_quota[u"自信心"]=dictscore["ZX"]
+            score_social_desirability=dictscore["CX"]
+            if score_social_desirability>=4:
+                default_data["msg"]["Validity"]=u"不能按照自己的实际情况如实做答测验问题，测验结果不能很好地反映其自身的特点。"
+            else:
+                default_data["msg"]["Validity"]=u"回答真实可信，能够按照自己的实际情况如实做答，测验结果能够反映其自身的特点。"
+            for key,value in dict_std.items():                
+                zscore=(dict_quota[key]-value['avg'])*1.00/value['std']
+                dict_quota[key]=round(normsdist(zscore)*100.00,0)
+            sortedlist = sorted(dict_quota.items(), key=lambda d:d[1], reverse = True)
+            for tp in sortedlist:                
+                ordict_quota['quota'].append(tp[0])
+                ordict_quota['score'].append(tp[1])
+                idx = 1
+                for member in liststd:
+                    if tp[1] >= member:
+                        dict_ranking[idx].append(tp[0])
+                        dimension = dict_dimension_qutoa[tp[0]]
+                        dict_detail[dimension]["scores"].append(tp[1])
+                        dict_detail[dimension]["quotas"].append(tp[0])
+                        dict_detail[dimension]["suggest"].append(dict_table_suggestion[tp[0]][idx])
+                        break
+                    idx += 1
+            del dict_ranking[2]
+        except Exception, e:
+            err_logger.error("get report data error, msg: %s" % e)
+            return default_data, ErrorCode.INVALID_INPUT
+        return default_data, ErrorCode.SUCCESS  
 
     def getWV2019(self, personal_result_id):
 
