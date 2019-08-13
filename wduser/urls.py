@@ -7,7 +7,7 @@ from wduser.views import LoginView, EnterpriseListCreateView, OrganizationListCr
     OrganizationImportExportView, EnterpriseOpsView, UserAdminRoleListCreateView, PermissionListView, \
     UserAdminRoleDetailView, RolePermissionAPIView, RoleUserListCreateView, RoleUserDetailView, UserRoleListCreateView, \
     RoleUserBusinessListCreateView, ActiveCodeCheckView, ActiveCodePwdSetView, UserPwdForgetView, \
-    ForgetVerifyCodeCheckView, RoleUserPartListCreateView, Rank, Sequence
+    ForgetVerifyCodeCheckView, RoleUserPartListCreateView, Rank, Sequence, Migrate, MergeOldProfile
 
 urlpatterns = [
     # 登录接口
@@ -57,4 +57,8 @@ urlpatterns = [
     # 序列、层级
     url(r"^rank/(?P<org_id>\d+)/", Rank.as_view()),
     url(r"^sequence/(?P<org_id>\d+)/", Sequence.as_view()),
+    #migrate
+    url(r"^migrate/(?P<assess_id>\d+)/", Migrate.as_view()),
+    #merge profiles
+    url(r"^mergeoldprofile/(?P<assess_id>\d+)/", MergeOldProfile.as_view()),
 ]

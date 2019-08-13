@@ -264,7 +264,7 @@ class FactOEI(models.Model):
     N23 = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     N24 = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     
-    hidden = models.BooleanField(default=False)
+    hidden = models.BooleanField(default=False,db_index=True)
 
     class Meta:
         unique_together = ("DW_Person_ID", "AssessKey")

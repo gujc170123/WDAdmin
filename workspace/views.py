@@ -768,15 +768,15 @@ class ManagementAssess(AuthenticationExceptView,WdCreateAPIView):
                     left join wduser_dim_age d1\
                     on c.age_id=d1.id\
                     left join wduser_dim_education d2\
-                    on c.education_id=d1.id\
+                    on c.education_id=d2.id\
                     left join wduser_dim_politics d3\
-                    on c.politics_id=d1.id\
+                    on c.politics_id=d3.id\
                     left join wduser_dim_seniority d4\
-                    on c.seniority_id=d1.id\
+                    on c.seniority_id=d4.id\
                     inner join wduser_baseorganization e\
                     on a.child_id=e.id\
                     where a.parent_id=" + org + " and a.assess_id="+ ass+ "\
-                    and c.is_active=true"
+                    and c.is_active=true and c.is_staff=true"
         if keyword:
             sql_query += " and (c.nickname like '%" + keyword + "%' or c.account_name  like '%" + keyword + "%' or c.email like '%" + keyword +  "%' or c.phone like '%" + keyword + "%')"
         sql_query += " order by a.child_id,joined,c.nickname,c.email,c.phone limit " + str(startPos) + ","+ str(endPos)

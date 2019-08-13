@@ -183,7 +183,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'utils.pagination.WdPageNumberPagination',
     'PAGINATE_SIZE_PARAM': 'page_size_count',
     'PAGEPARAM_NAME': 'page',
-    'PAGE_SIZE': 40,
+    'PAGE_SIZE': 100,
     #
     'ORDER_BY_NAME': 'order_by',
     'FILTER_BACKEND': 'rest_framework.filters.DjangoFilterBackend',

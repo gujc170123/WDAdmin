@@ -209,15 +209,18 @@ def merge(left, right, lindex, rindex, how='inner', on=None, left_on=None, right
 def query_user_id(conn, aid, name):
     sql = """
     SELECT
-        user_id, id people_id
+        user_id, a.id people_id
         FROM wduser_people a,
         (SELECT c.people_id FROM 
         assessment_assessproject a,
         assessment_assessuser c
         where c.is_active=true
         and a.id=%s
-        and c.assess_id=a.id) b
-        where a.is_active=true and a.id=b.people_id
+        and c.assess_id=a.id) b,
+        wduser_authuser c
+        where a.is_active=true and a.id=b.people_id and 
+        c.id=a.user_id and c.is_active=true 
+        and c.is_staff=true
         """
     res = get_data(conn, sql, aid)
     user_id = [i[0] for i in res]
@@ -392,8 +395,8 @@ def get_scale_and_dimension(person_score_list):
               sum(person_score_list[103: 106]) * 20 / 3 +
               sum(person_score_list[106: 109]) * 20 / 3 +
               sum(person_score_list[109: 112]) * 20 / 3) / 5
-    scale2 = 0  # 目前没有该项
-    scale3 = 0  # 目前没有该项
+    scale2 = person_score_list[112] * 20
+    scale3 = sum(person_score_list[106: 109]) * 20 / 3
     dimension1 = ((person_score_list[16] + person_score_list[17]) * 20 / 2 +
                   person_score_list[18] * 20 +
                   person_score_list[19] * 20 +

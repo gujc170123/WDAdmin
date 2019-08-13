@@ -318,7 +318,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                 avg_model = FactOEI.objects.complex_filter(child_query_dict).aggregate(Avg("model"))
                 model_score.append(round(avg_model["model__avg"], 2))
 
-            types = [0 for num in xrange(6)]
+            types = [0 for num in xrange(7)]
             for score in model_score:
                 if score <= 40:
                     types[0] += 1

@@ -29,8 +29,8 @@ class ApplicationSerializer(serializers.ModelSerializer):
 
 class ApplicationCRMSerializer(serializers.ModelSerializer):
 
-    applier = ApplierSerializer()
-    event = EventSerializer()
+    applier = ApplierSerializer(required=False,read_only=True)
+    event = EventSerializer(required=False,read_only=True)
     progress_text = serializers.CharField(source='get_progress_display',read_only=True)
 
     class Meta:
@@ -40,5 +40,5 @@ class ApplicationCRMSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         instance.progress = validated_data.get('progress', instance.progress)
         instance.save()
-
+        
         return instance

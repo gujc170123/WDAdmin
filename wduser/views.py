@@ -12,7 +12,7 @@ from django.db import connection
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser
 
-from assessment.models import AssessProject, AssessOrganization
+from assessment.models import AssessProject, AssessOrganization,AssessJoinedOrganization
 from survey.models import Survey
 from utils import get_random_int, get_random_char
 from utils.aliyun.email import EmailUtils
@@ -25,7 +25,7 @@ from utils.response import general_json_response, ErrorCode
 from utils.views import WdCreateAPIView, AuthenticationExceptView, WdListCreateAPIView, WdRetrieveUpdateAPIView, \
     WdDestroyAPIView, WdExeclExportView, WdListAPIView
 from wduser.models import AuthUser, EnterpriseInfo, Organization, UserAdminRole, BusinessPermission, RoleUser, \
-    RoleUserBusiness, RoleBusinessPermission, PeopleOrganization
+    RoleUserBusiness, RoleBusinessPermission, PeopleOrganization, BaseOrganization, BaseOrganizationPaths
 from wduser.serializers import UserBasicSerializer, EnterpriseBasicSerializer, OrganizationBasicSerializer, \
     OrganizationDetailSerializer, UserAdminRoleSerializer, RoleBusinessPermissionSerializer, RoleUserSerializer, \
     UserAdminRoleDetailSerializer, RoleUserBasicSerializer, RoleUserBasicListSerializer, \
@@ -939,3 +939,102 @@ class Sequence(APIView):
             return Response({"code": ErrorCode.SUCCESS, "data": serializer.errors})
 
 
+class Migrate(APIView):
+
+    def post(self, request, assess_id):
+        
+        organizations = Organization.objects.filter_active(assess_id=assess_id).order_by('parent_id','id')
+        enterprise_id = AssessProject.objects.get(id=assess_id).enterprise_id
+        tmpparent = 0
+        parent = 0
+        for member in organizations:
+            if member.parent_id:
+                if tmpparent!=member.parent_id:
+                    tmpparent = member.parent_id
+                    parent = Organization.objects.get(pk=member.parent_id).baseorganization_id
+            base = BaseOrganization.objects.create(**{"name":member.name, "enterprise_id":enterprise_id,"parent_id":parent})                
+            member.baseorganization_id=base.id
+            member.save()
+
+        strinsertorgsql = "INSERT INTO assessment_assessjoinedorganization SELECT NULL,%s,baseorganization_id\
+                            FROM wduser_organization WHERE assess_id=%s and is_active=true"
+        strinsertorgpathsql = "INSERT INTO assessment_assessorganizationpathssnapshots\
+	                        (`id`,`depth`,`assess_id`,`child_id`,`parent_id`)\
+                            SELECT NULL,A.depth,%s,A.child_id,A.parent_id\
+                            FROM wduser_baseorganizationpaths A,wduser_baseorganization B\
+                            WHERE B.enterprise_id=%s AND A.parent_id=B.id\
+		                    AND B.is_active=True"
+        with connection.cursor() as cursor:
+            cursor.execute(strinsertorgsql, [assess_id,assess_id,])
+            cursor.execute(strinsertorgpathsql, [assess_id,enterprise_id,])
+        return Response({"code": ErrorCode.SUCCESS, "data": {}})
+
+class MergeOldProfile(APIView):
+
+    def post(self, request, assess_id):
+        
+        fields = request.data.get('fields',None)
+        alias = request.data.get("alias",None)
+        transformtables = request.data.get("transformtables",None)
+
+        if not fields or not alias or not transformtables:
+            return Response({"code": ErrorCode.INVALID_INPUT, "data": {}})
+
+        strprofilesql = "select user_id,max(c.baseorganization_id),max(more_info) from wduser_people a,\
+                            wduser_peopleorganization b,wduser_organization c\
+                            where a.id=b.people_id and b.org_code=c.identification_code\
+                            and c.assess_id=%s and a.is_active=true and b.is_active=true and c.is_active=true\
+                            group by user_id"
+        import datetime
+        from django.conf import settings
+        from pymysql import connect
+        hostname = settings.DATABASES['default']['HOST'].encode("utf-8")
+        port = int(settings.DATABASES['default']['PORT'])
+        user = settings.DATABASES['default']['USER'].encode("utf-8")
+        passwd = settings.DATABASES['default']['PASSWORD'].encode("utf-8")
+        db = settings.DATABASES['default']['NAME'].encode("utf-8")
+        importlot = int((datetime.datetime.now()-datetime.datetime(1970,1,1)).total_seconds())
+        table_name = "tmpmerge" + str(importlot)
+        fieldscp = fields[:]
+        del fieldscp[0]
+        table_fields  ="(user_id int(11)," + \
+                        ','.join([column + ' int(11) DEFAULT NULL' for column in fieldscp]) + \
+                        ",PRIMARY KEY (`user_id`) USING BTREE)"
+        conn = connect(host=hostname, port=port, user=user, passwd=passwd, db=db, use_unicode=True,charset='utf8')
+        import traceback
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute('drop table if exists {}'.format(table_name))
+                cursor.execute("create table {} {}".format(table_name, table_fields))
+                cursor.execute(strprofilesql, [assess_id,])
+                columns = [column[0] for column in cursor.description]
+                insertvalues = []
+                templatedatalist = [None for p in fields]
+                for row in cursor.fetchall():                                    
+                    transformdatalist = templatedatalist[:]
+                    transformdatalist[0] = row[0]
+                    transformdatalist[1] = row[1]                    
+                    if row[2]:
+                        profiles = json.loads(row[2])
+                        dictorigin = dict(zip([p['key_name'] for p in profiles],[p['key_value'] for p in profiles]))
+                        for (k,v) in dictorigin.items():
+                            if k in alias.keys() and v:
+                                transformdatalist[alias[k]] = transformtables[k][v]
+                    insertvalues.append(transformdatalist)
+                s = ','.join(['%s' for _ in range(len(fields))])
+                straddtmpusrsql = "insert into {} ({})values ({})".format(table_name,','.join(fields),s)
+                updatefields = ','.join(['a.' + column + '=IFNULL(b.' + column + ',a.' +column + ')' for column in fieldscp])
+                cursor.executemany(straddtmpusrsql, insertvalues)
+                cursor.execute("update wduser_authuser a inner join {} b on a.id=b.user_id set is_staff=true, {} where a.is_active=True".format(table_name,updatefields))
+                cursor.execute('drop table if exists {}'.format(table_name))
+            conn.commit()
+            conn.close()
+            return Response({"code": ErrorCode.SUCCESS, "data": {}})
+        except Exception as e:
+            traceback.print_exc()
+            conn.rollback()
+            conn.close()
+            return Response({"code": ErrorCode.FAILURE, "data": {"errmsg":str(e)}})
+        
+        
+            
