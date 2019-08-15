@@ -270,7 +270,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             select {0}, count(id) as id,avg(model) model,avg(dimension1) as dimension1,avg(dimension2) as dimension2
             ,avg(dimension3) as dimension3,avg(dimension4) as dimension4,avg(dimension5) as dimension5
             ,avg(dimension6) as dimension6,avg(dimension7) as dimension7,avg(quota41) as quota41
-            from workspace_factoei where hidden=false and assesskey={1} and {2} group by {3} order by avg(model)
+            from workspace_factoei where hidden=false and assesskey={1} and {2} group by {3} order by avg(model) desc
         """
         dimalias = {'model':u"企业幸福指数",
                     'quota41':u"压力承受",
