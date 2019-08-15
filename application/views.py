@@ -40,7 +40,7 @@ class ApplicationModelViewset(CustomModelViewSet):
 
 class ApplicationModelCRMViewset(CustomModelViewSet):
 
-    queryset = models.Application.objects.all()
+    queryset = models.Application.objects.filter(progress__lt=3)
     serializer_class = serializers.ApplicationCRMSerializer
 
 class ApplierModelViewset(CustomModelViewSet):

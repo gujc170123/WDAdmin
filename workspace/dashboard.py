@@ -254,51 +254,109 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
 
         return res, ErrorCode.SUCCESS
 
-    def get_jgtz_fhjg(self, **kwargs):
-        res = {}
+    def get_jgtz_fhjg(self, **kwargs):        
         org = kwargs.get("org_id")
+        asess_id = kwargs.get("assess_id")
         if not org:
-            return res, ErrorCode.INVALID_INPUT
+            return [], ErrorCode.INVALID_INPUT
         query_dict = self.get_organization(org)[0]
-        child_org = self.get_child_org(query_dict)
-        if child_org:
-            child_list = []
-            for tpl in child_org:
-                j = '.'.join([i for i in tpl if i])
-                if j not in child_list:
-                    child_list.append(j)
-            child_org_data = []
-            for i in child_list:
-                child_query_dict, child_org_list = self.get_organization(i)
-                child_org_name = i.split('.')[-1]  # 分行机关名字
-                child_org_qs = FactOEI.objects.complex_filter(child_query_dict)
-                # child_org_num = child_org_qs.count()  # 有效样本
-                scores = child_org_qs.aggregate(
-                    Avg('quota41'), Avg('model'), Avg('dimension1'), Avg('dimension2'), Avg('dimension3'),
-                    Avg('dimension4'), Avg('dimension5'), Avg('dimension6'), Avg('dimension7'), Count("id")
-                )
-                score_lastyear = 0
-                increterate = 0 
-                if score_lastyear!=0:
-                    increterate = round((round(scores['model__avg'], 2)-score_lastyear)/score_lastyear*100,2)
-                else:
-                    increterate = None
-                org_res = [
-                    '', child_org_name, scores['id__count'], round(scores['quota41__avg'], 2),
-                    round(scores['model__avg'], 2), score_lastyear, increterate , round(scores['dimension1__avg'], 2),
-                    round(scores['dimension2__avg'], 2), round(scores['dimension3__avg'], 2),
-                    round(scores['dimension4__avg'], 2), round(scores['dimension5__avg'], 2),
-                    round(scores['dimension6__avg'], 2), round(scores['dimension7__avg'], 2),
-                ]
-                # 判断区间
-                org_res[0] = self.get_level(org_res[4])
-                child_org_data.append(org_res)
-            child_org_data.sort(key=lambda x: x[4], reverse=True)
-            if len(child_org_data) > 10:
-                child_org_data = child_org_data[:5] + child_org_data[-5:]
-            res = child_org_data
+        child_org = self.get_child_org(query_dict,True)
+        yearlist = [u'2019年',u'2018年',u'指数变化']
+        dimensionlist = []
+        labellist = [u'区间',u'下属机构',u'有效样本',u'压力承受',{u'幸福指数':yearlist},dimensionlist]
+        
+        detaillist = []
+        strselectsql = """
+            select {0}, count(id) as id,avg(model) model,avg(dimension1) as dimension1,avg(dimension2) as dimension2
+            ,avg(dimension3) as dimension3,avg(dimension4) as dimension4,avg(dimension5) as dimension5
+            ,avg(dimension6) as dimension6,avg(dimension7) as dimension7,avg(quota41) as quota41
+            from workspace_factoei where hidden=false and assesskey={1} and {2} group by {3} order by avg(model)
+        """
+        dimalias = {'model':u"企业幸福指数",
+                    'quota41':u"压力承受",
+                    "dimension1":u"工作环境",
+                    "dimension2":u"生活愉悦",
+                    "dimension3":u"成长环境",
+                    "dimension4":u"人际环境",
+                    "dimension5":u"领导方式",
+                    "dimension6":u"组织环境",
+                    "dimension7":u"心理资本"}      
 
-        return res, ErrorCode.SUCCESS
+        if child_org:
+            orglist = ['organization1', 'organization2', 'organization3', 'organization4', 'organization5', 'organization6'][:len(child_org[0])]
+            parameter0 = orglist[-1]
+            parameter1 = asess_id
+            parameter2 = "" 
+            parameter3 = ",".join(orglist)
+            orgfields = child_org[0][:-1]
+            tmp = []
+            for i in range(len(orgfields)):
+                tmp.append(orglist[i]+ "='"+orgfields[i]+"'")
+            parameter2 = " AND ".join(tmp)
+            fullorgs = set([j[-1] for j in child_org])
+            strselectsql = strselectsql.format(parameter0,parameter1,parameter2,parameter3)
+            orderlist = []
+            with connection.cursor() as cursor:
+                cursor.execute(strselectsql)
+                firstrow = True                
+                for row in cursor.fetchall():
+                    if firstrow:
+                        dimensions = [row[3],row[4],row[5],row[6],row[7],row[8],row[9]]
+                        orderlist = sorted(range(len(dimensions)), key=lambda k: dimensions[k],reverse= True)
+                        for t in orderlist:
+                            dimensionlist.append(dimalias["dimension{0}".format(t+1)])
+                        firstrow = False                
+                    addrow = [self.get_level(row[2]),row[0],row[1],row[10],row[2],None,None]
+                    for t in orderlist:
+                        addrow.append(row[3+t])
+                    detaillist.append(addrow)
+            if detaillist:
+                partorgs = set([j[1] for j in detaillist])
+                for o in fullorgs-partorgs:
+                    addrow = [None,o,0,None,None,None,None]
+                    for t in orderlist:
+                        row.append[None]
+                    detaillist.append(row)
+        if not detaillist:
+            dimensionlist = [u"工作环境",u"生活愉悦",u"成长环境",u"人际环境",u"领导方式",u"组织环境",u"心理资本"]
+        # if child_org:
+        #     child_list = []
+        #     for tpl in child_org:
+        #         j = '.'.join([i for i in tpl if i])
+        #         if j not in child_list:
+        #             child_list.append(j)
+        #     child_org_data = []
+        #     for i in child_list:
+        #         child_query_dict, child_org_list = self.get_organization(i)
+        #         child_org_name = i.split('.')[-1]  # 分行机关名字
+        #         child_org_qs = FactOEI.objects.complex_filter(child_query_dict)
+        #         # child_org_num = child_org_qs.count()  # 有效样本
+        #         scores = child_org_qs.aggregate(
+        #             Avg('quota41'), Avg('model'), Avg('dimension1'), Avg('dimension2'), Avg('dimension3'),
+        #             Avg('dimension4'), Avg('dimension5'), Avg('dimension6'), Avg('dimension7'), Count("id")
+        #         )
+        #         score_lastyear = 0
+        #         increterate = 0 
+        #         if score_lastyear!=0:
+        #             increterate = round((round(scores['model__avg'], 2)-score_lastyear)/score_lastyear*100,2)
+        #         else:
+        #             increterate = None
+        #         org_res = [
+        #             '', child_org_name, scores['id__count'], round(scores['quota41__avg'], 2),
+        #             round(scores['model__avg'], 2), score_lastyear, increterate , round(scores['dimension1__avg'], 2),
+        #             round(scores['dimension2__avg'], 2), round(scores['dimension3__avg'], 2),
+        #             round(scores['dimension4__avg'], 2), round(scores['dimension5__avg'], 2),
+        #             round(scores['dimension6__avg'], 2), round(scores['dimension7__avg'], 2),
+        #         ]
+        #         # 判断区间
+        #         org_res[0] = self.get_level(org_res[4])
+        #         child_org_data.append(org_res)
+        #     child_org_data.sort(key=lambda x: x[4], reverse=True)
+        #     if len(child_org_data) > 10:
+        #         child_org_data = child_org_data[:5] + child_org_data[-5:]
+        #     res = child_org_data
+
+        return [labellist,detaillist], ErrorCode.SUCCESS
 
     def get_vitality_distribute(self, **kwargs):
         # 查下属机构的平均幸福分
@@ -978,9 +1036,30 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         query_dict.update({'AssessKey': self.assess_id, 'hidden': False})
         return query_dict, org_list
 
-    def get_child_org(self, query_dict):
+    def get_child_org(self, query_dict,direct=False):        
         del query_dict['hidden']
         len_query = len(query_dict)
+
+        if direct:
+            child_org = []
+            strsql = "SELECT group_concat(names.name order by breadcrumb.depth desc)\
+                FROM wduser_baseorganization AS c1\
+                JOIN assessment_assessorganizationpathssnapshots AS cc1 ON (cc1.parent_id = c1.id)\
+                JOIN wduser_baseorganization AS c2 ON (cc1.child_id = c2.id)\
+                LEFT OUTER JOIN assessment_assessorganizationpathssnapshots AS cc2 ON (cc2.child_id = c2.id AND cc2.depth = 1)\
+                JOIN assessment_assessorganizationpathssnapshots AS breadcrumb ON (cc1.child_id = breadcrumb.child_id)\
+                JOIN wduser_baseorganization AS names ON (breadcrumb.parent_id = names.id)\
+                LEFT OUTER JOIN assessment_assessjoinedorganization p ON (c1.id=p.id)\
+                WHERE c1.id=%s AND c1.is_active = 1 and cc2.parent_id=%s and p.id is not null and p.assess_id=%s\
+                GROUP BY cc1.child_id"            
+            with connection.cursor() as cursor:
+                org = int(query_dict['organization1'])
+                assess = int(query_dict['AssessKey'])
+                cursor.execute(strsql,[org,org,assess])
+                for row in cursor.fetchall():
+                    child_org.append(row[0].split(','))
+            return child_org
+
         if len_query == 2:
             child_org = FactOEI.objects.complex_filter(query_dict).values_list("organization1",
                                                                                "organization2").distinct()
@@ -1105,7 +1184,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             else:
                 self.assess_id = assess_id
                 if org_id:
-                    if api_id!='leadership_style':
+                    if api_id!='leadership_style' and api_id!='jgtz':
                         org_id = self.get_org_siblings(org_id)
                 # retrieve chart's data
                 data, err_code = eval(self.api_mapping[api_id])(org_id=org_id,
