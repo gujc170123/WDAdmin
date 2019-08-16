@@ -738,11 +738,13 @@ class ManagementAssess(AuthenticationExceptView,WdCreateAPIView):
     """
 
     def get(self, request, ass):
-        curPage = int(request.GET.get('curPage', '1'))
+        curPage = int(request.GET.get('curPage', 1))
         pagesize = int(request.GET.get('pagesize', 20))
         pageType = str(request.GET.get('pageType', ''))
         org = request.GET.get('organization_id')
         keyword = str(request.GET.get('search',''))
+        keyword2 = request.GET.get('onlynotjoined',False)
+        order = str(request.GET.get('order',"child_id,joined,nickname,email,phone"))
         
         if pageType == 'pageDown':
             curPage += 1
@@ -777,9 +779,11 @@ class ManagementAssess(AuthenticationExceptView,WdCreateAPIView):
                     on a.child_id=e.id\
                     where a.parent_id=" + org + " and a.assess_id="+ ass+ "\
                     and c.is_active=true and c.is_staff=true"
+        if keyword2:
+            sql_query += " and d.user_id is null "
         if keyword:
             sql_query += " and (c.nickname like '%" + keyword + "%' or c.account_name  like '%" + keyword + "%' or c.email like '%" + keyword +  "%' or c.phone like '%" + keyword + "%')"
-        sql_query += " order by a.child_id,joined,c.nickname,c.email,c.phone limit " + str(startPos) + ","+ str(endPos)
+        sql_query += " order by " + order + " limit " + str(startPos) + ","+ str(endPos)
         sql_query_aggregate = "select count(1)\
                                 from assessment_assessorganizationpathssnapshots a\
                                 inner join assessment_assessjoinedorganization b\
@@ -787,7 +791,12 @@ class ManagementAssess(AuthenticationExceptView,WdCreateAPIView):
                                 and a.assess_id=b.assess_id\
                                 inner join wduser_authuser c\
                                 on c.organization_id=a.child_id\
+                                left join (select user_id from assessment_assessuser a1,\
+                                wduser_people a2 where a1.people_id=a2.id and assess_id=" + str(ass) + ") d\
+                                on c.id=d.user_id\
                                 where c.is_active=true and a.parent_id=" + org + " and a.assess_id="+ ass
+        if keyword2:
+            sql_query_aggregate += " and d.user_id is null "                                
         if keyword:
             sql_query_aggregate += r" and (c.nickname like '%" + keyword + r"%' or c.email like '%" + keyword +  r"%' or c.phone like '%" + keyword + r"%')"
         with connection.cursor() as cursor:

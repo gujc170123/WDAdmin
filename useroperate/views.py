@@ -164,10 +164,32 @@ class AssessViewset(CustomModelViewSet):
     def list(self, request, *args, **kwargs):
         
         enterprise_id = self.kwargs['enterprise_id']
-        queryset = AssessProject.objects.filter(enterprise_id=enterprise_id,is_active=True).order_by('-id')        
+        curPage = int(request.GET.get('curPage', 1))
+        pagesize = int(request.GET.get('pagesize', 20))
+        pageType = str(request.GET.get('pageType', ''))
+        keyword = str(request.GET.get('search',''))
+        order = bool(request.GET.get('order',1))
+        if pageType == 'pageDown':
+            curPage += 1
+        elif pageType == 'pageUp':
+            curPage -= 1
 
-        serializer = serializers.TrialAssessListSerializer(queryset, many=True)
-        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)
+        startPos = (curPage - 1) * pagesize
+        endPos = startPos + pagesize
+        allPage = 0
+
+        queryset = AssessProject.objects.filter(enterprise_id=enterprise_id,is_active=True)
+        if keyword:
+            queryset.filter(name__contains=keyword)
+        if order:
+            queryset.order_by('-id')
+        else:
+            queryset.order_by('id')
+        
+        allPage = (queryset.count() +pagesize-1) / pagesize
+
+        serializer = serializers.TrialAssessListSerializer(queryset[startPos:endPos], many=True)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"allPage":allPage, "curPage":curPage,"data":serializer.data })        
 
     def create(self, request, *args, **kwargs):
 
