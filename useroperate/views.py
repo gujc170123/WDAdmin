@@ -168,7 +168,7 @@ class AssessViewset(CustomModelViewSet):
         pagesize = int(request.GET.get('pagesize', 20))
         pageType = str(request.GET.get('pageType', ''))
         keyword = str(request.GET.get('search',''))
-        order = bool(request.GET.get('order',1))
+        order = str(request.GET.get('order',"-id,name"))
         if pageType == 'pageDown':
             curPage += 1
         elif pageType == 'pageUp':
@@ -180,11 +180,9 @@ class AssessViewset(CustomModelViewSet):
 
         queryset = AssessProject.objects.filter(enterprise_id=enterprise_id,is_active=True)
         if keyword:
-            queryset.filter(name__contains=keyword)
-        if order:
-            queryset.order_by('-id')
-        else:
-            queryset.order_by('id')
+            queryset = queryset.filter(name__contains=keyword)
+        for o in order.split(','):
+            queryset = queryset.order_by(o)
         
         allPage = (queryset.count() +pagesize-1) / pagesize
 

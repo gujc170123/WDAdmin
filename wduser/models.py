@@ -205,9 +205,14 @@ class People(BaseModel):
                 return ""
         if self.more_info:
             info = json.loads(self.more_info)
-            for o in info:
-                if o["key_name"] == key_name:
-                    return o["key_value"]
+            # compatiable with legacy system
+            if type(info) is dict:
+                if key_name in  info.keys():
+                    return info[key_name]
+            else:
+                for o in info:
+                    if o["key_name"] == key_name:
+                        return o["key_value"]
         if default_value:
             return default_value
         return u""

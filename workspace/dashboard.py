@@ -1147,7 +1147,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         redis_value = redis_pool.lrange(redis_key, -2, -1)
         if not redis_value:
             redis_pool.rpush(redis_key, time.time(), 0)
-            main.delay(assess_id, survey_id, stime, reference)
+            main(assess_id, survey_id, stime, reference)
             return {'msg': u'开始生成报告。', 'status': 0}, ErrorCode.SUCCESS
         else:
             if redis_value[-1] == '0':

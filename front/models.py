@@ -359,6 +359,8 @@ class UserQuestionAnswerInfo(BaseModel):
     # 互斥题 重分问题
     answer_index = models.BigIntegerField(u"回答索引", default=0, db_index=True)
     answer_time = models.PositiveIntegerField(u"回答时间(秒)", default=0, db_index=True)
+    valid = models.NullBooleanField(null=True,db_index=True)
+
 
 
 # class UserQuestionAnswerNewInfo(BaseModel):

@@ -253,8 +253,10 @@ class AssessGatherInfo(BaseModel):
         (INFO_TYPE_DATE, u"日期")
     )
     info_type = models.PositiveSmallIntegerField(u"信息类型", choices=INFO_TYPE_CHOICES, default=INFO_TYPE_STR)
-    # 列表值 ['','']
+    info_id = models.CharField("user profile field", max_length=30, null=True)
+    # 列表值 ['','']---------
     config_info = models.CharField(u"信息配置", max_length=1024)
+    value_info = models.CharField("valuelist", max_length=512, null=True)
     is_required = models.BooleanField(u"是否必填", default=False, db_index=True)
     is_modified = models.BooleanField(u"是否可以修改", default=True, db_index=True)
 

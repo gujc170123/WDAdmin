@@ -1010,10 +1010,10 @@ class MergeOldProfile(APIView):
                 columns = [column[0] for column in cursor.description]
                 insertvalues = []
                 templatedatalist = [None for p in fields]
-                for row in cursor.fetchall():                                    
+                for row in cursor.fetchall():
                     transformdatalist = templatedatalist[:]
                     transformdatalist[0] = row[0]
-                    transformdatalist[1] = row[1]                    
+                    transformdatalist[1] = row[1]
                     if row[2]:
                         profiles = json.loads(row[2])
                         dictorigin = dict(zip([p['key_name'] for p in profiles],[p['key_value'] for p in profiles]))

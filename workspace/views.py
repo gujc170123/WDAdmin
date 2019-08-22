@@ -866,3 +866,57 @@ class ManagementAssess(AuthenticationExceptView,WdCreateAPIView):
         AssessUser.objects.bulk_create(survey_user)
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
+class AssessProgressTreeView(AuthenticationExceptView,WdCreateAPIView):
+
+    model = None
+    serializer_class = None
+
+    def get(self, request, *args, **kwargs):
+        orgid =  request.GET.get('organization')
+        survey =  request.GET.get('survey')
+        assess =  self.kwargs.get('pk')
+
+        frontname = settings.DATABASES['front']['NAME']
+        with connection.cursor() as cursor:
+            sql_query ="""
+            SELECT a.id,a.parent_id,a.name,if(c.id is null,False,True) is_active,
+            ifnull(d.staff,0) staff,ifnull(d.completed,0) completed FROM wduser_baseorganization a
+            INNER JOIN assessment_assessorganizationpathssnapshots b
+            ON b.child_id=a.id
+            LEFT JOIN assessment_assessjoinedorganization c
+            ON a.id=c.organization_id and c.assess_id=b.assess_id
+            left join 
+            (select a.parent_id,count(c.people_id) as staff,count(d.id) as completed from 
+            assessment_assessorganizationpathssnapshots a
+            inner join wduser_organization b
+            on a.child_id=b.baseorganization_id
+            inner join wduser_peopleorganization c
+            on c.org_code=b.identification_code
+            left join """ + frontname + """.front_peoplesurveyrelation d
+            on c.people_id=d.people_id and d.status=20 and d.survey_id=%s
+            where a.assess_id=%s and c.is_active=True and b.is_active=True
+            group by a.parent_id) d
+            on a.id=d.parent_id
+            WHERE b.assess_id=%s AND b.parent_id=%s
+            """
+            cursor.execute(sql_query, [survey,assess,assess,orgid,])
+            columns = [column[0] for column in cursor.description]
+            results = []
+            for row in cursor.fetchall():
+                results.append(row)
+
+        if not results:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.NOT_EXISTED)
+        nodes = {}
+        for record in results:
+            nodes[record[0]] = {'id':record[0],'name':record[2],'papa':record[1],'enable':record[3],'staff':record[4],'completed':record[5]}
+            nodes[record[0]]['children']=[]
+        for record in results:
+            if record[1] in nodes:
+                nodes[record[1]]['children'].append(nodes[record[0]])
+            else:
+                top = nodes[record[0]]
+        for record in results:
+            if len(nodes[record[0]]['children'])==0:
+                nodes[record[0]].pop('children')
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"data": top})

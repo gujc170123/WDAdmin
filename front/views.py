@@ -626,45 +626,106 @@ class PeopleInfoGatherView(WdListCreateAPIView):
             user_id=user_id).order_by("-id")
         people = peoples[0]
         people_id = people.id
-        if people.more_info:
-            people_more_info = json.loads(people.more_info)
-        else:
-            people_more_info = []
-        people_more_info_map = {}
-        for p_info in people_more_info:
-            people_more_info_map[p_info["key_name"]] = p_info
-        is_modify = False
+        
+        tmpprofile = {}
+        dictprofile = {}
+        gather_obj = AssessGatherInfo.objects.filter_active(assess_id=self.project_id)
+        userupdate_argsdict = {}
+        peopleupdtaeflag = False
+
+        # iterate user input infomration and update user gatherinfo
+        # info is a dict structure with "id", "info_value", "option_id" members
         for info in self.infos:
-            project_id = self.project_id
-            if info.get("assess_id", None) is not None:
-                project_id = info.get("assess_id")
-            qs = UserProjectSurveyGatherInfo.objects.filter_active(
+            obj, created = UserProjectSurveyGatherInfo.objects.update_or_create(
+                is_active=True,
                 people_id=people_id,
-                info_id=info["id"]
-            )
-            if qs.exists():
-                qs.update(info_value=info["info_value"], option_id=info.get("option_id", 0))
+                info_id=info["id"],
+                defaults={
+                    'people_id':people_id,
+                    'info_id':info["id"],
+                    'info_value':info["info_value"],
+                    'option_id':info.get("option_id", 0)})
+            tmpprofile[info["id"]]=[info["info_value"],info.get("option_id", None)]
+        
+        for gather in gather_obj:
+            if gather.id not in tmpprofile.keys():
+                continue
+            if not tmpprofile[gather.id][0]:
+                continue
+            dictprofile[gather.info_name]=tmpprofile[gather.id][0]
+            if not gather.info_id:
+                continue
+            if not gather.value_info:
+                userupdate_argsdict[gather.info_id]= tmpprofile[gather.id][0]
+                if gather.info_id=='nickname':
+                    people.username = tmpprofile[gather.id][0]
+                    peopleupdtaeflag = True
+            elif tmpprofile[gather.id][1]:
+                userupdate_argsdict[gather.info_id]= gather.value_info[int(tmpprofile[gather.id][1])]
+
+        # update people profile        
+        originprofile = json.loads(people.more_info)        
+        if dictprofile:
+            if type(originprofile) is list:
+                tmpprofile = originprofile.copy()
+                originprofile = {}
+                for row in tmpprofile:
+                    originprofile[row['key_name']]=originprofile[row['key_value']]
+            if originprofile:
+                people.more_info = json.dumps(originprofile.update(dictprofile))
+                peopleupdtaeflag = True
             else:
-                UserProjectSurveyGatherInfo.objects.create(
-                    people_id=people_id, # project_id=project_id,
-                    info_id=info["id"], info_value=info["info_value"],
-                    option_id=info.get("option_id", 0)
-                )
-            if info["info_value"]:
-                is_modify = True
-                gather_obj = AssessGatherInfo.objects.get(id=info["id"])
-                if gather_obj.info_name == u"姓名":
-                    people.username = info["info_value"]
-                else:
-                    people_more_info_map[gather_obj.info_name] = {
-                        'key_name': gather_obj.info_name,
-                        'key_value': info["info_value"],
-                        'key_id': info["id"]
-                    }
-        if is_modify:
-            people_more_info = [people_more_info_map[k] for k in people_more_info_map]
-            people.more_info = json.dumps(people_more_info)
+                people.more_info = json.dumps(dictprofile)
+                peopleupdtaeflag = True
+        if peopleupdtaeflag:
             people.save()
+
+        # update user profile
+        if userupdate_argsdict:
+            user  = AuthUser.objects.get(id=user_id)
+            for key, value in userupdate_argsdict.items(): 
+                setattr(user, key, value)
+            user.save()
+
+        # if people.more_info:
+        #     people_more_info = json.loads(people.more_info)
+        # else:
+        #     people_more_info = []
+        # people_more_info_map = {}
+        # for p_info in people_more_info:
+        #     people_more_info_map[p_info["key_name"]] = p_info
+        # is_modify = False
+        # for info in self.infos:
+        #     project_id = self.project_id
+        #     if info.get("assess_id", None) is not None:
+        #         project_id = info.get("assess_id")
+        #     qs = UserProjectSurveyGatherInfo.objects.filter_active(
+        #         people_id=people_id,
+        #         info_id=info["id"]
+        #     )
+        #     if qs.exists():
+        #         qs.update(info_value=info["info_value"], option_id=info.get("option_id", 0))
+        #     else:
+        #         UserProjectSurveyGatherInfo.objects.create(
+        #             people_id=people_id, # project_id=project_id,
+        #             info_id=info["id"], info_value=info["info_value"],
+        #             option_id=info.get("option_id", 0)
+        #         )
+        #     if info["info_value"]:
+        #         is_modify = True
+        #         gather_obj = AssessGatherInfo.objects.get(id=info["id"])
+        #         if gather_obj.info_name == u"姓名":
+        #             people.username = info["info_value"]
+        #         else:
+        #             people_more_info_map[gather_obj.info_name] = {
+        #                 'key_name': gather_obj.info_name,
+        #                 'key_value': info["info_value"],
+        #                 'key_id': info["id"]
+        #             }
+        # if is_modify:
+        #     people_more_info = [people_more_info_map[k] for k in people_more_info_map]
+        #     people.more_info = json.dumps(people_more_info)
+        #     people.save()
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
 
     def get(self, request, *args, **kwargs):
@@ -674,6 +735,7 @@ class PeopleInfoGatherView(WdListCreateAPIView):
         people = peoples[0]
         people_id = people.id
         self.project_id = int(self.project_id)
+        # get assess info to gather
         if self.project_id:
             gather_info = AssessGatherInfo.objects.filter_active(
                 Q(assess_id=0) | Q(assess_id=self.project_id)).values("id", "info_name", "info_type", "config_info",
@@ -687,6 +749,7 @@ class PeopleInfoGatherView(WdListCreateAPIView):
         data = []
         is_finish = True
         info_name_list = []
+        # merge gathered info and actual info
         for info in gather_info:
             #     这里可能会有2个项目下的信息有重复的
             if info["info_name"] and (info["info_name"] in info_name_list):
