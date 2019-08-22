@@ -629,6 +629,8 @@ class PeopleInfoGatherView(WdListCreateAPIView):
         
         tmpprofile = {}
         dictprofile = {}
+        if self.project_id=='all':
+            self.project_id=0
         gather_obj = AssessGatherInfo.objects.filter_active(assess_id=self.project_id)
         userupdate_argsdict = {}
         peopleupdateflag = False
