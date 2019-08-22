@@ -714,7 +714,7 @@ class AssessProgressTotalView(AuthenticationExceptView,APIView):
 
         with connection.cursor() as cursor:
             sql_query = "SELECT b.*,a.name FROM wduser_baseorganization a,\
-                            (SELECT b.parent_id id,count(f.people_id) staff,count(if(f.status=20,true,null))' j completed\
+                            (SELECT b.parent_id id,count(f.people_id) staff,count(if(f.status=20,true,null)) j completed\
                             From assessment_assessorganizationpathssnapshots b\
                             LEFT JOIN wduser_organization d\
                             on b.child_id=d.baseorganization_id and b.assess_id=b.assess_id\
