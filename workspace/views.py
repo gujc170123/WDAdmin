@@ -714,7 +714,7 @@ class AssessProgressTotalView(AuthenticationExceptView,APIView):
 
         with connection.cursor() as cursor:
             sql_query = "SELECT b.*,a.name FROM wduser_baseorganization a,\
-                            (SELECT b.parent_id id,count(f.people_id) staff,count(if(f.status=20,true,null)) completed\
+                            (SELECT b.parent_id id,count(f.people_id) staff,count(if(f.status=20,true,null))' j completed\
                             From assessment_assessorganizationpathssnapshots b\
                             LEFT JOIN wduser_organization d\
                             on b.child_id=d.baseorganization_id and b.assess_id=b.assess_id\
@@ -880,7 +880,9 @@ class AssessProgressTreeView(AuthenticationExceptView,WdCreateAPIView):
         with connection.cursor() as cursor:
             sql_query ="""
             SELECT a.id,a.parent_id,a.name,if(c.id is null,False,True) is_active,
-            ifnull(d.staff,0) staff,ifnull(d.completed,0) completed FROM wduser_baseorganization a
+            ifnull(d.staff,0) staff,ifnull(d.completed,0) completed,
+            if(ifnull(d.staff,0)<0,null, ifnull(d.completed,0)/ifnull(d.staff,0)) as ratio
+            FROM wduser_baseorganization a
             INNER JOIN assessment_assessorganizationpathssnapshots b
             ON b.child_id=a.id
             LEFT JOIN assessment_assessjoinedorganization c
