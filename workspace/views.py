@@ -745,6 +745,8 @@ class ManagementAssess(AuthenticationExceptView,WdCreateAPIView):
         keyword = str(request.GET.get('search',''))
         keyword2 = request.GET.get('onlynotjoined',False)
         order = str(request.GET.get('order',"child_id,joined,nickname,email,phone"))
+        if not order:
+            order = "child_id,joined,nickname,email,phone"
         
         if pageType == 'pageDown':
             curPage += 1
@@ -881,7 +883,7 @@ class AssessProgressTreeView(AuthenticationExceptView,WdCreateAPIView):
             sql_query ="""
             SELECT a.id,a.parent_id,a.name,if(c.id is null,False,True) is_active,
             ifnull(d.staff,0) staff,ifnull(d.completed,0) completed,
-            if(ifnull(d.staff,0)<0,null, ifnull(d.completed,0)/ifnull(d.staff,0)) as ratio
+            if(ifnull(d.staff,0)<0,null,ifnull(d.completed,0)/ifnull(d.staff,0)) as ratio
             FROM wduser_baseorganization a
             INNER JOIN assessment_assessorganizationpathssnapshots b
             ON b.child_id=a.id

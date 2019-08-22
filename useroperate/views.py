@@ -181,6 +181,8 @@ class AssessViewset(CustomModelViewSet):
         queryset = AssessProject.objects.filter(enterprise_id=enterprise_id,is_active=True)
         if keyword:
             queryset = queryset.filter(name__contains=keyword)
+        if not order:
+            order = "-id,name"
         for o in order.split(','):
             queryset = queryset.order_by(o)
         
