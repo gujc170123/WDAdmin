@@ -631,7 +631,7 @@ class PeopleInfoGatherView(WdListCreateAPIView):
         dictprofile = {}
         gather_obj = AssessGatherInfo.objects.filter_active(assess_id=self.project_id)
         userupdate_argsdict = {}
-        peopleupdtaeflag = False
+        peopleupdateflag = False
 
         # iterate user input infomration and update user gatherinfo
         # info is a dict structure with "id", "info_value", "option_id" members
@@ -659,25 +659,28 @@ class PeopleInfoGatherView(WdListCreateAPIView):
                 userupdate_argsdict[gather.info_id]= tmpprofile[gather.id][0]
                 if gather.info_id=='nickname':
                     people.username = tmpprofile[gather.id][0]
-                    peopleupdtaeflag = True
-            elif tmpprofile[gather.id][1]:
-                userupdate_argsdict[gather.info_id]= gather.value_info[int(tmpprofile[gather.id][1])]
+                    peopleupdateflag = True
+            elif tmpprofile[gather.id][1] is not None:
+                values = json.loads(gather.value_info)
+                idx = int(tmpprofile[gather.id][1])
+                if len(values)>idx:
+                    userupdate_argsdict[gather.info_id]= values[idx]
 
-        # update people profile        
+        # update people profile
         originprofile = json.loads(people.more_info)        
         if dictprofile:
             if type(originprofile) is list:
                 tmpprofile = originprofile[:]
                 originprofile = {}
                 for row in tmpprofile:
-                    originprofile[row['key_name']]=originprofile[row['key_value']]
+                    originprofile[row['key_name']]=row['key_value']
             if originprofile:
                 people.more_info = json.dumps(originprofile.update(dictprofile))
-                peopleupdtaeflag = True
+                peopleupdateflag = True
             else:
                 people.more_info = json.dumps(dictprofile)
-                peopleupdtaeflag = True
-        if peopleupdtaeflag:
+                peopleupdateflag = True
+        if peopleupdateflag:
             people.save()
 
         # update user profile
