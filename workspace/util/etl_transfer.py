@@ -55,7 +55,8 @@ def list_people(conn, pro_id, sur_id, name):
         people_id
         FROM front_peoplesurveyrelation
         where
-        is_active=true 
+        is_active=true
+        and status=20
         and project_id=%s
         and survey_id=%s
         order by people_id
