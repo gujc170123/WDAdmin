@@ -667,7 +667,7 @@ class PeopleInfoGatherView(WdListCreateAPIView):
         originprofile = json.loads(people.more_info)        
         if dictprofile:
             if type(originprofile) is list:
-                tmpprofile = originprofile.copy()
+                tmpprofile = originprofile[:]
                 originprofile = {}
                 for row in tmpprofile:
                     originprofile[row['key_name']]=originprofile[row['key_value']]
