@@ -737,15 +737,18 @@ class PeopleInfoGatherView(WdListCreateAPIView):
         self.project_id = int(self.project_id)
         # get assess info to gather
         if self.project_id:
-            gather_info = AssessGatherInfo.objects.filter_active(
-                Q(assess_id=0) | Q(assess_id=self.project_id)).values("id", "info_name", "info_type", "config_info",
-                    "assess_id", "is_required", "is_modified").distinct()
+            # gather_info = AssessGatherInfo.objects.filter_active(
+            #     Q(assess_id=0) | Q(assess_id=self.project_id)).values("id", "info_name", "info_type", "config_info",
+            #         "assess_id", "is_required", "is_modified").distinct()
+            gather_info = AssessGatherInfo.objects.filter_active(assess_id=self.project_id).values(
+                "id", "info_name", "info_type", "config_info","assess_id", "is_required", "is_modified")
         else:
-            project_ids = AssessUser.objects.filter_active(people_id=people_id).values_list("assess_id", flat=True)
-            gather_info = AssessGatherInfo.objects.filter_active(
-                Q(assess_id=0) | Q(assess_id__in=project_ids)).values("id", "info_name", "info_type", "config_info",
-                    "assess_id", "is_required", "is_modified").distinct()
-
+            # project_ids = AssessUser.objects.filter_active(people_id=people_id).values_list("assess_id", flat=True)
+            # gather_info = AssessGatherInfo.objects.filter_active(
+            #     Q(assess_id=0) | Q(assess_id__in=project_ids)).values("id", "info_name", "info_type", "config_info",
+            #         "assess_id", "is_required", "is_modified").distinct()
+            gather_info = AssessGatherInfo.objects.filter_active(assess_id=0).values(
+                "id", "info_name", "info_type", "config_info","assess_id", "is_required", "is_modified")
         data = []
         is_finish = True
         info_name_list = []
