@@ -913,7 +913,7 @@ class AssessProgressTreeView(AuthenticationExceptView,WdCreateAPIView):
             return general_json_response(status.HTTP_200_OK, ErrorCode.NOT_EXISTED)
         nodes = {}
         for record in results:
-            nodes[record[0]] = {'id':record[0],'name':record[2],'papa':record[1],'enable':record[3],'staff':record[4],'completed':record[5]}
+            nodes[record[0]] = {'id':record[0],'name':record[2],'papa':record[1],'enable':record[3],'staff':record[4],'completed':record[5],'ratio':record[6]}
             nodes[record[0]]['children']=[]
         for record in results:
             if record[1] in nodes:
