@@ -279,8 +279,10 @@ class SurveyAlgorithm(object):
                             question_answer_infos = question_answers.filter(answer_id=question_id)
                         else:
                             question_answer_infos = question_answers.filter(question_id=question_id)
+                        if not question_answer_infos:
+                            continue
                         question_info = cls.get_question_basic_info(question_id)
-                        question_answer_infos = cls.process_question_answer(question_answer_infos, question_info["question_type"])
+                        question_answer_infos = cls.process_question_answer(question_answer_infos, question_info["question_type"])                        
                         for question_answer in question_answer_infos:
                             question_score += question_answer.answer_score
                             question_substandard_score += question_answer.answer_score
@@ -1379,7 +1381,7 @@ class SurveyAlgorithm(object):
         substandard_score = {}
         dimension_score = {}
         model_score = 0  # 总分
-        logger.debug("algorithm_average_weight --> people_survey_result_id is %s" % people_survey_result_id)
+        # logger.debug("algorithm_average_weight --> people_survey_result_id is %s" % people_survey_result_id)
         people_survey_result = PeopleSurveyRelation.objects.get(id=people_survey_result_id)
         survey = Survey.objects.get(id=people_survey_result.survey_id)
         research_model = ResearchModel.objects.get(id=survey.model_id)
@@ -1714,7 +1716,7 @@ class SurveyAlgorithm(object):
                                             status=PeopleSurveyRelation.STATUS_FINISH)
         if not o_qs.exists():
             # 该他评没有自评
-            logger.info("%s for ZGC180 not self ZGC180" % people_survey_result_id)
+            # logger.info("%s for ZGC180 not self ZGC180" % people_survey_result_id)
             return
         else:
             print(people_survey_result_id)
@@ -1734,7 +1736,7 @@ class SurveyAlgorithm(object):
         substandard_score = {}
         dimension_score = {}
         model_score = 0  # 总分
-        logger.debug("algorithm_average_weight --> people_survey_result_id is %s" % people_survey_result_id)
+        # logger.debug("algorithm_average_weight --> people_survey_result_id is %s" % people_survey_result_id)
         people_survey_result = PeopleSurveyRelation.objects.get(id=people_survey_result_id)
         survey = Survey.objects.get(id=people_survey_result.survey_id)
         research_model = ResearchModel.objects.get(id=survey.model_id)

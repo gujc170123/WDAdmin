@@ -16,6 +16,7 @@ from question.serializers import QuestionDetailSerializer
 from research.models import ResearchModel, ResearchDimension, ResearchSubstandard
 from survey.models import Survey, SurveyQuestionResult, SurveyModelFacetRelation, SurveyQuestionRelation
 from survey.serializers import SurveyForceQuestionResultSerializer
+from utils.cache.config_cache import ConfigCache
 from utils.logger import err_logger, info_logger, debug_logger
 from utils.rpc_service.report_service import ReportService
 from utils.response import ErrorCode
@@ -346,14 +347,29 @@ def user_get_survey_ops(people_id, survey_id, project_id, block_id,
 @shared_task
 def get_report(detail, user_id=0, force_recreate=False, language=SurveyAlgorithm.LANGUAGE_ZH):
     report_request_data = []
+    enterprise_id = 0
     psr_id = 0
+    is_360 = False
     for data in detail["results"]:
         if not psr_id:
             psr_id = data["id"]
+            psr_obj = PeopleSurveyRelation.objects.get(id=psr_id)
+            pro_obj = AssessProject.objects.get(id=psr_obj.project_id)
+            if pro_obj.assess_type == AssessProject.TYPE_360:
+                is_360 = True
+                force_recreate = True
         survey_info = data["survey_info"]
         cn_report_id, en_report_id = ReportService.get_report_template_id(survey_info["survey_id"], survey_info["project_id"])
+        # 加快 ProfessionalPpersonalit， WorkValueQuestionnaire 的处理
+        report_filter = ConfigCache().get_config_report_filter()
+        if report_filter and cn_report_id not in report_filter:
+            continue
+        project_id = data["project_id"]
+        if not enterprise_id:
+            enterprise_id = AssessProject.objects.get(id=project_id).enterprise_id
         if language in [SurveyAlgorithm.LANGUAGE_ZH, SurveyAlgorithm.LANGUAGE_ALL] and cn_report_id:
             if data["report_status"] != PeopleSurveyRelation.REPORT_SUCCESS or force_recreate or not data["report_url"]:
+                info_logger.info("[report request] people_result_id: %s, cn_report_id: %s, force_recreate: %s" %(data["id"], cn_report_id, force_recreate))
                 report_request_data.append(
                     {
                         "report_type_id": cn_report_id,
@@ -363,6 +379,7 @@ def get_report(detail, user_id=0, force_recreate=False, language=SurveyAlgorithm
                 )
         if language in [SurveyAlgorithm.LANGUAGE_EN, SurveyAlgorithm.LANGUAGE_ALL] and en_report_id:
             if data["report_status"] != PeopleSurveyRelation.REPORT_SUCCESS or force_recreate or not data["en_report_url"]:
+                info_logger.info("[report request] people_result_id: %s, en_report_id: %s, force_recreate: %s" % (data["id"], en_report_id, force_recreate))
                 report_request_data.append(
                     {
                         "report_type_id": en_report_id,
@@ -374,14 +391,7 @@ def get_report(detail, user_id=0, force_recreate=False, language=SurveyAlgorithm
         return
     report_result = None
     try:
-        # 360 项目不在这里发请求
-        try:
-            psr_obj = PeopleSurveyRelation.objects.get(id=psr_id)
-            if AssessProject.objects.get(id=psr_obj.project_id).assess_type == AssessProject.TYPE_360:
-                return
-        except:
-            pass
-        report_result = ReportService.get_report(report_request_data)
+        report_result = ReportService.get_report(report_request_data, enterprise_id)
         report_info = report_result["detail"]
         for index, data in enumerate(report_request_data):
             if int(report_info[str(index)]["status"]) == 1:

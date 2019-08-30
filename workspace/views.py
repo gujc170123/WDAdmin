@@ -924,3 +924,128 @@ class AssessProgressTreeView(AuthenticationExceptView,WdCreateAPIView):
             if len(nodes[record[0]]['children'])==0:
                 nodes[record[0]].pop('children')
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"data": top})
+
+class OrganizationAnswerSheetView(AuthenticationExceptView,WdCreateAPIView):
+
+    def get(self, request, *args, **kwargs):
+        orgid =  request.GET.get('organization')
+        survey =  request.GET.get('survey')
+        assess =  self.kwargs.get('pk')
+        profiles = request.GET.get('profiles')
+        
+        questions = {'question_id':[],'question_text':[],'No':[],'option_id':[],'label':[],'option':[]}
+        questions_keys = {'question_id':[],'option_id':[],}
+        question_id = 0
+        blockquery = SurveyQuestionInfo.objects.filter_active(project_id=assess,survey_id=survey).order_by('block_id')        
+        import json
+        for block in blockquery:
+            info = json.loads(block.question_info)
+            for question in info:
+                question_id += 1
+                # multichoice(10,11,30,31,50)
+                if question['question_type'] in (10,11,30,31):
+                    for option in question['options']['option_data']:
+                        questions['question_id'].append(question['id'])
+                        questions['option_id'].append(option['id'])
+                        questions['No'].append(question_id)
+                        questions['question_text'].append(question['title'])
+                        questions['label'].append(chr(65+option['order_number']))
+                        questions['option'].append(option['content'])
+                        if option['is_blank']:
+                            questions['question_id'].append(question['id'])
+                            questions['option_id'].append(-option['id'])
+                            questions['No'].append(question_id)
+                            questions['question_text'].append(None)
+                            questions['label'].append(None)
+                            questions['option'].append(None)
+                elif  question['question_type']==50:
+                    for option in question['options']['options']:
+                        questions['question_id'].append(question['id'])
+                        questions['option_id'].append(option['id'])
+                        questions['No'].append(question_id)
+                        questions['question_text'].append(question['title'])
+                        questions['label'].append(chr(65+option['order_number']))
+                        questions['option'].append(option['content'])
+                # slider (60, 80)
+                elif question['question_type'] in (60,80):
+                    questions['question_id'].append(question['id'])
+                    questions['option_id'].append(0)
+                    questions['No'].append(question_id)
+                    questions['question_text'].append(question['title'])
+                    questions['label'].append(None)
+                    questions['option'].append(None)
+        frontname = settings.DATABASES['front']['NAME']
+        strsqlPeopleQuery = """
+                            select d.people_id
+                            from assessment_assessorganizationpathssnapshots a
+                            inner join assessment_assessjoinedorganization b
+                            on a.child_id=b.organization_id
+                            and a.assess_id=b.assess_id
+                            inner join wduser_organization c
+                            on c.baseorganization_id=a.child_id
+                            inner join wduser_peopleorganization d
+                            on d.org_code=c.identification_code
+                            inner join """ + frontname +""".front_peoplesurveyrelation e
+                            on d.people_id=e.people_id
+                            and b.assess_id=e.project_id
+                            where a.assess_id=%s
+                            and e.survey_id=%s
+                            and a.parent_id=%s
+                            and e.is_active=true
+                            and d.is_active=true
+        """
+        strsqlAnswerQuery = """
+                            select d.people_id as pid,f.question_id as qid,answer_id,answer_score
+                            from assessment_assessorganizationpathssnapshots a
+                            inner join assessment_assessjoinedorganization b
+                            on a.child_id=b.organization_id
+                            and a.assess_id=b.assess_id
+                            inner join wduser_organization c
+                            on c.baseorganization_id=a.child_id
+                            inner join wduser_peopleorganization d
+                            on d.org_code=c.identification_code
+                            inner join """ + frontname +""".front_peoplesurveyrelation e
+                            on d.people_id=e.people_id
+                            and b.assess_id=e.project_id
+                            inner join """ + frontname +""".front_userquestionanswerinfo f
+                            on e.people_id=f.people_id
+                            and b.assess_id=f.project_id
+                            and f.survey_id=e.survey_id
+                            where a.assess_id=%s
+                            and e.survey_id=%s
+                            and a.parent_id=%s
+                            and e.is_active=true
+                            and f.is_active=true
+                            and d.is_active=true
+        """
+        import pandas as pd
+        question_frame = pd.DataFrame.from_dict(questions)
+        people_frame = pd.read_sql_query(strsqlPeopleQuery,connection,params=[assess,survey,orgid])
+        answers_frame = pd.read_sql_query(strsqlAnswerQuery,connection,params=[assess,survey,orgid])
+        question_frame['tmp'] = 1
+        people_frame['tmp'] = 1
+        merged_main_frame = people_frame.merge(question_frame,how='outer',on='tmp')
+        merged_main_frame = merged_main_frame.drop('tmp', axis=1)
+        merged_main_frame = merged_main_frame.merge(answers_frame,how='left',left_on=['people_id','question_id','option_id'],right_on=['pid','qid','answer_id'])
+        merged_main_frame = merged_main_frame.drop(['pid','qid','answer_id','question_id','option_id','option','question_text'], axis=1)
+        merged_main_frame = merged_main_frame.set_index(['people_id','No','label'])
+        merged_main_frame = merged_main_frame.unstack([1,2])
+        merged_main_frame.to_excel('a.xls')
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, merged_main_frame.to_csv(index=False))
+
+class OrganizationPointSheetView(AuthenticationExceptView,WdCreateAPIView):
+    def get(self, request, *args, **kwargs):
+        orgid =  request.GET.get('organization')
+        survey =  request.GET.get('survey')
+        assess =  self.kwargs.get('pk')
+
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, None)
+
+class UserAnswerSheetView(AuthenticationExceptView,WdCreateAPIView):
+    
+    def get(self, request, *args, **kwargs):
+        orgid =  request.GET.get('user')
+        survey =  request.GET.get('survey')
+        assess =  self.kwargs.get('pk')
+
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, None)

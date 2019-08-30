@@ -6,7 +6,8 @@ from workspace.views import UserLoginView,OrganizationlRetrieveUpdateDestroyView
                             AssessProgressView,AssessProgressTotalView,UserImportExportView,\
                             AssessOrganizationView,OrganizationlUsersDestroyView,SurveyListView,\
                             UserBatchDeleteView,AssessShareView,OrganizationListView,LogoutView, ManagementAssess,\
-                            StdAssessManageView,StdAssessListView,AssessProgressTreeView
+                            StdAssessManageView,StdAssessListView,AssessProgressTreeView,\
+                            OrganizationAnswerSheetView
 from workspace.dashboard import Dashboard, redisStatus
 from workspace.dedication import Dedication
 
@@ -57,4 +58,7 @@ urlpatterns = [
     url(r'(?P<enterprise_id>\d+)/stdassessmanage/(?P<assess_id>\d+)/$', StdAssessManageView.as_view()),
     #assess detail info progress(close mode)
     url(r"^assess/closedist/progresstree/(?P<pk>\d+)/$", AssessProgressTreeView.as_view(),name='closedist-progress-tree'),
+    #answersheet
+    url(r"^assess/answersheet/(?P<pk>\d+)/$", OrganizationAnswerSheetView.as_view(),name='answersheet'),
+    
 ]

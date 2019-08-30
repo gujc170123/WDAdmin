@@ -78,7 +78,15 @@ class PeopleSerializer(serializers.ModelSerializer):
 
     def get_infos(self, obj):
         if obj.more_info:
-            return json.loads(obj.more_info)
+            body = json.loads(obj.more_info)
+            # legacy compatiablity
+            if type(body) is dict:
+                res = []
+                for d,x in body.items():
+                    res.append({'key_name':d,'"key_value':x,'key_id':500})
+                return res
+            else:
+                return json.loads(obj.more_info)
         else:
             return []
 
