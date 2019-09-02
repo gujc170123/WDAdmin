@@ -34,6 +34,7 @@ from django.conf import settings
 from survey.models import Survey
 from rest_framework.parsers import FileUploadParser
 from tasks import userimport_task,CreateNewUser
+from workspace.models import PagePrivis,EnterpriseRole,RolePrivis
 import pandas as pd
 
 #retrieve logger entry for workspace app
@@ -1033,6 +1034,7 @@ class OrganizationAnswerSheetView(AuthenticationExceptView,WdCreateAPIView):
         merged_main_frame.to_excel('a.xls')
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, merged_main_frame.to_csv(index=False))
 
+# todo point view
 class OrganizationPointSheetView(AuthenticationExceptView,WdCreateAPIView):
     def get(self, request, *args, **kwargs):
         orgid =  request.GET.get('organization')
@@ -1041,6 +1043,7 @@ class OrganizationPointSheetView(AuthenticationExceptView,WdCreateAPIView):
 
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, None)
 
+# todo sheet view
 class UserAnswerSheetView(AuthenticationExceptView,WdCreateAPIView):
     
     def get(self, request, *args, **kwargs):
@@ -1049,3 +1052,61 @@ class UserAnswerSheetView(AuthenticationExceptView,WdCreateAPIView):
         assess =  self.kwargs.get('pk')
 
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, None)
+
+class RolePrivisView(APIView):
+
+    def get(self, request, enterprise, role):
+                
+        roleprivis = RolePrivis.objects.filter(Role__Enterprise=enterprise,Role__Code=role)
+        if not roleprivis:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, None)               
+        valuemap = {'c':4,'r':3,'u':2,'d':1,'a':0}
+        ret = {} 
+        for privis in roleprivis:
+            ret[privis.ContentType_id] = {} 
+            for key, value in valuemap.items():
+                ret[privis.ContentType_id][key] = bool((privis.Value & (1 << value)) >> value)
+
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,ret)
+        
+    def post(self, request, enterprise, role):
+
+        data = request.data.copy()
+        if not data:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, None)
+        valuemap = {'c':4,'r':3,'u':2,'d':1,'a':0}
+        roleprivis = RolePrivis.objects.filter(Role__Enterprise=enterprise,Role__Code=role)
+        for privis in roleprivis:
+            res = 0
+            for key, value in valuemap.items():
+                res += int(data[str(privis.ContentType_id)][key]) << value
+            privis.Value = res
+            privis.save()
+
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, data)            
+
+class GrantPagePrivisView(APIView):
+
+    def get(self, request, enterprise, role):
+        pagename = request.GET.get('pagename',None)
+        if not pagename:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.INVALID_INPUT, None)
+        pageprivis = PagePrivis.objects.filter(Name=pagename)
+        
+        # Temporary Compatiablity
+        if not pageprivis:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, None)
+        contents = RolePrivis.objects.filter(Role__Enterprise=enterprise,Role__Code=role)
+        if not contents:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, None)
+
+        PageFunctionDict = {}
+        for pageprivi in pageprivis:
+            PageFunctionDict[pageprivi.Function] = False
+
+        for content in contents:
+            for pageprivi in pageprivis:
+                if content.ContentType_id == pageprivi.ContentType_id:
+                    if (content.Value & pageprivi.Value)>0:
+                        PageFunctionDict[pageprivi.Function] = True        
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, PageFunctionDict)

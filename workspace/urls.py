@@ -7,7 +7,7 @@ from workspace.views import UserLoginView,OrganizationlRetrieveUpdateDestroyView
                             AssessOrganizationView,OrganizationlUsersDestroyView,SurveyListView,\
                             UserBatchDeleteView,AssessShareView,OrganizationListView,LogoutView, ManagementAssess,\
                             StdAssessManageView,StdAssessListView,AssessProgressTreeView,\
-                            OrganizationAnswerSheetView
+                            OrganizationAnswerSheetView, RolePrivisView, GrantPagePrivisView
 from workspace.dashboard import Dashboard, redisStatus
 from workspace.dedication import Dedication
 
@@ -60,5 +60,8 @@ urlpatterns = [
     url(r"^assess/closedist/progresstree/(?P<pk>\d+)/$", AssessProgressTreeView.as_view(),name='closedist-progress-tree'),
     #answersheet
     url(r"^assess/answersheet/(?P<pk>\d+)/$", OrganizationAnswerSheetView.as_view(),name='answersheet'),
-    
+    #role priviledge
+    url(r"^roleprivis/(?P<enterprise>\d+)/(?P<role>\d+)/$", RolePrivisView.as_view()),
+    #page grant
+    url(r"^pageprivis/(?P<enterprise>\d+)/(?P<role>\d+)/$", GrantPagePrivisView.as_view(),name='grant-page'),
 ]

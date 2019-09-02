@@ -3,7 +3,8 @@ from __future__ import unicode_literals
 from django.db import models
 from utils.models import BaseModel
 from assessment.models import AssessProject,BaseOrganization
-from wduser.models import AuthUser
+from wduser.models import AuthUser, EnterpriseInfo
+from django.contrib.contenttypes.models import ContentType
 
 class AssessProgress(models.Model):
     
@@ -301,4 +302,23 @@ class FactOEIQuotaDistributions(models.Model):
     Mean = models.DecimalField(max_digits=5, decimal_places=2)
     STD = models.DecimalField(max_digits=5, decimal_places=2)
     Min = models.DecimalField(max_digits=5, decimal_places=2)
-    Max = models.DecimalField(max_digits=5, decimal_places=2)    
+    Max = models.DecimalField(max_digits=5, decimal_places=2)  
+
+class EnterpriseRole(models.Model):
+
+    Enterprise = models.ForeignKey(EnterpriseInfo,db_constraint=False)
+    Name = models.CharField(max_length=30)
+    Code = models.IntegerField(db_index=True)
+
+class RolePrivis(models.Model):
+    
+    Role = models.ForeignKey(EnterpriseRole,db_constraint=False)
+    ContentType = models.ForeignKey(ContentType,db_constraint=False)
+    Value = models.IntegerField()
+
+class PagePrivis(models.Model):
+
+    Name = models.CharField(db_index=True,max_length=30)
+    Function = models.CharField(max_length=30)
+    ContentType = models.ForeignKey(ContentType,db_constraint=False)
+    Value = models.IntegerField()
