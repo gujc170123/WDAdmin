@@ -2313,20 +2313,20 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                 for row in cursor.fetchall():
                     dictscore[row[0]]=row[1]
             
-            dict_quota[u'舒适/家庭']=dictscore['SS']
-            dict_quota[u'安全/稳定']=dictscore['AQ']
-            dict_quota[u'经济/报酬']=dictscore['JJ']
-            dict_quota[u'归属/团队']=dictscore['GS']
-            dict_quota[u'社交/人际']=dictscore['SJ']
-            dict_quota[u'利他/慈善']=dictscore['LT']
-            dict_quota[u'权力/影响']=dictscore['QL']
-            dict_quota[u'地位/职位']=dictscore['DW']
-            dict_quota[u'认可/表现']=dictscore['RK']
-            dict_quota[u'艺术/文化']=dictscore['YS']
-            dict_quota[u'变化/探索']=dictscore['BH']
-            dict_quota[u'专业/技术']=dictscore['ZY']
-            dict_quota[u'自主/独立']=dictscore['ZZ']
-            dict_quota[u'挑战/成就']=dictscore['TZ']
+            dict_quota[u'舒适/家庭']=dictscore.get('SS',0.00)
+            dict_quota[u'安全/稳定']=dictscore.get('AQ',0.00)
+            dict_quota[u'经济/报酬']=dictscore.get('JJ',0.00)
+            dict_quota[u'归属/团队']=dictscore.get('GS',0.00)
+            dict_quota[u'社交/人际']=dictscore.get('SJ',0.00)
+            dict_quota[u'利他/慈善']=dictscore.get('LT',0.00)
+            dict_quota[u'权力/影响']=dictscore.get('QL',0.00)
+            dict_quota[u'地位/职位']=dictscore.get('DW',0.00)
+            dict_quota[u'认可/表现']=dictscore.get('RK',0.00)
+            dict_quota[u'艺术/文化']=dictscore.get('YS',0.00)
+            dict_quota[u'变化/探索']=dictscore.get('BH',0.00)
+            dict_quota[u'专业/技术']=dictscore.get('ZY',0.00)
+            dict_quota[u'自主/独立']=dictscore.get('ZZ',0.00)
+            dict_quota[u'挑战/成就']=dictscore.get('TZ',0.00)
             sortedlist = sorted(dict_quota.items(), key=lambda d:d[1], reverse = True)  
             for tp in sortedlist:                
                 ordict_quota['quota'].append(tp[0])
