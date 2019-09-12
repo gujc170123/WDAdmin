@@ -18,7 +18,7 @@ from utils.logger import err_logger
 from utils.pyfirstchar import get_first_char
 from utils.regular import RegularUtils
 from utils.response import ErrorCode
-from wduser.models import AuthUser, Organization
+from wduser.models import AuthUser, Organization, EnterpriseAccount
 
 
 class UserAccountUtils(object):
@@ -55,7 +55,7 @@ class UserAccountUtils(object):
         pass
 
     @classmethod
-    def account_check(cls, account, check_active_code=False, active_code=None):
+    def account_check(cls, account, check_active_code=False, active_code=None, enterprise=None):
         u"""这边的激活码检查，是管理员的激活码检查"""
         if RegularUtils.phone_check(account):
             # 手机号激活码校验
@@ -65,15 +65,30 @@ class UserAccountUtils(object):
             user_qs = AuthUser.objects.filter(is_active=True, email=account)
         else:
             user_qs = AuthUser.objects.filter(is_active=True, account_name=account)
-            if user_qs.count() > 1:
-                return None, ErrorCode.USER_ACCOUNT_DOUBLE_ERROR
+            # dropped for multi-tenant
+            # if user_qs.count() > 1:
+            #     return None, ErrorCode.USER_ACCOUNT_DOUBLE_ERROR
             if user_qs.count() == 0:
                 user_qs = AuthUser.objects.filter(is_active=True, username=account)
+
             # user_qs = AuthUser.objects.filter(is_active=True, account_name=account)
             # if user_qs.count() > 1:
             #     return None, ErrorCode. USER_ACCOUNT_DOUBLE_ERROR
         if not user_qs.exists():
             return None, ErrorCode.USER_ACCOUNT_NOT_FOUND
+        user = None
+        # check user-enterprise relation
+        if not enterprise:
+            if user_qs.count() > 1:
+                return None, ErrorCode.USER_ACCOUNT_DOUBLE_ERROR
+        else:
+            for u in user_qs:
+                if EnterpriseAccount.objects.filter_active(Enterprise=enterprise,User=u.id).exists():
+                    user = u
+                    break
+            if not user:
+                return None, ErrorCode.USER_ACCOUNT_DOUBLE_ERROR
+
         user = user_qs.order_by('id')[0]
         if check_active_code:
             if not active_code:

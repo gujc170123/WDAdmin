@@ -943,7 +943,7 @@ class OrganizationAnswerSheetView(AuthenticationExceptView,WdCreateAPIView):
             info = json.loads(block.question_info)
             for question in info:
                 question_id += 1
-                # multichoice(10,11,30,31,50)
+                # multichoice(10,11,30,31)
                 if question['question_type'] in (10,11,30,31):
                     for option in question['options']['option_data']:
                         questions['question_id'].append(question['id'])
@@ -952,6 +952,7 @@ class OrganizationAnswerSheetView(AuthenticationExceptView,WdCreateAPIView):
                         questions['question_text'].append(question['title'])
                         questions['label'].append(chr(65+option['order_number']))
                         questions['option'].append(option['content'])
+                        # with blanket
                         if option['is_blank']:
                             questions['question_id'].append(question['id'])
                             questions['option_id'].append(-option['id'])
@@ -959,6 +960,7 @@ class OrganizationAnswerSheetView(AuthenticationExceptView,WdCreateAPIView):
                             questions['question_text'].append(None)
                             questions['label'].append(None)
                             questions['option'].append(None)
+                # matrix select
                 elif  question['question_type']==50:
                     for option in question['options']['options']:
                         questions['question_id'].append(question['id'])
@@ -1028,11 +1030,18 @@ class OrganizationAnswerSheetView(AuthenticationExceptView,WdCreateAPIView):
         merged_main_frame = people_frame.merge(question_frame,how='outer',on='tmp')
         merged_main_frame = merged_main_frame.drop('tmp', axis=1)
         merged_main_frame = merged_main_frame.merge(answers_frame,how='left',left_on=['people_id','question_id','option_id'],right_on=['pid','qid','answer_id'])
-        merged_main_frame = merged_main_frame.drop(['pid','qid','answer_id','question_id','option_id','option','question_text'], axis=1)
+        merged_main_frame = merged_main_frame.drop(['pid','qid','answer_id','question_id','option_id','option',''], axis=1)
         merged_main_frame = merged_main_frame.set_index(['people_id','No','label'])
         merged_main_frame = merged_main_frame.unstack([1,2])
-        merged_main_frame.to_excel('a.xls')
-        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, merged_main_frame.to_csv(index=False))
+        import datetime
+        filename = datetime.datetime.now().strftime('%Y%m%d%H%M%S') + ".xls"
+        merged_main_frame.to_excel(filename)
+        from django.http.response import HttpResponse
+        from django.utils.encoding import escape_uri_path
+        content =  ErrorCode.SUCCESS
+        response = HttpResponse(content, content_type='application/octet-stream')
+        response['Content-Disposition'] = "attachment; filename*=utf-8''{}".format(escape_uri_path(filename))
+        return response
 
 # todo point view
 class OrganizationPointSheetView(AuthenticationExceptView,WdCreateAPIView):

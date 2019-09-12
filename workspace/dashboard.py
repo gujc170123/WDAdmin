@@ -292,7 +292,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             tmp = []
             for i in range(len(orgfields)):
                 tmp.append(orglist[i]+ "='"+orgfields[i]+"'")
-            parameter2 = " AND ".join(tmp)
+            parameter2 = " AND ".join(tmp) + " AND " + parameter0 + " is not null"
             fullorgs = set([j[-1] for j in child_org])
             strselectsql = strselectsql.format(parameter0,parameter1,parameter2,parameter3)
             orderlist = []
@@ -315,8 +315,8 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                 for o in fullorgs-partorgs:
                     addrow = [None,o,0,None,None,None,None]
                     for t in orderlist:
-                        row.append[None]
-                    detaillist.append(row)
+                        addrow.append(None)
+                    detaillist.append(addrow)
         if not detaillist:
             dimensionlist = [u"工作环境",u"生活愉悦",u"成长环境",u"人际环境",u"领导方式",u"组织环境",u"心理资本"]
         # if child_org:
@@ -1049,7 +1049,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                 LEFT OUTER JOIN assessment_assessorganizationpathssnapshots AS cc2 ON (cc2.child_id = c2.id AND cc2.depth = 1)\
                 JOIN assessment_assessorganizationpathssnapshots AS breadcrumb ON (cc1.child_id = breadcrumb.child_id)\
                 JOIN wduser_baseorganization AS names ON (breadcrumb.parent_id = names.id)\
-                LEFT OUTER JOIN assessment_assessjoinedorganization p ON (c1.id=p.id)\
+                LEFT OUTER JOIN assessment_assessjoinedorganization p ON (c1.id=p.organization_id)\
                 WHERE c1.id=%s AND c1.is_active = 1 and cc2.parent_id=%s and p.id is not null and p.assess_id=%s\
                 GROUP BY cc1.child_id"            
             with connection.cursor() as cursor:
