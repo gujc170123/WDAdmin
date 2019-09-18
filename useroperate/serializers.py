@@ -28,22 +28,37 @@ class TrialAssessListSerializer(serializers.ModelSerializer):
 
     organizations = serializers.SerializerMethodField()
     joined = serializers.SerializerMethodField()
+    survey_id = serializers.SerializerMethodField()
     progress = serializers.SlugRelatedField(
         source='assess_progress',
         slug_field='status',
         read_only=True,    
     )
+    eoisurveys = [132,147]
 
     class Meta:
         model = AssessProject
-        fields = ('id','name','begin_time','end_time','organizations','joined','has_distributed','progress')
+        fields = ('id','name','begin_time','end_time','organizations','joined','has_distributed','progress','survey_id')
     
     def get_organizations(self, obj):
         organizations = AssessJoinedOrganization.objects.filter(assess_id=obj.id,organization__parent_id__gt=0).values_list('organization__name', flat=True)
         return ','.join(str(n) for n in organizations)
 
     def get_joined(self, obj):
-        return PeopleSurveyRelation.objects.filter(project_id=obj.id,is_active=True).count()
+        surveys = AssessSurveyRelation.objects.filter(assess_id=obj.id,is_active=True).values_list('survey_id', flat=True)
+        psurvey_id=147
+        for survey in surveys:
+            if survey in self.eoisurveys:
+                psurvey_id = survey
+                break
+        return PeopleSurveyRelation.objects.filter(project_id=obj.id,is_active=True,survey_id=psurvey_id).count()
+    
+    def get_survey_id(self,obj):
+        surveys = AssessSurveyRelation.objects.filter(assess_id=obj.id,is_active=True).values_list('survey_id', flat=True)
+        for survey in surveys:
+            if survey in self.eoisurveys:
+                return survey
+        return 147
     
     # def get_progress(self,obj):        
     #     progress = AssessProgress.objects.filter(assess_id=obj.id).first()
