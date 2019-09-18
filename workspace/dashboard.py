@@ -86,6 +86,7 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
 
     def get_qtfb(self, **kwargs):
         res = {}
+        result = [[],[]]
         org = kwargs.get("org_id")
         query_dict = self.get_organization(org)[0]
         child_org = self.get_child_org(query_dict)
@@ -101,7 +102,11 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                 negative = FactOEI.objects.complex_filter(child_query_dict).filter(model__lt=65).count()
                 if total:
                     res[child_name[-1]] = round(negative*100/total, 2)
-        return res, ErrorCode.SUCCESS
+            # sort reversely
+            for item in sorted(res.items(),key = lambda x:x[1],reverse = True):
+                result[0].append(item[0])
+                result[1].append(item[1])
+        return result, ErrorCode.SUCCESS
 
     def get_focus_problem(self, **kwargs):
         org = kwargs.get("org_id")
@@ -140,8 +145,29 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
                      czkf_score_pre[14: 20] + n4 + [czkf_score_pre[22]] + n5 + [czkf_score_pre[25]] + \
                      n6 + [czkf_score_pre[30]] + n7
         from workspace.util.indicators import czkf_act, czkf_indi, sgga_act, sgga_indi
-        czkf_res = [czkf_indi, czkf_act, czkf_score]
-        sgga_res = [sgga_indi, sgga_act, sgga_score]
+        # order list
+        neworders1 = sorted(range(len(czkf_score)), key=lambda k: czkf_score[k])
+        neworders1.insert(0, neworders1.pop())
+        quotas1 = []
+        behaviors1 = []
+        scores1 = []
+        for i in neworders1:
+            quotas1.append(czkf_indi[i])
+            behaviors1.append(czkf_act[i])
+            scores1.append(czkf_score[i])
+        czkf_res = [quotas1, behaviors1, scores1]
+
+        neworders2 = sorted(range(len(sgga_score)), key=lambda k: sgga_score[k])
+        neworders2.insert(0, neworders2.pop())
+        quotas2 = []
+        behaviors2 = []
+        scores2 = []
+        for i in neworders2:
+            quotas2.append(sgga_indi[i])
+            behaviors2.append(sgga_act[i])
+            scores2.append(sgga_score[i])
+        sgga_res = [quotas2, behaviors2, scores2]
+
         res = {'sgga': sgga_res, 'czkf': czkf_res}
         return res, ErrorCode.SUCCESS
 
@@ -182,7 +208,17 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
         indicators_score.extend([round(score[key]*20, 2) for key in score_keys])
         indicators_score.extend([round(score[key]*25, 2) for key in N])
         from workspace.util.indicators import indicator, action
-        res = [indicator, action, indicators_score]
+        # order list
+        neworders = sorted(range(len(indicators_score)), key=lambda k: indicators_score[k])
+        neworders.insert(0, neworders.pop())
+        quotas = []
+        behaviors = []
+        scores = []
+        for i in neworders:
+            quotas.append(indicator[i])
+            behaviors.append(action[i])
+            scores.append(indicators_score[i])
+        res = [quotas, behaviors, scores]
         return res, ErrorCode.SUCCESS
 
     def get_leadership_style(self, **kwargs):
@@ -956,8 +992,13 @@ class Dashboard(AuthenticationExceptView, WdListCreateAPIView):
             child_org = self.get_child_org(query_dict)
             for i in child_org:
                 if not i[-1]:
-                    return {'': 0}, ErrorCode.SUCCESS
-                child_query_dict, org_list = self.get_organization('.'.join(i))
+                #     return {'': 0}, ErrorCode.SUCCESS
+                    tmp = i[:-1]
+                    child_query_dict, org_list = self.get_organization('.'.join(tmp))
+                    child_query_dict['organization'+ str(len(tmp))]=None
+                    org_list.append(u'本部')
+                else:                    
+                    child_query_dict, org_list = self.get_organization('.'.join(i))
                 value_list = department.complex_filter(child_query_dict).values_list("model")
                 if select and select == "负面":
                     value_list = [j[0] for j in value_list if j[0] and j[0] < 65]
