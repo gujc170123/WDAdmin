@@ -149,7 +149,7 @@ class UserListCreateView(AuthenticationExceptView,WdCreateAPIView):
         try:
             user = CreateNewUser(username,account_name,nickname,pwd,phone,email,is_superuser,
                           role_type,is_staff,sequence,gender,age,rank,seniority,marriage,
-                          politics,education,organization.id)
+                          politics,education,organization.id,enterprise_id)
 
             return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {'id':user.id})
         except Exception, e:
