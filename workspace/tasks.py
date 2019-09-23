@@ -204,7 +204,7 @@ class UserImport:
         try:
             if userstoadd:
                 mydf = pd.DataFrame(userstoadd,columns=userstoadd[0].keys())
-                strupdateusersql = "update wduser_authuser set dedicated_link=SHA(lpad(id,10,' '))  where importlot=" + str(importlot)
+                strupdateusersql = "update wduser_authuser set dedicated_link=SHA(lpad(id,10,' ')),username=id  where importlot=" + str(importlot)
                 authuserfields = ','.join(mydf.columns.values.tolist())
                 s = ','.join(['%s' for _ in range(len(mydf.columns))])
                 values = mydf.values.tolist()
