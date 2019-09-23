@@ -81,6 +81,7 @@ class UserAccountUtils(object):
         if not enterprise:
             if user_qs.count() > 1:
                 return None, ErrorCode.USER_ACCOUNT_NOT_FOUND
+            user = user_qs.order_by('-id')[0]
         else:
             for u in user_qs:
                 if EnterpriseAccount.objects.filter_active(enterprise_id=enterprise,user_id=u.id).exists():
@@ -88,8 +89,7 @@ class UserAccountUtils(object):
                     break
             if not user:
                 return None, ErrorCode.USER_ACCOUNT_NOT_FOUND
-
-        user = user_qs.order_by('id')[0]
+       
         if check_active_code:
             if not active_code:
                 return None, ErrorCode.USER_ACTIVE_CODE_INVALID
