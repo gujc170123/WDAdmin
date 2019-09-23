@@ -75,19 +75,19 @@ class UserAccountUtils(object):
             # if user_qs.count() > 1:
             #     return None, ErrorCode. USER_ACCOUNT_DOUBLE_ERROR
         if not user_qs.exists():
-            return None, ErrorCode.USER_ACCOUNT_NOT_FOUND
+            return None, ErrorCode.USER_ACCOUNT_NOT_EXISTS
         user = None
         # check user-enterprise relation
         if not enterprise:
             if user_qs.count() > 1:
-                return None, ErrorCode.USER_ACCOUNT_DOUBLE_ERROR
+                return None, ErrorCode.USER_ACCOUNT_NOT_FOUND
         else:
             for u in user_qs:
-                if EnterpriseAccount.objects.filter_active(Enterprise=enterprise,User=u.id).exists():
+                if EnterpriseAccount.objects.filter_active(enterprise_id=enterprise,user_id=u.id).exists():
                     user = u
                     break
             if not user:
-                return None, ErrorCode.USER_ACCOUNT_DOUBLE_ERROR
+                return None, ErrorCode.USER_ACCOUNT_NOT_FOUND
 
         user = user_qs.order_by('id')[0]
         if check_active_code:

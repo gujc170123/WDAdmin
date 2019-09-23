@@ -118,7 +118,7 @@ class PeopleLoginView(AuthenticationExceptView, WdCreateAPIView):
                 user_obj = AuthUser.objects.get(id=user_id)
                 return ErrorCode.SUCCESS, user_obj
             except:
-                info_logger.info("peopke_id can not find people user obj")
+                info_logger.info("people_id can not find people user obj")
                 pass
         return ErrorCode.FAILURE, None
 
@@ -145,7 +145,7 @@ class PeopleLoginView(AuthenticationExceptView, WdCreateAPIView):
         
         if not link:
             # enterprise check appended
-            user, err_code = UserAccountUtils.account_check(account,enterprise)
+            user, err_code = UserAccountUtils.account_check(account,enterprise=enterprise)
             if err_code != ErrorCode.SUCCESS:
                 return general_json_response(status.HTTP_200_OK, err_code)
         else:
@@ -692,7 +692,8 @@ class PeopleInfoGatherView(WdListCreateAPIView):
                     originprofile = {}
                     for row in tmpprofile:
                         originprofile[row['key_name']]=row['key_value']
-                people.more_info = json.dumps(originprofile.update(dictprofile))
+                originprofile.update(dictprofile)
+                people.more_info = json.dumps(originprofile)
                 peopleupdateflag = True
             else:
                 people.more_info = json.dumps(dictprofile)
