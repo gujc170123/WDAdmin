@@ -293,7 +293,7 @@ def userimport_task(file_data, file_name, enterprise_id ):
 
 def CreateNewUser(username,account_name,nickname,pwd,phone,email,is_superuser,
                     role_type,is_staff,sequence,gender,age,rank,seniority,marriage,
-                    politics,education,organization_id):
+                    politics,education,organization_id,enterprise_id):
     #create user object
     if not role_type:
         role_type = 100
@@ -327,6 +327,6 @@ def CreateNewUser(username,account_name,nickname,pwd,phone,email,is_superuser,
     EnterpriseAccount.objects.create(user_id=user.id,
                                         people_id=people.id,
                                         account_name=account_name,
-                                        enterprise_id=organization_id)
+                                        enterprise_id=enterprise_id)
 
     return user
