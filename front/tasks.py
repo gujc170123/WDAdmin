@@ -534,6 +534,7 @@ def send_one_user_survey(assess_id, people_id):
     def distribute_one_people_survey(survey_ids, people_id, assess_id, status):
         # 只有不随机问卷需要判断有没有发过
         people_survey_list = []
+        pprs = PeopleSurveyRelation.objects.filter_active(Project_id=assess_id,people_id=people_id).values_list('survey_id',flat=True)
         for survey_id in survey_ids:
             survey_qs = Survey.objects.filter_active(id=survey_id)
             if survey_qs.count() == 1:
@@ -541,28 +542,36 @@ def send_one_user_survey(assess_id, people_id):
             else:
                 err_logger.error("survey_id %d filter ERROR" % survey_id)
                 continue
-            asud_qs = AssessSurveyUserDistribute.objects.filter_active(assess_id=assess_id,
-                                                                       survey_id=survey_id)
-            if asud_qs.exists():
-                asud_obj = asud_qs[0]
-                distribute_users = json.loads(asud_obj.people_ids)
-            else:
-                asud_obj = AssessSurveyUserDistribute.objects.create(assess_id=assess_id,
-                                                                     survey_id=survey_id,
-                                                                     people_ids=json.dumps([]))
-                distribute_users = json.loads(asud_obj.people_ids)
-            if True:
-                if people_id not in distribute_users:
-                    people_survey_list.append(PeopleSurveyRelation(
-                        people_id=people_id,
-                        survey_id=survey_id,
-                        project_id=assess_id,
-                        survey_name=survey.title,
-                        status=status
-                    ))
-                    distribute_users.append(people_id)
-                    asud_obj.people_ids = json.dumps(distribute_users)
-                    asud_obj.save()
+            if survey_id not in pprs:
+                people_survey_list.append(PeopleSurveyRelation(
+                    people_id=people_id,
+                    survey_id=survey_id,
+                    project_id=assess_id,
+                    survey_name=survey.title,
+                    status=status
+                ))
+            # asud_qs = AssessSurveyUserDistribute.objects.filter_active(assess_id=assess_id,
+            #                                                            survey_id=survey_id)
+            # if asud_qs.exists():
+            #     asud_obj = asud_qs[0]
+            #     distribute_users = json.loads(asud_obj.people_ids)
+            # else:
+            #     asud_obj = AssessSurveyUserDistribute.objects.create(assess_id=assess_id,
+            #                                                          survey_id=survey_id,
+            #                                                          people_ids=json.dumps([]))
+            #     distribute_users = json.loads(asud_obj.people_ids)
+            # if True:
+            #     if people_id not in distribute_users:
+            #         people_survey_list.append(PeopleSurveyRelation(
+            #             people_id=people_id,
+            #             survey_id=survey_id,
+            #             project_id=assess_id,
+            #             survey_name=survey.title,
+            #             status=status
+            #         ))
+            #         distribute_users.append(people_id)
+            #         asud_obj.people_ids = json.dumps(distribute_users)
+            #         asud_obj.save()
         PeopleSurveyRelation.objects.bulk_create(people_survey_list)
         return None
 
