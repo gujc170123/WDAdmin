@@ -302,6 +302,7 @@ class PeopleRegisterView(AuthenticationExceptView, WdCreateAPIView):
             people = people_qs[0]
         else:
             people = People.objects.create(user_id=user.id, username=account, phone=phone, email=email)
+            EnterpriseAccount.objects.create(enterprise_id=project.enterprise_id,account_name=user.account_name,user_id=user.id,people_id=people.id)
         try:
             send_one_user_survey(project.id, people.id)
         except Exception, e:
