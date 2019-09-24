@@ -534,7 +534,7 @@ def send_one_user_survey(assess_id, people_id):
     def distribute_one_people_survey(survey_ids, people_id, assess_id, status):
         # 只有不随机问卷需要判断有没有发过
         people_survey_list = []
-        pprs = PeopleSurveyRelation.objects.filter_active(Project_id=assess_id,people_id=people_id).values_list('survey_id',flat=True)
+        pprs = PeopleSurveyRelation.objects.filter_active(project_id=assess_id,people_id=people_id).values_list('survey_id',flat=True)
         for survey_id in survey_ids:
             survey_qs = Survey.objects.filter_active(id=survey_id)
             if survey_qs.count() == 1:
