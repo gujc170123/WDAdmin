@@ -2891,14 +2891,14 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                                             7:u'您基本能够客观评价自身的长处，并接受自身的缺点和不足，但在遇到较大的挫折和困难时可能会有过低评价自己的倾向。',
                                             10:u'您能够客观地评价自身的长处，并接受自身的缺点和不足，即使遇到较大的挫折和困难也不会过低的评价自己'}}
         frontname = settings.DATABASES['front']['NAME']
-        sql_query = "select b.tag_value ,a.score from\
+        sql_query = "select b.tag_value ,sum(a.score) as score from\
             (select question_id,answer_score score\
             from " + frontname + ".front_peoplesurveyrelation a,\
             " + frontname + ".front_userquestionanswerinfo b\
             where  a.id=%s and a.survey_id=b.survey_id and a.people_id=b.people_id\
             and a.project_id=b.project_id and a.is_active=true and b.is_active=true) a,research_questiontagrelation b\
             where a.question_id=b.object_id and b.tag_id=54\
-            and b.is_active=True"
+            and b.is_active=True group by b.tag_value"
 
         try:
             people_result = PeopleSurveyRelation.objects.get(id=personal_result_id)
