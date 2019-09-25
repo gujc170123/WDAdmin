@@ -977,7 +977,8 @@ class PeopleQuestionListView(WdListAPIView):
                         # elif question_type == Question.QUESTION_TYPE_SLIDE:
                         elif question_type in [Question.QUESTION_TYPE_SLIDE, Question.QUESTION_TYPE_NINE_SLIDE]:
                             # 滑块题， 增加九点题
-                            if random.randint(0, 1):
+                            # when max_value equals 10 exit random
+                            if random.randint(0, 1) and question["options"]["max_value"]<10:
                                 max_value = question["options"]["max_value"]
                                 min_value = question["options"]["min_value"]
                                 max_desc = question["options"]["max_desc"]
@@ -1010,7 +1011,8 @@ class PeopleQuestionListView(WdListAPIView):
                         # elif question_type == Question.QUESTION_TYPE_SLIDE:
                         elif question_type in [Question.QUESTION_TYPE_SLIDE, Question.QUESTION_TYPE_NINE_SLIDE]:
                             # 滑块题, 九点题
-                            if random.randint(0, 1):
+                            # when max_value equals 10 exit random
+                            if random.randint(0, 1) and question["options"]["max_value"]<10:
                                 max_value = question["options"]["max_value"]
                                 min_value = question["options"]["min_value"]
                                 max_desc = question["options"]["max_desc"]
