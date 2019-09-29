@@ -1352,7 +1352,7 @@ class UserAnswerQuestionView(WdCreateAPIView):
             )
 
     def finish_survey(self, people):
-        reports = {70:'wv2019',89:'disc2019',96:'mbti2019',97:'ls2019',98:'ppsy2019',99:'pc2019',100:'co2019',147:'peoi2019',160:'mc2019',163:'peoi2019',167:'mc201990'}
+        reports = {70:'wv2019',89:'disc2019',96:'mbti2019',97:'ls2019',98:'ppsy2019',99:'pc2019',100:'co2019',147:'peoi2019',159:'mc2019',163:'peoi2019',167:'mc201990'}
         if self.block_id == 0:
             qs = PeopleSurveyRelation.objects.filter_active(
                 people_id=people.id,
@@ -1361,7 +1361,7 @@ class UserAnswerQuestionView(WdCreateAPIView):
                 role_type=self.role_type,
                 evaluated_people_id=self.evaluated_people_id
             )
-            if self.survey_id in [70,89,96,97,98,99,100,147,160,163,167]:
+            if self.survey_id in [70,89,96,97,98,99,100,147,159,163,167]:
                 for o in qs:
                     o.status=PeopleSurveyRelation.STATUS_FINISH
                     o.report_status=PeopleSurveyRelation.STATUS_FINISH
@@ -1409,7 +1409,7 @@ class UserAnswerQuestionView(WdCreateAPIView):
                         role_type=self.role_type,
                         evaluated_people_id=self.evaluated_people_id
                     )
-                    if self.survey_id in [70,89,96,97,98,99,100,147,160,163,167]:
+                    if self.survey_id in [70,89,96,97,98,99,100,147,159,163,167]:
                         for o in qs:
                             o.status=PeopleSurveyRelation.STATUS_FINISH
                             o.report_status=PeopleSurveyRelation.STATUS_FINISH
@@ -1893,8 +1893,6 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             default_data["msg"]["Age"] = people.get_info_value(u"年龄", None)
             if not default_data["msg"]["Age"]:
                 default_data["msg"]["Age"] = u"未知"
-            else:
-                default_data["msg"]["Age"] += u"岁"
             if people_result.finish_time:
                 default_data["msg"]["TestTime"] = people_result.finish_time.strftime(u"%Y年%m月%d日")
             else:
@@ -2093,8 +2091,6 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             default_data["msg"]["Age"] = people.get_info_value(u"年龄", None)
             if not default_data["msg"]["Age"]:
                 default_data["msg"]["Age"] = u"未知"
-            else:
-                default_data["msg"]["Age"] += u"岁"
             if people_result.finish_time:
                 default_data["msg"]["TestTime"] = people_result.finish_time.strftime(u"%Y年%m月%d日")
             else:
@@ -2405,8 +2401,6 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             default_data["msg"]["Age"] = people.get_info_value(u"年龄", None)
             if not default_data["msg"]["Age"]:
                 default_data["msg"]["Age"] = u"未知"
-            else:
-                default_data["msg"]["Age"] += u"岁"
             if people_result.finish_time:
                 default_data["msg"]["TestTime"] = people_result.finish_time.strftime(u"%Y年%m月%d日")
             else:
@@ -2540,8 +2534,6 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             default_data["msg"]["Age"] = people.get_info_value(u"年龄", None)
             if not default_data["msg"]["Age"]:
                 default_data["msg"]["Age"] = u"未知"
-            else:
-                default_data["msg"]["Age"] += u"岁"
             if people_result.finish_time:
                 default_data["msg"]["TestTime"] = people_result.finish_time.strftime(u"%Y年%m月%d日")
             else:
@@ -2738,8 +2730,6 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             default_data["msg"]["Age"] = people.get_info_value(u"年龄", None)
             if not default_data["msg"]["Age"]:
                 default_data["msg"]["Age"] = u"未知"
-            else:
-                default_data["msg"]["Age"] += u"岁"
             if people_result.finish_time:
                 default_data["msg"]["TestTime"] = people_result.finish_time.strftime(u"%Y年%m月%d日")
             else:
@@ -2916,8 +2906,6 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             default_data["msg"]["Age"] = people.get_info_value(u"年龄", None)
             if not default_data["msg"]["Age"]:
                 default_data["msg"]["Age"] = u"未知"
-            else:
-                default_data["msg"]["Age"] += u"岁"
             if people_result.finish_time:
                 default_data["msg"]["TestTime"] = people_result.finish_time.strftime(u"%Y年%m月%d日")
             else:
@@ -3260,8 +3248,6 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             default_data["msg"]["Age"] = people.get_info_value(u"年龄", None)
             if not default_data["msg"]["Age"]:
                 default_data["msg"]["Age"] = u"未知"
-            else:
-                default_data["msg"]["Age"] += u"岁"
             if people_result.finish_time:
                 default_data["msg"]["TestTime"] = people_result.finish_time.strftime(u"%Y年%m月%d日")
             else:
@@ -3479,8 +3465,6 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             default_data["msg"]["Age"] = people.get_info_value(u"年龄", None)
             if not default_data["msg"]["Age"]:
                 default_data["msg"]["Age"] = u"未知"
-            else:
-                default_data["msg"]["Age"] += u"岁"
             if people_result.finish_time:
                 default_data["msg"]["TestTime"] = people_result.finish_time.strftime(u"%Y年%m月%d日")
             else:
