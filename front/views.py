@@ -3332,10 +3332,10 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
             dict_potrait[u"待发展共识区"]=list(set(dict_analysis[u"自我评价相对劣势能力"]) &  set(dict_analysis[u"他人评价相对劣势能力"]))
             dict_potrait[u"盲点"]=list(set(dict_analysis[u"自我评价相对优势能力"]) &  set(dict_analysis[u"他人评价相对劣势能力"]))
 
-            dict_analysis[u"自我评价相对优势能力"]=dict_analysis[u"自我评价相对优势能力"][:2]
-            dict_analysis[u"自我评价相对劣势能力"]=dict_analysis[u"自我评价相对劣势能力"][:2]
-            dict_analysis[u"他人评价相对优势能力"]=dict_analysis[u"他人评价相对优势能力"][:2]
-            dict_analysis[u"他人评价相对劣势能力"]=dict_analysis[u"他人评价相对劣势能力"][:2]
+            dict_analysis[u"自我评价相对优势能力"]=dict_analysis[u"自我评价相对优势能力"][:3]
+            dict_analysis[u"自我评价相对劣势能力"]=dict_analysis[u"自我评价相对劣势能力"][:3]
+            dict_analysis[u"他人评价相对优势能力"]=dict_analysis[u"他人评价相对优势能力"][:3]
+            dict_analysis[u"他人评价相对劣势能力"]=dict_analysis[u"他人评价相对劣势能力"][:3]
 
             for quota in dict_potrait[u"待发展共识区"]+dict_potrait[u"盲点"]:
                 advices[quota]=dict_quota_advice[quota]
