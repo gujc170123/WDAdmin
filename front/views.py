@@ -5755,3 +5755,36 @@ class PeopleLoginOrRegistrerView(AuthenticationExceptView, WdCreateAPIView):
         user_info = UserBasicSerializer(instance=user, context=self.get_serializer_context()).data
         self.user_join_assess(assess_id, user, account_type, account, ep_id, org_code[0])
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"user_info": user_info, "login_account": account})
+
+class BlockStatusView(AuthenticationExceptView, WdCreateAPIView):
+
+    POST_CHECK_REQUEST_PARAMETER = ('survey_id', 'project_id','block_id','evaluated_people_id')
+
+    def post(self, request, *args, **kwargs):
+        user_question_answer_list = []
+        people_qs = People.objects.filter_active(user_id=self.request.user.id)
+        if not people_qs.exists():
+            return general_json_response(status.HTTP_200_OK, ErrorCode.PERMISSION_FAIL)
+        people = people_qs[0]
+        
+        surveyinfoquery = SurveyInfo.objects.filter_active(survey_id=self.survey_id,project_id=self.project_id).first()
+        if not surveyinfoquery:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.NOT_EXISTED)
+        surveyinfo = json.loads(surveyinfoquery.block_info)
+        configinfo = json.loads(surveyinfoquery.config_info)
+        # exit if not by part
+        if configinfo['test_type']!=Survey.TEST_TYPE_BY_PART:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"isfinish":int(True)})        
+        blockquery = UserSurveyBlockStatus.objects.filter_active(people_id=people.id,survey_id=self.survey_id,project_id=self.project_id,status=20,is_finish=True)
+        if self.evaluated_people_id>0:
+            blockquery.filter(evaluated_people_id=self.evaluated_people_id)
+        finishedblocks = blockquery.values_list('block_id',flat=True)
+        if not finishedblocks:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"isfinish":int(False)})
+        surveyblocks = set([info['id'] for info in surveyinfo])
+        finishedblocks = set(finishedblocks)
+        finishedblocks.add(self.block_id)
+        if len(surveyblocks) > len(surveyblocks & finishedblocks):
+            return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"isfinish":int(False)})
+        else:
+            return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"isfinish":int(True)}) 
