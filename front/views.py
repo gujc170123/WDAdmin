@@ -5758,11 +5758,12 @@ class PeopleLoginOrRegistrerView(AuthenticationExceptView, WdCreateAPIView):
 
 class BlockStatusView(AuthenticationExceptView, WdCreateAPIView):
 
-    POST_CHECK_REQUEST_PARAMETER = ('survey_id', 'project_id','block_id','evaluated_people_id')
+    POST_CHECK_REQUEST_PARAMETER = ('survey_id', 'project_id','block_id')
 
     def post(self, request, *args, **kwargs):
         user_question_answer_list = []
         people_qs = People.objects.filter_active(user_id=self.request.user.id)
+        self.evaluated_people_id = self.request.data.get("evaluated_people_id", 0)
         if not people_qs.exists():
             return general_json_response(status.HTTP_200_OK, ErrorCode.PERMISSION_FAIL)
         people = people_qs[0]
