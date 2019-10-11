@@ -8,9 +8,9 @@ import json
 # from django.core.serializers import json
 from django.http import HttpResponseRedirect
 from rest_framework.response import Response
-
+from django.contrib.auth import logout
 from WeiDuAdmin import settings
-from assessment.models import AssessSurveyRelation, AssessProject, AssessUser, AssessSurveyUserDistribute
+from assessment.models import AssessSurveyRelation, AssessProject, AssessUser, AssessSurveyUserDistribute, AnonymousEntry
 from front.models import PeopleSurveyRelation
 from front.tasks import send_one_user_survey
 from front.views import people_login
@@ -215,3 +215,31 @@ class LinkProjectJoinView(AuthenticationExceptView, WdTemplateView):
             return Response({"err_code": 7})
         else:
             return Response({"err_code": 6})
+
+class AnonymousJoinView(AuthenticationExceptView, WdTemplateView):
+    u"""Anonymous Join"""
+    template_name = 'join.html'
+
+    def get(self, request, *args, **kwargs):
+        bs = 0
+        ba = self.request.GET.get("ba", 0)
+        assess_id = base64.b64decode(ba)
+
+        logout(request)
+
+        project = AssessProject.objects.filter_active(id=assess_id).first()
+        if not project:
+            err_logger.error("project id %s is not found" % assess_id)
+            return Response({"err_code": 1})
+        if project.distribute_type != AssessProject.DISTRIBUTE_ANONYMOUS:
+            err_logger.error("project(%s) is forbidden for anonymous assess" % (assess_id))
+            return Response({"err_code": 2})
+        entry = AnonymousEntry.objects.filter_active(enterprise_id=project.enterprise_id).first()
+        if not entry:
+            entry = AnonymousEntry.objects.filter_active(enterprise_id=0).first()
+        if not entry:        
+            err_logger.error("no entry available")
+            return Response({"err_code": 2})                
+        url = entry.routine
+
+        return HttpResponseRedirect("/#/%s/" % url)

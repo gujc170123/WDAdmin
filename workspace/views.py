@@ -544,9 +544,13 @@ class StdAssessListView(AuthenticationExceptView,WdCreateAPIView):
         surveys = request.data.get('surveys').split(",")
         orgs = request.data.get('orgid_list')
         enterprise = self.kwargs['enterprise_id']
+        anonymous = int(request.data.get('anonymous',0))
+        distribute_type = AssessProject.DISTRIBUTE_OPEN
+        if anonymous:
+            distribute_type = AssessProject.DISTRIBUTE_ANONYMOUS
 
         assess = AssessProject.objects.create(name=name,
-                                              distribute_type=AssessProject.DISTRIBUTE_OPEN,
+                                              distribute_type=distribute_type,
                                               begin_time=begin_time,
                                               end_time=end_time,
                                               enterprise_id=enterprise)
@@ -583,9 +587,12 @@ class StdAssessManageView(AuthenticationExceptView,WdCreateAPIView,WdDestroyAPIV
     model = AssessProject
     serializer_class = AssessSerializer
 
-    def get_share_url(self,assess_id):
+    def get_share_url(self,assess_id,distribute_type):
         project_id_bs64 = quote(base64.b64encode(str(assess_id)))
-        return settings.CLIENT_HOST + '/people/join-project/?ba=%s&bs=0' % (project_id_bs64)
+        if distribute_type == AssessProject.DISTRIBUTE_OPEN:
+            return settings.CLIENT_HOST + '/people/join-project/?ba=%s&bs=0' % (project_id_bs64)
+        else:
+            return settings.CLIENT_HOST + '/people/anonymous/?ba=%s&bs=0' % (project_id_bs64)
 
     def post(self, request, *args, **kwargs):
         assess_id = self.kwargs['assess_id']
@@ -594,10 +601,10 @@ class StdAssessManageView(AuthenticationExceptView,WdCreateAPIView,WdDestroyAPIV
         if assess.has_distributed:
             return general_json_response(status.HTTP_200_OK, ErrorCode.FAILURE,{'msg': u'已发布的调研不可重复发布'})
         assess.has_distributed=True
-        assess.save()
+        assess.save()        
         with connection.cursor() as cursor:
             ret = cursor.callproc("StdAssess_Confirm", (assess.enterprise_id,assess_id,user_id,))
-        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,{'url':self.get_share_url(assess_id)})
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,{'url':self.get_share_url(assess_id,assess.distribute_type)})
     
     def delete(self, request, *args, **kwargs):
         assess_id = self.kwargs['assess_id']
@@ -781,7 +788,7 @@ class ManagementAssess(AuthenticationExceptView,WdCreateAPIView):
                     inner join wduser_baseorganization e\
                     on a.child_id=e.id\
                     where a.parent_id=" + org + " and a.assess_id="+ ass+ "\
-                    and c.is_active=true and c.is_staff=true"
+                    and c.is_active=true and c.is_staff=true and c.role_type>0"
         if keyword2:
             sql_query += " and d.user_id is null "
         if keyword:
@@ -797,7 +804,7 @@ class ManagementAssess(AuthenticationExceptView,WdCreateAPIView):
                                 left join (select user_id from assessment_assessuser a1,\
                                 wduser_people a2 where a1.people_id=a2.id and assess_id=" + str(ass) + ") d\
                                 on c.id=d.user_id\
-                                where c.is_active=true and a.parent_id=" + org + " and a.assess_id="+ ass
+                                where c.is_active=true and c.is_staff=true and c.role_type>0 and a.parent_id=" + org + " and a.assess_id="+ ass
         if keyword2:
             sql_query_aggregate += " and d.user_id is null "                                
         if keyword:
@@ -836,7 +843,7 @@ class ManagementAssess(AuthenticationExceptView,WdCreateAPIView):
                     inner join wduser_people f\
                     on c.id=f.user_id\
                     where a.parent_id=" + org + " and a.assess_id="+ ass+ "\
-                    and c.is_active=true and d.user_id is null and f.is_active=true"
+                    and c.is_active=true and c.is_staff=true and c.role_type>0 and d.user_id is null and f.is_active=true"
         results = {}
         user_toadd = set()
         with connection.cursor() as cursor:

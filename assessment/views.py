@@ -786,7 +786,7 @@ class AssessSurveyRelationDistributeView(WdListCreateAPIView):
 
     def get_distribute_info(self):
         project = AssessProject.objects.get(id=self.assess_id)
-        if project.distribute_type == AssessProject.DISTRIBUTE_OPEN:
+        if project.distribute_type != AssessProject.DISTRIBUTE_IMPORT:
             user_statistics = self.get_open_project_user_statistics()
         else:
             user_statistics = self.get_import_project_user_statistics()

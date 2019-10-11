@@ -9,7 +9,7 @@ from django.db import models
 
 from WeiDuAdmin import settings
 from utils.models import BaseModel
-from wduser.models import Organization, BaseOrganization, AuthUser
+from wduser.models import Organization, BaseOrganization, AuthUser, EnterpriseInfo
 
 class AssessProject(BaseModel):
 
@@ -41,9 +41,11 @@ class AssessProject(BaseModel):
     user_count = models.PositiveIntegerField(u"测验人次", default=0, db_index=True)
     DISTRIBUTE_OPEN = 10
     DISTRIBUTE_IMPORT = 20
+    DISTRIBUTE_ANONYMOUS = 30
     DISTRIBUTE_CHOICES = (
         (DISTRIBUTE_OPEN, u"公开测评"),
         (DISTRIBUTE_IMPORT, u"导入测评"),
+        (DISTRIBUTE_ANONYMOUS, u"Anonymous Survey"),
     )
     distribute_type = models.PositiveIntegerField(u"分发类型", default=DISTRIBUTE_OPEN, choices=DISTRIBUTE_CHOICES, db_index=True)
     has_distributed = models.BooleanField(u"是否分发过", default=False)
@@ -291,3 +293,8 @@ class AssessProjectSurveyConfig(BaseModel):
     # @version: 20180725 @summary: 支持滑块题设置
     content = models.TextField(u"自定义配置内容", null=True, blank=True)
     en_content = models.TextField(u"英文自定义配置内容", null=True, blank=True, default=u'')
+
+class AnonymousEntry(BaseModel):
+    
+    Enterprise = models.ForeignKey(EnterpriseInfo,db_constraint=False)
+    routine = models.CharField(max_length=64)

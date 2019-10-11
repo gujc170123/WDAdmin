@@ -5,7 +5,7 @@ from __future__ import unicode_literals
 import base64
 import json
 import random,collections
-
+import uuid
 import datetime
 
 from django.db.models import Q
@@ -5789,3 +5789,61 @@ class BlockStatusView(AuthenticationExceptView, WdCreateAPIView):
             return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"isfinish":int(False)})
         else:
             return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"isfinish":int(True)}) 
+
+class AnonymousRegisterView(AuthenticationExceptView, WdCreateAPIView):
+
+    def survey_register_normal(self, account, pwd, survey_id_base64, assess_id_base64):
+        survey_id = 0
+        assess_id = base64.b64decode(assess_id_base64)
+        try:
+            project = AssessProject.objects.get(id=assess_id)
+            #check register balance
+            balance = Balance.objects.filter(enterprise_id=project.enterprise_id,sku__lte=2,validto__gte=date.today()).first()
+            if balance:
+                if balance.number<1:
+                    return ErrorCode.OVERLIMIT
+                else:
+                    Consume.objects.create(balance_id=balance.id,
+                                           number=1)
+        except:
+            err_logger.error("project not found: %s" % assess_id)
+            return ErrorCode.INVALID_INPUT
+
+        user, code = UserAccountUtils.user_register(pwd,account,role_type=AuthUser.ROLE_ANONYMOUS)
+        if code != ErrorCode.SUCCESS:
+            return code
+
+        people = People.objects.create(user_id=user.id, username=account)
+        EnterpriseAccount.objects.create(enterprise_id=project.enterprise_id,account_name=user.account_name,user_id=user.id,people_id=people.id)
+        
+        try:
+            send_one_user_survey(project.id, people.id)
+        except Exception, e:
+            err_logger.error("people survey relation error, msg: %s" %e)
+        return ErrorCode.SUCCESS, user, project.enterprise_id
+
+
+    def post(self, request, *args, **kwargs):
+        survey_id_base64 = self.request.data.get("bs", None)
+        assess_id_base64 = self.request.data.get("ba", None)
+        rst_code = ErrorCode.SUCCESS
+        enterprise = 0
+
+        if not assess_id_base64:
+            err_logger.error("ba field must not be empty for anonymous assess")
+            return general_json_response(status.HTTP_200_OK, rst_code, {"is_login": ErrorCode.INVALID_INPUT, "user_info": None})
+        
+        account = str(uuid.uuid4())
+        pwd = "0000"
+
+        rst_code, user, enterprise = self.survey_register_normal(account, pwd, survey_id_base64, assess_id_base64)
+        if not BaseOrganization.objects.filter(enterprise_id=enterprise).first():
+            enterprise = 0
+        try:
+            user, err_code = UserAccountUtils.user_login_web(request, user, pwd)
+            user_info = people_login(request, user, self.get_serializer_context())
+            user_info['enterprise'] = enterprise
+        except Exception, e:
+            err_logger.error("Register_FOR_Login error, msg is %s" % e)
+            user_info = None
+        return general_json_response(status.HTTP_200_OK, rst_code, {"is_login": err_code, "user_info": user_info})
