@@ -6,7 +6,7 @@ from front.views import PeopleSurveyListView, PeopleQuestionListView, PeopleBloc
     PeopleSurveyReportListView, PeopleLoginView, PeopleRegisterView, UserAnswerQuestionView, OrgInfoView, \
     ProjectAdvertList, PeopleInfoGatherView, UserAccountInfoView, UserOrgInfoView, PeopleLogoutView, \
     PeopleActiveCodeLoginView, PeopleActiveCodeLoginSetPwdView, PeopleSurveyDetailView, PeopleSurveyOpenCheckView, \
-    ReportDataView, FinishTxTView, ReportFinishCallback, PeopleLoginOrRegistrerView,BlockStatusView
+    ReportDataView, FinishTxTView, ReportFinishCallback, PeopleLoginOrRegistrerView,BlockStatusView,AnonymousEntryView
 # PeopleLinkCodeLoginView
 from wduser.views import UserPwdForgetView
 
@@ -57,5 +57,7 @@ urlpatterns = [
     # 获取项目富文本：
     url(r"^finish/project_info/$", FinishTxTView.as_view(), name="finish-txt-view"),
     # confirm whether all blocks have been finished：
-    url(r"^blockstatus/$", BlockStatusView.as_view(), name="block-status-view"),    
+    url(r"^blockstatus/$", BlockStatusView.as_view(), name="block-status-view"),
+    # anonymous entry(auto register,login,surveydeliver)
+    url(r"^anonymousentry/$",AnonymousEntryView.as_view(), name="anonymous-entry-view"),
 ]

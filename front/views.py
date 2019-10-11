@@ -5790,7 +5790,7 @@ class BlockStatusView(AuthenticationExceptView, WdCreateAPIView):
         else:
             return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, {"isfinish":int(True)}) 
 
-class AnonymousRegisterView(AuthenticationExceptView, WdCreateAPIView):
+class AnonymousEntryView(AuthenticationExceptView, WdCreateAPIView):
 
     def survey_register_normal(self, account, pwd, survey_id_base64, assess_id_base64):
         survey_id = 0
