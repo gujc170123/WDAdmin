@@ -560,9 +560,10 @@ class StdAssessListView(AuthenticationExceptView,WdCreateAPIView):
             qs = AssessProjectSurveyConfig.objects.filter_active(survey_id=147,
                                                                     assess_id=0).all()
             qs2 = SurveyInfo.objects.filter_active(survey_id=survey,project_id=0).all()
-            qs3 = SurveyQuestionInfo.objects.filter_active(survey_id=survey,project_id=0).all()                                                                      
+            qs3 = SurveyQuestionInfo.objects.filter_active(survey_id=survey,project_id=0).all()
             for x in qs:
                 x.id = None
+                x.survey_id=survey
                 x.assess_id=assess.id
             AssessProjectSurveyConfig.objects.bulk_create(qs)
             for y in qs2:

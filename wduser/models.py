@@ -152,7 +152,6 @@ class AuthUser(AbstractUser):
     organization = models.ForeignKey(BaseOrganization, null=True, db_constraint=False, db_index=True)
     importlot = models.IntegerField(default=0,db_index=True)
     profile = models.CharField(max_length=4096, null=True, blank=True)
-    anonymous = models.BooleanField(default=False,db_index=True)
 
     class Meta:
         verbose_name = '基本信息'

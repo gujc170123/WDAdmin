@@ -34,7 +34,7 @@ class TrialAssessListSerializer(serializers.ModelSerializer):
         slug_field='status',
         read_only=True,    
     )
-    eoisurveys = [132,147]
+    eoisurveys = [132,147,172]
 
     class Meta:
         model = AssessProject
