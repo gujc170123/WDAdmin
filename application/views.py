@@ -118,6 +118,6 @@ class CustomerModelView(CustomModelViewSet):
             querysetlist.append(RolePrivis(Value=privis.Value,ContentType=privis.ContentType,Role=manager))
         for privis in RolePrivis.objects.filter(Role_id=2):
             querysetlist.append(RolePrivis(Value=privis.Value,ContentType=privis.ContentType,Role=sysadmin))
-        Account.objects.bulk_create(querysetlist)
+        RolePrivis.objects.bulk_create(querysetlist)
 
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)
