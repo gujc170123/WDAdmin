@@ -94,6 +94,7 @@ class PermissionMiddleware(MiddlewareMixin):
         '/api/v1/user/logout/',
         '/api/v1/research/tag/',
         '/people/join-project/',
+        '/people/anonymous/',
     ]
     PERMISSION_EXCEPT_URL_PREFIX = [
         '/api/client/v1/front/',
