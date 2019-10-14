@@ -191,10 +191,10 @@ class UserImport:
                 dictrow['is_active'] = True
                 dictrow['active_code_valid'] = False
                 dictrow['importlot'] = importlot
-                dictrow['password'] = 'pbkdf2_sha256$36000$UVBQYHUroCQ2$oK1N/h0YLveYFWYGuyZrbZKzc7z0yyImlU9u/IUA8Qc='
+                dictrow['password'] = 'pbkdf2_sha256$36000$tlcYlGAV9Bsl$ZuTBAKUvixfdgjBjL5Bx275ikaAwPWscRJKbcPSWCjU='
                 userstoadd.append(dictrow)
             else:
-                dictrow['user_id'] = tmpuserid                
+                dictrow['user_id'] = tmpuserid
                 userstoupdate.append(dictrow)
             i += 1
 

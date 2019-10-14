@@ -8,6 +8,7 @@ from utils.response import general_json_response, ErrorCode
 from application import models,serializers
 from wduser.serializers import EnterpriseBasicSerializer
 from wduser.models import EnterpriseInfo,BaseOrganization,AuthUser
+from workspace.models import RolePrivis,EnterpriseRole
 from assessment.views import get_mima
 
 class ChoiceView(GenericAPIView):
@@ -101,5 +102,22 @@ class CustomerModelView(CustomModelViewSet):
                 is_staff=False,
                 organization=org
             )
+
+        manager = EnterpriseRole.objects.create(
+                Name=u'部门主管',
+                Code=200,
+                Enterprise=serializer.data)
+        
+        sysadmin = EnterpriseRole.objects.create(
+                Name=u'系统管理员',
+                Code=300,
+                Enterprise=serializer.data)
+        
+        querysetlist=[]
+        for privis in RolePrivis.objects.filter(role_id=1):
+            querysetlist.append(RolePrivis(Value=privis.Value,ContentType=privis.ContentType,Role=manager))
+        for privis in RolePrivis.objects.filter(role_id=2):
+            querysetlist.append(RolePrivis(Value=privis.Value,ContentType=privis.ContentType,Role=sysadmin))
+        Account.objects.bulk_create(querysetlist)
 
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, serializer.data)

@@ -105,34 +105,36 @@ class OpenProjectJoinView(AuthenticationExceptView, WdTemplateView):
             err_logger.error("project(%s) is not open" % (assess_id))
             return Response({"err_code": 2})
 
-        if not hasattr(request, 'user') or not request.user.is_authenticated:
-            # 跳转登录页面
-            err_logger.error("user is not is_authenticated")
-            return HttpResponseRedirect("/#/login?bs=%s&ba=%s" % (bs, quote(ba)))
-        relation_qs = AssessSurveyRelation.objects.filter_active(assess_id=assess_id, survey_been_random=False)
-        random_relation_qs = AssessSurveyRelation.objects.filter_active(assess_id=assess_id, survey_been_random=True).values_list('survey_id', flat=True)
-        random_num = project.survey_random_number
-        if random_num is None:
-            random_num = 0
-        if len(random_relation_qs) < random_num:
-            random_num = len(random_relation_qs)
-        if (not relation_qs.exists()) and (not random_relation_qs):
-            err_logger.error("project(%s) survey relation is not found" % (assess_id))
-            # 跳转我的测评页面
-            return HttpResponseRedirect("/#/")
-        user = self.request.user
-        people_qs = People.objects.filter_active(user_id=user.id)
-        if people_qs.exists():
-            people = people_qs[0]
-        else:
-            people = People.objects.create(
-                user_id=user.id, username=user.nickname, phone=user.phone, email=user.email)
-        try:
-            send_one_user_survey(assess_id, people.id)
-        except Exception, e:
-            err_logger.error("add people to project error, %s, %s" %(people.id, assess_id))
-        # TODO: 跳转我的测评页面
-        return HttpResponseRedirect("/#/")
+        logout(request)
+        return HttpResponseRedirect("/#/login?bs=%s&ba=%s" % (bs, quote(ba)))
+        # if not hasattr(request, 'user') or not request.user.is_authenticated:
+        #     # 跳转登录页面
+        #     err_logger.error("user is not is_authenticated")
+        #     return HttpResponseRedirect("/#/login?bs=%s&ba=%s" % (bs, quote(ba)))
+        # relation_qs = AssessSurveyRelation.objects.filter_active(assess_id=assess_id, survey_been_random=False)
+        # random_relation_qs = AssessSurveyRelation.objects.filter_active(assess_id=assess_id, survey_been_random=True).values_list('survey_id', flat=True)
+        # random_num = project.survey_random_number
+        # if random_num is None:
+        #     random_num = 0
+        # if len(random_relation_qs) < random_num:
+        #     random_num = len(random_relation_qs)
+        # if (not relation_qs.exists()) and (not random_relation_qs):
+        #     err_logger.error("project(%s) survey relation is not found" % (assess_id))
+        #     # 跳转我的测评页面
+        #     return HttpResponseRedirect("/#/")
+        # user = self.request.user
+        # people_qs = People.objects.filter_active(user_id=user.id)
+        # if people_qs.exists():
+        #     people = people_qs[0]
+        # else:
+        #     people = People.objects.create(
+        #         user_id=user.id, username=user.nickname, phone=user.phone, email=user.email)
+        # try:
+        #     send_one_user_survey(assess_id, people.id)
+        # except Exception, e:
+        #     err_logger.error("add people to project error, %s, %s" %(people.id, assess_id))
+        # # TODO: 跳转我的测评页面
+        # return HttpResponseRedirect("/#/")
 
 class OpenJoinView(AuthenticationExceptView, WdTemplateView):
     u"""开放项目加入"""

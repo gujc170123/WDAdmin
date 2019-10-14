@@ -38,7 +38,7 @@ class TrialAssessListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AssessProject
-        fields = ('id','name','begin_time','end_time','organizations','joined','has_distributed','progress','survey_id')
+        fields = ('id','name','begin_time','end_time','organizations','joined','has_distributed','progress','survey_id','distribute_type')
     
     def get_organizations(self, obj):
         organizations = AssessJoinedOrganization.objects.filter(assess_id=obj.id,organization__parent_id__gt=0).values_list('organization__name', flat=True)

@@ -20,7 +20,7 @@ from workspace.serializers import UserSerializer,BaseOrganizationSerializer,Asse
 from utils.regular import RegularUtils
 from assessment.views import get_mima, get_random_char, get_active_code
 from wduser.models import AuthUser, BaseOrganization, People, EnterpriseAccount, Organization, \
-                          BaseOrganizationPaths, EnterpriseInfo
+                          BaseOrganizationPaths, EnterpriseInfo, PeopleOrganization
 from wduser.serializers import EnterpriseBasicSerializer                          
 from assessment.models import AssessProject, AssessSurveyRelation, AssessProjectSurveyConfig, \
                               AssessSurveyUserDistribute,AssessUser, AssessOrganization
@@ -829,7 +829,7 @@ class ManagementAssess(AuthenticationExceptView,WdCreateAPIView):
             modify_pid = set(list(map(int,modify_pid.split(","))))
 
         surveys = SurveyInfo.objects.filter_active(project_id=ass)
-        sql_query =  "select f.id as pid,c.id as user_id\
+        sql_query =  "select f.id as pid,c.id as user_id,g.identification_code\
                     from assessment_assessorganizationpathssnapshots a\
                     inner join assessment_assessjoinedorganization b\
                     on a.child_id=b.organization_id\
@@ -843,29 +843,41 @@ class ManagementAssess(AuthenticationExceptView,WdCreateAPIView):
                     on a.child_id=e.id\
                     inner join wduser_people f\
                     on c.id=f.user_id\
+                    inner join wduser_organization g\
+                    on e.id=g.baseorganization_id\
                     where a.parent_id=" + org + " and a.assess_id="+ ass+ "\
                     and c.is_active=true and c.is_staff=true and c.role_type>0 and d.user_id is null and f.is_active=true"
         results = {}
+        userorgrelations = {}
         user_toadd = set()
         with connection.cursor() as cursor:
             cursor.execute(sql_query)
             for row in cursor.fetchall():
                 user_toadd.add(row[1])
                 results[row[1]]=row[0]
+                userorgrelations[row[1]]=row[2]
 
         if modify_pid:
             user_toadd = user_toadd & modify_pid
 
         i = True
         people_survey = []
-        survey_user = []
+        people_organization = []
+        survey_user = []        
+
+        for uid in user_toadd:
+            people_organization.append(
+                    PeopleOrganization(
+                        people_id=results[uid],org_code=userorgrelations[uid]
+                    )
+                )        
         for survey in surveys:
             for uid in user_toadd:
                 people_survey.append(
                     PeopleSurveyRelation(
                         people_id=results[uid],survey_id=survey.survey_id, project_id=ass, survey_name=survey.survey_name
                     )
-                )
+                )                
                 if i:                    
                     survey_user.append(
                         AssessUser(
@@ -873,6 +885,7 @@ class ManagementAssess(AuthenticationExceptView,WdCreateAPIView):
                         )
                     )
             i = False
+        PeopleOrganization.objects.bulk_create(people_organization)
         PeopleSurveyRelation.objects.bulk_create(people_survey)
         AssessUser.objects.bulk_create(survey_user)
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS)
@@ -1057,6 +1070,26 @@ class OrganizationPointSheetView(AuthenticationExceptView,WdCreateAPIView):
         orgid =  request.GET.get('organization')
         survey =  request.GET.get('survey')
         assess =  self.kwargs.get('pk')
+
+        frontname = settings.DATABASES['front']['NAME']
+        sql_query = "select a.people_id,b.tag_value ,sum(a.score) as score, avg(answer_time) as answer_time from\
+            (select question_id,answer_score score, answer_time\
+            from " + frontname + ".front_peoplesurveyrelation a,\
+            " + frontname + ".front_userquestionanswerinfo b\
+            where  a.id=%s and a.survey_id=b.survey_id and a.people_id=b.people_id\
+            and a.project_id=b.project_id and a.is_active=true and b.is_active=true) a,research_questiontagrelation b\
+            where a.question_id=b.object_id and b.tag_id=54\
+            and b.is_active=True group by b.tag_value"
+        
+        with connection.cursor() as cursor:
+            cursor.execute(sql_query, [personal_result_id])
+            columns = [col[0] for col in cursor.description]
+            dictscore = {}
+            for row in cursor.fetchall():
+                if dictscore.has_key(row[0]):
+                    dictscore[row[0]]=dictscore[row[0]]+row[1]
+                else:
+                    dictscore[row[0]]=row[1]
 
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, None)
 
