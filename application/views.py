@@ -114,9 +114,9 @@ class CustomerModelView(CustomModelViewSet):
                 Enterprise_id=serializer.data['id'])
         
         querysetlist=[]
-        for privis in RolePrivis.objects.filter(role_id=1):
+        for privis in RolePrivis.objects.filter(Role_id=1):
             querysetlist.append(RolePrivis(Value=privis.Value,ContentType=privis.ContentType,Role=manager))
-        for privis in RolePrivis.objects.filter(role_id=2):
+        for privis in RolePrivis.objects.filter(Role_id=2):
             querysetlist.append(RolePrivis(Value=privis.Value,ContentType=privis.ContentType,Role=sysadmin))
         Account.objects.bulk_create(querysetlist)
 
