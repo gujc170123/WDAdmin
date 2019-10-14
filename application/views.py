@@ -106,12 +106,12 @@ class CustomerModelView(CustomModelViewSet):
         manager = EnterpriseRole.objects.create(
                 Name=u'部门主管',
                 Code=200,
-                Enterprise=serializer.data)
+                Enterprise_id=serializer.data['id'])
         
         sysadmin = EnterpriseRole.objects.create(
                 Name=u'系统管理员',
                 Code=300,
-                Enterprise=serializer.data)
+                Enterprise_id=serializer.data['id'])
         
         querysetlist=[]
         for privis in RolePrivis.objects.filter(role_id=1):
