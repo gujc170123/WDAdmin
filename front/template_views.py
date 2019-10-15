@@ -236,9 +236,9 @@ class AnonymousJoinView(AuthenticationExceptView, WdTemplateView):
         if project.distribute_type != AssessProject.DISTRIBUTE_ANONYMOUS:
             err_logger.error("project(%s) is forbidden for anonymous assess" % (assess_id))
             return Response({"err_code": 2})
-        entry = AnonymousEntry.objects.filter_active(enterprise_id=project.enterprise_id).first()
+        entry = AnonymousEntry.objects.filter_active(Enterprise_id=project.enterprise_id).first()
         if not entry:
-            entry = AnonymousEntry.objects.filter_active(enterprise_id=0).first()
+            entry = AnonymousEntry.objects.filter_active(Enterprise_id=0).first()
         if not entry:        
             err_logger.error("no entry available")
             return Response({"err_code": 2})                
