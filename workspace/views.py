@@ -572,11 +572,15 @@ class StdAssessListView(AuthenticationExceptView,WdCreateAPIView):
                 y.begin_time = assess.begin_time
                 y.end_time = assess.end_time
                 y.project_name = name
+                if anonymous:
+                    config = json.loads(y.config_info)
+                    config['test_type']=SurveyInfo.TEST_TYPE_BY_QUESTION
+                    y.config_info = json.dumps(config)
             SurveyInfo.objects.bulk_create(qs2)
             for z in qs3:
                 z.id = None
                 z.project_id = assess.id
-            SurveyQuestionInfo.objects.bulk_create(qs3)             
+            SurveyQuestionInfo.objects.bulk_create(qs3)
 
         with connection.cursor() as cursor:
             ret = cursor.callproc("StdAssess_Save", (assess.enterprise_id,assess.id,user_id,orgs,))
