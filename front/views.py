@@ -1595,7 +1595,7 @@ class ReportDataView(AuthenticationExceptView, WdCreateAPIView):
                 people_result.report_url= settings.Reports['mbti2019f'] % (personal_result_id)
                 people_result.report_status=PeopleSurveyRelation.STATUS_FINISH
                 people_result.save()
-            SurveyAlgorithm.algorithm_xwfg(personal_result_id, form_type=Survey.FORM_TYPE_NORMAL)
+                SurveyAlgorithm.algorithm_xwfg(personal_result_id, form_type=Survey.FORM_TYPE_NORMAL)
             people_result = PeopleSurveyRelation.objects.get(id=personal_result_id)
             people = People.objects.get(id=people_result.people_id)
             default_data["msg"]["personal"]["Name"] = people.display_name
