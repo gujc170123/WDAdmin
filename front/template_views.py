@@ -244,4 +244,4 @@ class AnonymousJoinView(AuthenticationExceptView, WdTemplateView):
             return Response({"err_code": 2})                
         url = entry.routine
 
-        return HttpResponseRedirect("/#/%s/" % url)
+        return HttpResponseRedirect("/#/%s/?bs=%s&ba=%s" % (url,bs, ba))
