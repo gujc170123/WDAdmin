@@ -298,13 +298,17 @@ class AssessShareView(AuthenticationExceptView,WdCreateAPIView):
     model = AssessProject
     serializer_class = AssessSerializer
 
-    def get_share_url(self,assess_id):
+    def get_share_url(self,assess_id,distribute_type):
         project_id_bs64 = quote(base64.b64encode(str(assess_id)))
-        return settings.CLIENT_HOST + '/people/join-project/?ba=%s&bs=0' % (project_id_bs64)
+        if distribute_type == AssessProject.DISTRIBUTE_OPEN:
+            return settings.CLIENT_HOST + '/people/join-project/?ba=%s&bs=0' % (project_id_bs64)
+        else:
+            return settings.CLIENT_HOST + '/people/anonymous/?ba=%s&bs=0' % (project_id_bs64)
 
     def get(self, request, *args, **kwargs):
-        id = self.kwargs['pk']  
-        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,{'url':self.get_share_url(id)})
+        id = self.kwargs['pk']
+        project = AssessProject.objects.get(id=id)
+        return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS,{'url':self.get_share_url(id,project.distribute_type)})
 
 class UserBatchDeleteView(AuthenticationExceptView,WdDestroyAPIView):
     model = None

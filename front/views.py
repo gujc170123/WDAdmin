@@ -5813,7 +5813,7 @@ class AnonymousEntryView(AuthenticationExceptView, WdCreateAPIView):
         if code != ErrorCode.SUCCESS:
             return code
 
-        people = People.objects.create(user_id=user.id, username=account)
+        people = People.objects.create(user_id=user.id)
         EnterpriseAccount.objects.create(enterprise_id=project.enterprise_id,account_name=user.account_name,user_id=user.id,people_id=people.id)
         
         try:
