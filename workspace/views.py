@@ -664,9 +664,9 @@ class AssessOrganizationView(AuthenticationExceptView,WdCreateAPIView):
     def get(self, request, *args, **kwargs):
 
         organization_id = request.GET.get('organization_id')
-        if organization_id:
-            enterprise = AssessProject.objects.get(id=organization_id)
-            baseorg = BaseOrganization.objects.filter_active(enterprise_id=enterprise.id,parent_id=0).first()
+        if not organization_id:
+            assess = AssessProject.objects.get(id=self.assess)
+            baseorg = BaseOrganization.objects.filter_active(enterprise_id=assess.enterprise_id,parent_id=0).first()
             organization_id = baseorg.id
         """get organization tree of current user"""
         organizations = BaseOrganization.objects.raw("SELECT a.id,a.parent_id,a.name,if(c.id is null,False,True) is_active FROM wduser_baseorganization a\
@@ -674,7 +674,7 @@ class AssessOrganizationView(AuthenticationExceptView,WdCreateAPIView):
                                                       ON b.child_id=a.id\
                                                       LEFT JOIN assessment_assessjoinedorganization c\
                                                       ON a.id=c.organization_id and c.assess_id=b.assess_id\
-                                                      WHERE b.assess_id=%s AND b.parent_id=%s",[self.assess,self.organization_id])
+                                                      WHERE b.assess_id=%s AND b.parent_id=%s",[self.assess,organization_id])
 
         if not list(organizations):
             return general_json_response(status.HTTP_200_OK, ErrorCode.NOT_EXISTED)
