@@ -659,9 +659,15 @@ class AssessOrganizationView(AuthenticationExceptView,WdCreateAPIView):
     """assess organization tree view"""
     model = BaseOrganization
     serializer_class = BaseOrganizationSerializer
-    GET_CHECK_REQUEST_PARAMETER = {"assess","organization_id"}
+    GET_CHECK_REQUEST_PARAMETER = {"assess"}
     
     def get(self, request, *args, **kwargs):
+
+        organization_id = request.GET.get('organization_id')
+        if organization_id:
+            enterprise = AssessProject.objects.get(id=organization_id)
+            baseorg = BaseOrganization.objects.filter_active(enterprise_id=enterprise.id,parent_id=0).first()
+            organization_id = baseorg.id
         """get organization tree of current user"""
         organizations = BaseOrganization.objects.raw("SELECT a.id,a.parent_id,a.name,if(c.id is null,False,True) is_active FROM wduser_baseorganization a\
                                                       INNER JOIN assessment_assessorganizationpathssnapshots b\
