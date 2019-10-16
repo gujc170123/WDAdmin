@@ -131,9 +131,9 @@ class PeopleLoginView(AuthenticationExceptView, WdCreateAPIView):
             return general_json_response(status.HTTP_200_OK, ErrorCode.INVALID_INPUT)
 
         enterprise = 0
+        assess_id = 0
         if assess_id_base64:
-            assess_id = base64.b64decode(assess_id_base64)
-            user_info['assess_id']=assess_id
+            assess_id = base64.b64decode(assess_id_base64)            
             try:                
                 project = AssessProject.objects.get(id=assess_id)
                 enterprise = project.enterprise_id
@@ -159,6 +159,8 @@ class PeopleLoginView(AuthenticationExceptView, WdCreateAPIView):
         if err_code != ErrorCode.SUCCESS:
             return general_json_response(status.HTTP_200_OK, err_code)
         user_info = people_login(request, user, self.get_serializer_context())
+        if assess_id_base64:
+            user_info['assess_id'] = assess_id
         if not user_info['enteprise']:
             user_info['enterprise'] =0
         else:
@@ -389,8 +391,7 @@ class PeopleRegisterView(AuthenticationExceptView, WdCreateAPIView):
                                              {"is_login": err_code, "user_info": user_info})
         elif assess_id_base64:
             # 问卷连接注册
-            rst_code, user, enterprise, assess_id = self.survey_register_normal(account, pwd, survey_id_base64, assess_id_base64)
-            user_info['assess_id']=assess_id
+            rst_code, user, enterprise, assess_id = self.survey_register_normal(account, pwd, survey_id_base64, assess_id_base64)            
             if not BaseOrganization.objects.filter(enterprise_id=enterprise).first():
                 enterprise = 0
         # 注册后返回用户信息以便直接跳转登陆
@@ -398,6 +399,8 @@ class PeopleRegisterView(AuthenticationExceptView, WdCreateAPIView):
             # 理论成功创建用户应该都合法，err_code只是复用代码
             user, err_code = UserAccountUtils.user_login_web(request, user, pwd)
             user_info = people_login(request, user, self.get_serializer_context())
+            if assess_id_base64:
+                user_info['assess_id'] = assess_id
             user_info['enterprise'] = enterprise
         # except:
         except Exception, e:
