@@ -5823,7 +5823,7 @@ class AnonymousEntryView(AuthenticationExceptView, WdCreateAPIView):
             send_one_user_survey(project.id, people.id)
         except Exception, e:
             err_logger.error("people survey relation error, msg: %s" %e)
-        return ErrorCode.SUCCESS, user, project.enterprise_id
+        return ErrorCode.SUCCESS, user, project.enterprise_id, assess_id
 
 
     def post(self, request, *args, **kwargs):
@@ -5839,7 +5839,8 @@ class AnonymousEntryView(AuthenticationExceptView, WdCreateAPIView):
         account = str(uuid.uuid4())
         pwd = "0000"
 
-        rst_code, user, enterprise = self.survey_register_normal(account, pwd, survey_id_base64, assess_id_base64)
+        rst_code, user, enterprise, assess_id = self.survey_register_normal(account, pwd, survey_id_base64, assess_id_base64)
+        user_info['assess_id'] = assess_id
         if not BaseOrganization.objects.filter(enterprise_id=enterprise).first():
             enterprise = 0
         try:
