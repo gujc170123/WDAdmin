@@ -133,6 +133,7 @@ class PeopleLoginView(AuthenticationExceptView, WdCreateAPIView):
         enterprise = 0
         if assess_id_base64:
             assess_id = base64.b64decode(assess_id_base64)
+            user_info['assess_id']=assess_id
             try:                
                 project = AssessProject.objects.get(id=assess_id)
                 enterprise = project.enterprise_id
@@ -162,6 +163,7 @@ class PeopleLoginView(AuthenticationExceptView, WdCreateAPIView):
             user_info['enterprise'] =0
         else:
             user_info['enterprise'] = enterprise
+        
         return general_json_response(status.HTTP_200_OK, ErrorCode.SUCCESS, user_info)
 
 class PeopleActiveCodeLoginView(AuthenticationExceptView, WdCreateAPIView):
@@ -307,7 +309,7 @@ class PeopleRegisterView(AuthenticationExceptView, WdCreateAPIView):
             send_one_user_survey(project.id, people.id)
         except Exception, e:
             err_logger.error("people survey relation error, msg: %s" %e)
-        return ErrorCode.SUCCESS, user, project.enterprise_id
+        return ErrorCode.SUCCESS, user, project.enterprise_id ,assess_id
 
     def org_code_register(self, account, pwd, org_code):
         u"""这边假设所有的用户都是先后台导入，创建了People，后台自动发送组织码，其他渠道获取的组织码，
@@ -387,7 +389,8 @@ class PeopleRegisterView(AuthenticationExceptView, WdCreateAPIView):
                                              {"is_login": err_code, "user_info": user_info})
         elif assess_id_base64:
             # 问卷连接注册
-            rst_code, user, enterprise = self.survey_register_normal(account, pwd, survey_id_base64, assess_id_base64)
+            rst_code, user, enterprise, assess_id = self.survey_register_normal(account, pwd, survey_id_base64, assess_id_base64)
+            user_info['assess_id']=assess_id
             if not BaseOrganization.objects.filter(enterprise_id=enterprise).first():
                 enterprise = 0
         # 注册后返回用户信息以便直接跳转登陆
