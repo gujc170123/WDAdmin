@@ -5840,13 +5840,14 @@ class AnonymousEntryView(AuthenticationExceptView, WdCreateAPIView):
         pwd = "0000"
 
         rst_code, user, enterprise, assess_id = self.survey_register_normal(account, pwd, survey_id_base64, assess_id_base64)
-        user_info['assess_id'] = assess_id
+        
         if not BaseOrganization.objects.filter(enterprise_id=enterprise).first():
             enterprise = 0
         try:
             user, err_code = UserAccountUtils.user_login_web(request, user, pwd)
             user_info = people_login(request, user, self.get_serializer_context())
             user_info['enterprise'] = enterprise
+            user_info['assess_id'] = assess_id
         except Exception, e:
             err_logger.error("Register_FOR_Login error, msg is %s" % e)
             user_info = None
